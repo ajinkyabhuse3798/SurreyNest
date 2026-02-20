@@ -1,0 +1,55 @@
+# ─── Python ──────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+*.egg
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# ─── Environment & Secrets (CRITICAL — never commit these) ───────────────────
+.env
+.env.local
+.env.production
+.env.staging
+backend/.env
+frontend/.env.local
+*.pem
+*.key
+
+# ─── Data Files (large, gitignored — download manually) ──────────────────────
+backend/data/raw/
+backend/data/processed/
+
+# ─── ML Model Artefacts (large binary files) ─────────────────────────────────
+backend/app/ml/models/*.pkl
+backend/app/ml/plots/*.png
+
+# ─── Node.js ─────────────────────────────────────────────────────────────────
+node_modules/
+frontend/dist/
+frontend/.vite/
+.npm
+
+# ─── IDEs ────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# ─── Docker ──────────────────────────────────────────────────────────────────
+# (Keep docker-compose.yml — it's safe since it has no real credentials)
+docker-compose.override.yml
+
+# ─── Logs ────────────────────────────────────────────────────────────────────
+*.log
+logs/

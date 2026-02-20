@@ -1,0 +1,54 @@
+version: "3.9"
+
+services:
+  # ─── PostgreSQL with PostGIS ─────────────────────────────────────────────
+  postgres:
+    image: postgis/postgis:15-3.4
+    container_name: surreynest-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: surreynest
+      POSTGRES_USER: surreynest
+      POSTGRES_PASSWORD: surreynest_dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U surreynest -d surreynest"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── FastAPI Backend ──────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: surreynest-backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      DATABASE_URL: postgresql://surreynest:surreynest_dev_password@postgres:5432/surreynest
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app          # Hot reload in development
+      - ./backend/data:/app/data  # Persist data files
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+volumes:
+  postgres_data:
+    name: surreynest_postgres_data
+
+# ─── Notes ────────────────────────────────────────────────────────────────────
+# Start: docker-compose up -d
+# Stop: docker-compose down
+# View logs: docker-compose logs -f backend
+# Run migrations: docker exec surreynest-backend alembic upgrade head
+# Run pipeline: docker exec surreynest-backend python -m app.data_pipelines.epc_pipeline
+# Connect to DB: docker exec -it surreynest-db psql -U surreynest -d surreynest

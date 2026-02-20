@@ -1,0 +1,47 @@
+# SurreyNest Backend Dependencies
+# Install: pip install -r requirements.txt
+
+# ─── Web Framework ────────────────────────────────────────────────────────────
+fastapi==0.111.0
+uvicorn[standard]==0.29.0
+
+# ─── Database ────────────────────────────────────────────────────────────────
+sqlalchemy==2.0.30
+alembic==1.13.1
+psycopg2-binary==2.9.9       # PostgreSQL driver
+geoalchemy2==0.15.1           # PostGIS spatial types for SQLAlchemy
+
+# ─── Validation ───────────────────────────────────────────────────────────────
+pydantic[email]==2.7.1        # Request/response validation + email validation
+python-multipart==0.0.9       # For form data (login form)
+
+# ─── Authentication ───────────────────────────────────────────────────────────
+passlib[bcrypt]==1.7.4        # Password hashing
+python-jose[cryptography]==3.3.0  # JWT tokens
+
+# ─── Data & ML ───────────────────────────────────────────────────────────────
+pandas==2.2.2
+numpy==1.26.4
+scikit-learn==1.4.2
+joblib==1.4.2                 # Model serialisation
+geopy==2.4.1                  # Haversine distance calculations
+
+# ─── HTTP Requests (for pipelines) ───────────────────────────────────────────
+requests==2.31.0
+httpx==0.27.0                 # Async HTTP (also used by pytest test client)
+
+# ─── Background Jobs ─────────────────────────────────────────────────────────
+apscheduler==3.10.4
+
+# ─── Rate Limiting ───────────────────────────────────────────────────────────
+slowapi==0.1.9
+
+# ─── Configuration ───────────────────────────────────────────────────────────
+python-dotenv==1.0.1
+
+# ─── Development / Testing ───────────────────────────────────────────────────
+pytest==8.2.0
+pytest-asyncio==0.23.7
+pytest-cov==5.0.0             # Coverage reporting
+black==24.4.2                 # Code formatter
+ruff==0.4.4                   # Linter
