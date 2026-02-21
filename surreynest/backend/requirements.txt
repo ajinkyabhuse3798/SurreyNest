@@ -17,6 +17,7 @@ python-multipart==0.0.9       # For form data (login form)
 
 # ─── Authentication ───────────────────────────────────────────────────────────
 passlib[bcrypt]==1.7.4        # Password hashing
+bcrypt==4.0.1                 # Pinned for passlib compatibility
 python-jose[cryptography]==3.3.0  # JWT tokens
 
 # ─── Data & ML ───────────────────────────────────────────────────────────────
@@ -25,6 +26,9 @@ numpy==1.26.4
 scikit-learn==1.4.2
 joblib==1.4.2                 # Model serialisation
 geopy==2.4.1                  # Haversine distance calculations
+xlrd==2.0.1                   # Read legacy .xls files (HMO register)
+lxml==5.3.2                   # Parse HTML tables (HMO register is HTML disguised as .xls)
+html5lib==1.1                 # Fallback HTML parser for pandas read_html
 
 # ─── HTTP Requests (for pipelines) ───────────────────────────────────────────
 requests==2.31.0

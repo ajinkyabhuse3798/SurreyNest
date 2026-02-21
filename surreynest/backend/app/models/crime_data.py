@@ -5,6 +5,7 @@ Aggregated crime counts from police.uk API, grouped by postcode sector
 score_service.py — they are not stored here.
 """
 
+
 from datetime import date, datetime
 
 from sqlalchemy import Date, DateTime, Index, Integer, String

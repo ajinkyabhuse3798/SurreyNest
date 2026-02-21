@@ -5,6 +5,9 @@ When the ML model is updated, recompute all predictions via:
     python -m app.ml.predict --all
 """
 
+
+from typing import Optional
+
 from datetime import datetime
 
 from sqlalchemy import DateTime, Float, ForeignKey, String
@@ -34,8 +37,8 @@ class RentPrediction(Base):
         nullable=False,
     )
     predicted_weekly_rent: Mapped[float] = mapped_column(Float, nullable=False)
-    confidence_low: Mapped[float | None] = mapped_column(Float, nullable=True)
-    confidence_high: Mapped[float | None] = mapped_column(Float, nullable=True)
+    confidence_low: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    confidence_high: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     model_version: Mapped[str] = mapped_column(String(20), nullable=False)
     computed_at: Mapped[datetime] = mapped_column(
         DateTime,

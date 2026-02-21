@@ -5,6 +5,9 @@ A property can appear here with is_active=False (expired licence) or not at all
 (potentially unlicensed — both cases are flagged in the UI).
 """
 
+
+from typing import Optional
+
 from datetime import date, datetime
 
 from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, String
@@ -34,20 +37,20 @@ class HmoRecord(Base):
     __tablename__ = "hmo_records"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    uprn: Mapped[str | None] = mapped_column(
+    uprn: Mapped[Optional[str]] = mapped_column(
         String(20),
         ForeignKey("properties.uprn", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )
     raw_address: Mapped[str] = mapped_column(String(500), nullable=False)
-    postcode: Mapped[str | None] = mapped_column(String(10), nullable=True, index=True)
-    lat: Mapped[float | None] = mapped_column(Float, nullable=True)
-    lng: Mapped[float | None] = mapped_column(Float, nullable=True)
-    licence_number: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    max_occupants: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    licence_holder: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    expiry_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    postcode: Mapped[Optional[str]] = mapped_column(String(10), nullable=True, index=True)
+    lat: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    lng: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    licence_number: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    max_occupants: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    licence_holder: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    expiry_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     is_active: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,

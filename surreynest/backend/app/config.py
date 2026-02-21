@@ -44,6 +44,14 @@ class Settings:
         "ALLOWED_ORIGINS", "http://localhost:5173"
     ).split(",")
 
+    # ── ML Model ───────────────────────────────────────────────────────────
+    ml_model_version: str = os.getenv("ML_MODEL_VERSION", "v1.0.0")
+    ml_model_path: str = os.getenv("ML_MODEL_PATH", "app/ml/models")
+
+    # ── Rate Limiting ──────────────────────────────────────────────────────
+    rate_limit_search: int = int(os.getenv("RATE_LIMIT_SEARCH", "60"))
+    rate_limit_reviews: int = int(os.getenv("RATE_LIMIT_REVIEWS", "5"))
+
     def __init__(self) -> None:
         """Validate critical settings on startup."""
         if self.environment == "production" and self.secret_key == "CHANGE_ME_IN_PRODUCTION":

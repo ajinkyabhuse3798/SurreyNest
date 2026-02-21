@@ -4,6 +4,9 @@ Records every execution of a data pipeline job — start time, finish time,
 row count, and error messages. Used for monitoring and debugging.
 """
 
+
+from typing import Optional
+
 from datetime import datetime
 
 from sqlalchemy import DateTime, Integer, String, Text
@@ -34,15 +37,15 @@ class PipelineRun(Base):
         nullable=False,
         default=datetime.utcnow,
     )
-    finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    finished_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     status: Mapped[str] = mapped_column(
         String(20),
         nullable=False,
         default="running",
         server_default="running",
     )
-    rows_processed: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    rows_processed: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     def __repr__(self) -> str:
         return (

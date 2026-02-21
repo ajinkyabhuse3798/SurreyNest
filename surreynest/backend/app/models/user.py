@@ -4,7 +4,10 @@ Stores registered user accounts. We never store name, phone, address,
 student ID, or any PII beyond email + hashed password.
 """
 
+
 import uuid
+from typing import Optional
+
 from datetime import datetime
 
 from sqlalchemy import Boolean, String, DateTime
@@ -62,7 +65,7 @@ class User(Base):
         default=False,
         server_default="false",
     )
-    last_login: Mapped[datetime | None] = mapped_column(
+    last_login: Mapped[Optional[datetime]] = mapped_column(
         DateTime,
         nullable=True,
     )

@@ -4,6 +4,9 @@ Core property records sourced from the EPC register.
 Spatial queries use PostGIS via a GIST index on (lat, lng).
 """
 
+
+from typing import Optional
+
 from datetime import date, datetime
 
 from sqlalchemy import Date, DateTime, Float, Integer, String, Index
@@ -49,16 +52,16 @@ class Property(Base):
         nullable=False,
         index=True,
     )
-    lat: Mapped[float | None] = mapped_column(Float, nullable=True)
-    lng: Mapped[float | None] = mapped_column(Float, nullable=True)
-    property_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    built_form: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    floor_area_m2: Mapped[float | None] = mapped_column(Float, nullable=True)
-    num_rooms: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    energy_rating: Mapped[str | None] = mapped_column(String(1), nullable=True)
-    potential_rating: Mapped[str | None] = mapped_column(String(1), nullable=True)
-    epc_date: Mapped[date | None] = mapped_column(Date, nullable=True)
-    tenure: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    lat: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    lng: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    property_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    built_form: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    floor_area_m2: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    num_rooms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    energy_rating: Mapped[Optional[str]] = mapped_column(String(1), nullable=True)
+    potential_rating: Mapped[Optional[str]] = mapped_column(String(1), nullable=True)
+    epc_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    tenure: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,

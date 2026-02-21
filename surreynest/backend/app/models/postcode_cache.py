@@ -5,6 +5,9 @@ Always check this table before hitting the external API.
 If is_valid=False, do not retry — postcode is terminated or invalid.
 """
 
+
+from typing import Optional
+
 from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, Float, String
@@ -35,8 +38,8 @@ class PostcodeCache(Base):
     )
     lat: Mapped[float] = mapped_column(Float, nullable=False)
     lng: Mapped[float] = mapped_column(Float, nullable=False)
-    ward: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    district: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    ward: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    district: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     is_valid: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,

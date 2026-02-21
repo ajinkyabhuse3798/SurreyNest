@@ -5,7 +5,10 @@ is_flagged=True when an admin rejects. Anonymised (user_id set to NULL) when
 a user deletes their account.
 """
 
+
 import uuid
+from typing import Optional
+
 from datetime import datetime
 
 from sqlalchemy import (
@@ -52,7 +55,7 @@ class Review(Base):
         default=uuid.uuid4,
         nullable=False,
     )
-    user_id: Mapped[uuid.UUID | None] = mapped_column(
+    user_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
@@ -68,8 +71,8 @@ class Review(Base):
     landlord_rating: Mapped[int] = mapped_column(Integer, nullable=False)
     condition_rating: Mapped[int] = mapped_column(Integer, nullable=False)
     value_rating: Mapped[int] = mapped_column(Integer, nullable=False)
-    weekly_rent_paid: Mapped[float | None] = mapped_column(Float, nullable=True)
-    move_in_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    weekly_rent_paid: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    move_in_year: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     review_text: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
