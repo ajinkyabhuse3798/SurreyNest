@@ -22,12 +22,16 @@ class SafetyScoreResponse(BaseModel):
 
     Attributes:
         postcode_sector: Postcode sector (e.g. "GU2 7").
-        safety_score: Computed score 0-100 (higher = safer).
+        safety_score: Computed score 0-100 (higher = safer). None if no data.
+        label: Human-readable label (e.g. "Very Safe", "Data loading").
+        available: Whether crime data was available to compute the score.
         breakdown: List of crime categories and counts.
     """
 
     postcode_sector: str
-    safety_score: float
+    safety_score: Optional[float] = None
+    label: str
+    available: bool
     breakdown: List[CrimeBreakdown]
 
 

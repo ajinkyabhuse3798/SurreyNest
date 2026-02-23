@@ -202,7 +202,7 @@ def get_property_detail(uprn: str, db: Session) -> Optional[Dict]:
     # ── Safety score ──────────────────────────────────────────────────────
     postcode_sector = _extract_postcode_sector(prop.postcode)
     safety_data = get_safety_score(postcode_sector, db)
-    safety_score_val = safety_data["safety_score"] if safety_data else None
+    safety_score_val = safety_data["safety_score"]
 
     # ── Rent prediction ───────────────────────────────────────────────────
     rent_pred = get_rent_prediction(uprn, db)

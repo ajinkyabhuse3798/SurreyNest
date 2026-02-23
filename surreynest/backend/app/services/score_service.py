@@ -33,6 +33,26 @@ CATEGORY_WEIGHTS: Dict[str, float] = {
 DEFAULT_WEIGHT = 0.5
 
 
+def _safety_label(score: float) -> str:
+    """Convert a numeric safety score to a human-readable label.
+
+    Args:
+        score: Safety score 0-100 (higher = safer).
+
+    Returns:
+        Label string: Very Safe / Safe / Moderate / Concerning / High Crime Area.
+    """
+    if score >= 80:
+        return "Very Safe"
+    if score >= 60:
+        return "Safe"
+    if score >= 40:
+        return "Moderate"
+    if score >= 20:
+        return "Concerning"
+    return "High Crime Area"
+
+
 def get_safety_score(
     postcode_sector: str, db: Session
 ) -> Optional[Dict]:
@@ -57,7 +77,13 @@ def get_safety_score(
     )
 
     if not rows:
-        return None
+        return {
+            "postcode_sector": postcode_sector,
+            "safety_score": None,
+            "label": "Data not available",
+            "available": False,
+            "breakdown": [],
+        }
 
     # Compute weighted sum
     weighted_sum = 0.0
@@ -81,7 +107,13 @@ def get_safety_score(
     )
 
     if not all_sectors:
-        return None
+        return {
+            "postcode_sector": postcode_sector,
+            "safety_score": None,
+            "label": "Data not available",
+            "available": False,
+            "breakdown": [],
+        }
 
     # Compute weighted sums per sector
     sector_weighted = {}
@@ -112,6 +144,8 @@ def get_safety_score(
     return {
         "postcode_sector": postcode_sector,
         "safety_score": round(safety_score, 1),
+        "label": _safety_label(safety_score),
+        "available": True,
         "breakdown": sorted(breakdown, key=lambda x: x["total_count"], reverse=True),
     }
 

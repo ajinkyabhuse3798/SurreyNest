@@ -3,7 +3,7 @@
 from datetime import date, datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class PropertyResponse(BaseModel):
@@ -125,9 +125,18 @@ class PropertySearchParams(BaseModel):
     """
 
     postcode: str
-    radius: int = Field(default=1000, ge=100, le=5000)
+    radius: int = Field(default=1000, ge=250, le=2000)
     page: int = Field(default=1, ge=1)
     per_page: int = Field(default=20, ge=1, le=50)
+
+    @field_validator("radius")
+    @classmethod
+    def validate_radius(cls, v: int) -> int:
+        """Restrict radius to allowed values."""
+        allowed = [250, 500, 1000, 2000]
+        if v not in allowed:
+            raise ValueError(f"Radius must be one of {allowed}")
+        return v
 
 
 class PropertySearchResponse(BaseModel):
