@@ -2,6 +2,7 @@
   "name": "surreynest-frontend",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "description": "SurreyNest — Student Housing Quality & Rights Platform",
   "scripts": {
     "dev": "vite",

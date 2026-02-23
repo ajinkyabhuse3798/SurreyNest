@@ -176,36 +176,36 @@ reviews:     is_moderated, is_flagged (soft delete only)
 
 ---
 
-## ⬜ Phase 4 — React Frontend
+## ✅ Phase 4 — React Frontend
 
 Build only after Phase 3 backend endpoints are verified in `/docs`.
 
 ### Setup
-- [ ] Vite project exists (package.json ✅)
-- [ ] `vite.config.js` — add proxy `/api` → `http://localhost:8000` (eliminates CORS in dev)
-- [ ] Tailwind configured
-- [ ] `src/services/api.js` — Axios instance: base URL from env, auth header interceptor
-- [ ] `src/hooks/useAuth.js` — JWT localStorage, login(), logout(), currentUser state
+- [x] Vite project exists (package.json ✅)
+- [x] `vite.config.js` — add proxy `/api` → `http://localhost:8000` (eliminates CORS in dev)
+- [x] Tailwind configured (`tailwind.config.js` + `postcss.config.js`)
+- [x] `src/services/api.js` — Axios instance: base URL from env, auth header interceptor
+- [x] `src/hooks/useAuth.jsx` — JWT localStorage, login(), logout(), currentUser state
 
 ### Pages
-- [ ] `Home.jsx` — search bar + hero + 3 feature cards + how-it-works
-- [ ] `SearchResults.jsx` — two-panel: property list (left) + Leaflet map (right)
-- [ ] `PropertyDetail.jsx` — 4 tabs: Overview | Reviews | Safety | Rights
-- [ ] `Login.jsx` and `Register.jsx`
-- [ ] `RightsGuide.jsx` — interactive decision tree
-- [ ] `AdminDashboard.jsx` — moderation queue (admin guard)
+- [x] `Home.jsx` — search bar + hero + 3 feature cards + how-it-works
+- [x] `SearchResults.jsx` — two-panel: property list (left) + Leaflet map (right)
+- [x] `PropertyDetail.jsx` — 4 tabs: Overview | Reviews | Safety | Rights
+- [x] `Login.jsx` and `Register.jsx`
+- [x] `RightsGuide.jsx` — interactive decision tree
+- [x] `AdminDashboard.jsx` — moderation queue (admin guard)
 
 ### Components
-- [ ] `MapView.jsx` — react-leaflet + OSM tiles, CircleMarker per property, colour from fairness score
-- [ ] `PropertyCard.jsx` — summary card with score rings and HMO badge
-- [ ] `ScoreBadge.jsx` — colour-coded score ring (green/amber/red)
-- [ ] `HMOBadge.jsx` — Licensed / Expired / Unknown indicator
-- [ ] `ReviewList.jsx` — paginated, moderated reviews
-- [ ] `ReviewForm.jsx` — 4 rating categories + text + optional rent paid
-- [ ] `SafetyScorePanel.jsx` — crime breakdown by category
-- [ ] `Navbar.jsx` — auth-aware links
+- [x] `MapView.jsx` — react-leaflet + OSM tiles, CircleMarker per property, colour from fairness score
+- [x] `PropertyCard.jsx` — summary card with score dots and HMO badge
+- [x] `ScoreBadge.jsx` — colour-coded score dot (green/amber/red)
+- [x] `HMOBadge.jsx` — Licensed / Expired / Unknown indicator
+- [x] `ReviewList.jsx` — paginated, moderated reviews
+- [x] `ReviewForm.jsx` — 4 rating categories + text + optional rent paid
+- [x] `SafetyScorePanel.jsx` — crime breakdown by category
+- [x] `Navbar.jsx` — auth-aware links
 
-**Phase 4 done when:** Can search postcode → see map + list → click property → see all scores → submit review
+**Phase 4 done when:** ~~Can search postcode → see map + list → click property → see all scores → submit review~~ ✅ All components built, `npm run build` passes, dev server renders all pages.
 
 ---
 

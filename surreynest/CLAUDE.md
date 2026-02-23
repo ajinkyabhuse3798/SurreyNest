@@ -406,3 +406,5 @@ After finishing work:
 
 See `docs/progress.md` for the full checklist.
 When starting a session, **read that file first** before writing any code.
+
+docs/design-system.md   ← read EVERY design rule before building any UI
