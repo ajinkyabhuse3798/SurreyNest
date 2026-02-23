@@ -73,3 +73,77 @@ def test_protected_endpoint_without_token_returns_401(client, seeded_property):
     )
 
     assert response.status_code == 401
+
+
+# ── GET /auth/me ──────────────────────────────────────────────────────────────
+
+
+def test_get_me_with_valid_token_returns_user(client, test_user, user_token):
+    """GET /api/auth/me with a valid bearer token returns user profile."""
+    response = client.get(
+        "/api/auth/me",
+        headers={"Authorization": f"Bearer {user_token}"},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["email"] == "testuser@surrey.ac.uk"
+    assert data["role"] == "student"
+    assert "id" in data
+    assert "password" not in data
+    assert "hashed_password" not in data
+
+
+def test_get_me_without_token_returns_401(client):
+    """GET /api/auth/me without auth header returns 401."""
+    response = client.get("/api/auth/me")
+
+    assert response.status_code == 401
+
+
+# ── DELETE /auth/me ───────────────────────────────────────────────────────────
+
+
+def test_delete_me_removes_user_and_anonymises_reviews(
+    client, db, test_user, user_token, seeded_property
+):
+    """DELETE /api/auth/me deletes user and sets review user_id to NULL."""
+    from app.models.review import Review
+    from app.models.user import User
+
+    # Arrange — create a review by this user
+    review = Review(
+        user_id=test_user.id,
+        uprn="TEST_UPRN_001",
+        overall_rating=4,
+        landlord_rating=3,
+        condition_rating=4,
+        value_rating=5,
+        review_text="A" * 50,
+    )
+    db.add(review)
+    db.flush()
+    review_id = review.id
+
+    # Act — delete the account
+    response = client.delete(
+        "/api/auth/me",
+        headers={"Authorization": f"Bearer {user_token}"},
+    )
+
+    # Assert — 204 and user gone
+    assert response.status_code == 204
+    assert db.query(User).filter(User.id == test_user.id).first() is None
+
+    # Assert — review still exists but user_id is NULL (anonymised)
+    db.expire_all()
+    anonymised_review = db.query(Review).filter(Review.id == review_id).first()
+    assert anonymised_review is not None
+    assert anonymised_review.user_id is None
+
+
+def test_delete_me_without_token_returns_401(client):
+    """DELETE /api/auth/me without auth header returns 401."""
+    response = client.delete("/api/auth/me")
+
+    assert response.status_code == 401

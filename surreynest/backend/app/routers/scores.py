@@ -66,7 +66,7 @@ async def get_safety_score(
 )
 async def get_rent_fairness(
     uprn: str = Query(..., description="Property UPRN"),
-    asking_rent: float = Query(..., gt=0, description="Weekly rent in £"),
+    weekly_rent: float = Query(..., gt=0, description="Weekly rent in £"),
     db: Session = Depends(get_db),
 ) -> RentFairnessResponse:
     """Compare asking rent against model prediction for a property.
@@ -82,7 +82,7 @@ async def get_rent_fairness(
         )
 
     result = score_service.compute_fairness_score(
-        actual_rent=asking_rent,
+        actual_rent=weekly_rent,
         predicted_rent=prediction["predicted_weekly_rent"],
     )
 

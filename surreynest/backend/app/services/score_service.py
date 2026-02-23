@@ -6,7 +6,7 @@ and the formula from docs/ml-model.md.
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
 from sqlalchemy import func
@@ -265,7 +265,7 @@ def get_rent_prediction(uprn: str, db: Session) -> Optional[Dict]:
         predicted_rent = result["predicted_weekly_rent"]
 
         # Cache the prediction
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         prediction = RentPrediction(
             uprn=uprn,
             predicted_weekly_rent=predicted_rent,

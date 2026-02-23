@@ -6,7 +6,7 @@ If is_valid=False in cache, do not retry — postcode is terminated or invalid.
 
 import logging
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Tuple
 
 import requests
@@ -83,7 +83,7 @@ def get_lat_lng(
                     ward=data.get("admin_ward"),
                     district=data.get("admin_district"),
                     is_valid=True,
-                    cached_at=datetime.utcnow(),
+                    cached_at=datetime.now(timezone.utc),
                 )
                 db.merge(cache_entry)
                 db.commit()
@@ -95,7 +95,7 @@ def get_lat_lng(
             lat=0.0,
             lng=0.0,
             is_valid=False,
-            cached_at=datetime.utcnow(),
+            cached_at=datetime.now(timezone.utc),
         )
         db.merge(cache_entry)
         db.commit()

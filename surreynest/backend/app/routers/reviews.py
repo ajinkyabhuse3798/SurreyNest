@@ -133,16 +133,117 @@ async def create_review(
 @router.delete(
     "/reviews/{review_id}",
     status_code=status.HTTP_200_OK,
-    summary="Soft-delete a review (admin only)",
+    summary="Soft-delete a review (own review or admin)",
 )
 async def delete_review(
     review_id: uuid.UUID,
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
     """Soft-delete a review by setting is_flagged=True.
 
-    Admin only — never hard-deletes reviews.
+    Allowed for the review author or any admin. Never hard-deletes.
+    """
+    review = db.query(Review).filter(Review.id == review_id).first()
+    if not review:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Review {review_id} not found",
+        )
+
+    # Authorisation: own review OR admin
+    if review.user_id != current_user.id and current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorised to delete this review",
+        )
+
+    review.is_flagged = True
+    db.commit()
+
+    logger.info("Review %s flagged by user %s", review_id, current_user.id)
+    return {"detail": f"Review {review_id} has been flagged and hidden"}
+
+
+# ── Admin moderation endpoints ────────────────────────────────────────────────
+
+
+@router.get(
+    "/admin/reviews/queue",
+    response_model=ReviewListResponse,
+    summary="Get unmoderated reviews (admin only)",
+)
+async def get_moderation_queue(
+    page: int = Query(default=1, ge=1),
+    per_page: int = Query(default=20, ge=1, le=50),
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> ReviewListResponse:
+    """Return reviews awaiting moderation.
+
+    Admin only — returns reviews where is_moderated=False AND is_flagged=False.
+    """
+    query = (
+        db.query(Review)
+        .filter(Review.is_moderated == False)  # noqa: E712
+        .filter(Review.is_flagged == False)  # noqa: E712
+        .order_by(Review.created_at.asc())
+    )
+
+    total = query.count()
+    offset = (page - 1) * per_page
+    reviews = query.offset(offset).limit(per_page).all()
+
+    return ReviewListResponse(
+        reviews=[ReviewResponse.model_validate(r) for r in reviews],
+        total=total,
+        page=page,
+        pages=math.ceil(total / per_page) if total > 0 else 0,
+    )
+
+
+@router.post(
+    "/admin/reviews/{review_id}/approve",
+    response_model=ReviewResponse,
+    summary="Approve a review (admin only)",
+)
+async def approve_review(
+    review_id: uuid.UUID,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> ReviewResponse:
+    """Approve a review by setting is_moderated=True.
+
+    Admin only — makes the review visible to public users.
+    """
+    review = db.query(Review).filter(Review.id == review_id).first()
+    if not review:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Review {review_id} not found",
+        )
+
+    review.is_moderated = True
+    db.commit()
+    db.refresh(review)
+
+    logger.info("Review %s approved by admin %s", review_id, current_user.id)
+    return ReviewResponse.model_validate(review)
+
+
+@router.post(
+    "/admin/reviews/{review_id}/reject",
+    status_code=status.HTTP_200_OK,
+    summary="Reject a review (admin only)",
+)
+async def reject_review(
+    review_id: uuid.UUID,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Reject a review by setting is_flagged=True.
+
+    Admin only — soft-deletes the review (never hard-deleted).
     """
     review = db.query(Review).filter(Review.id == review_id).first()
     if not review:
@@ -154,5 +255,5 @@ async def delete_review(
     review.is_flagged = True
     db.commit()
 
-    logger.info("Review %s flagged by admin %s", review_id, current_user.id)
-    return {"detail": f"Review {review_id} has been flagged and hidden"}
+    logger.info("Review %s rejected by admin %s", review_id, current_user.id)
+    return {"detail": f"Review {review_id} has been rejected and hidden"}

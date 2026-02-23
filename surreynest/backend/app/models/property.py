@@ -7,7 +7,7 @@ Spatial queries use PostGIS via a GIST index on (lat, lng).
 
 from typing import Optional
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 
 from sqlalchemy import Date, DateTime, Float, Integer, String, Index
 from sqlalchemy.orm import Mapped, mapped_column
@@ -65,13 +65,13 @@ class Property(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
-        default=datetime.utcnow,
+        default=lambda: datetime.now(timezone.utc),
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
     )
 
     # PostGIS GIST spatial index — enables ST_DWithin radius queries.

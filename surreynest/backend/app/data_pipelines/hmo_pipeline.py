@@ -7,7 +7,7 @@ geocodes via Postcodes.io batch API, and upserts to the hmo_records table.
 
 import logging
 import re
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -158,7 +158,7 @@ def geocode_postcodes_batch(
                     ward=ward,
                     district=district,
                     is_valid=True,
-                    cached_at=datetime.utcnow(),
+                    cached_at=datetime.now(timezone.utc),
                 )
                 cache_stmt = cache_stmt.on_conflict_do_update(
                     index_elements=["postcode"],
@@ -167,7 +167,7 @@ def geocode_postcodes_batch(
                         "lng": cache_stmt.excluded.lng,
                         "ward": cache_stmt.excluded.ward,
                         "district": cache_stmt.excluded.district,
-                        "cached_at": datetime.utcnow(),
+                        "cached_at": datetime.now(timezone.utc),
                     },
                 )
                 db.execute(cache_stmt)
@@ -179,7 +179,7 @@ def geocode_postcodes_batch(
                     lat=0.0,
                     lng=0.0,
                     is_valid=False,
-                    cached_at=datetime.utcnow(),
+                    cached_at=datetime.now(timezone.utc),
                 )
                 cache_stmt = cache_stmt.on_conflict_do_nothing()
                 db.execute(cache_stmt)
@@ -245,7 +245,7 @@ def upsert_to_db(df: pd.DataFrame, geocode_map: Dict, db: Session) -> int:
     Returns:
         Number of rows upserted.
     """
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     rows_upserted = 0
 
     # Clear existing HMO records and re-insert (simpler than complex upsert

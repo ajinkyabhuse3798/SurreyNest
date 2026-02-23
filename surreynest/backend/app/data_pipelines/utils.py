@@ -9,7 +9,7 @@ Provides reusable helpers for all ETL pipelines:
 import logging
 import time
 import traceback
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 import requests
@@ -124,7 +124,7 @@ def start_pipeline_run(pipeline_name: str, db: Optional[Session] = None) -> int:
     try:
         run = PipelineRun(
             pipeline_name=pipeline_name,
-            started_at=datetime.utcnow(),
+            started_at=datetime.now(timezone.utc),
             status="running",
         )
         db.add(run)
@@ -164,7 +164,7 @@ def finish_pipeline_run(
     try:
         run = db.query(PipelineRun).filter(PipelineRun.id == run_id).first()
         if run:
-            run.finished_at = datetime.utcnow()
+            run.finished_at = datetime.now(timezone.utc)
             run.status = status
             run.rows_processed = rows_processed
             run.error_message = error_message

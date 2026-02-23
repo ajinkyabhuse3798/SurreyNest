@@ -1,6 +1,7 @@
 """HMO routes: GET /hmo/check.
 
-Thin route layer — queries HMO register for a property by UPRN.
+Thin route layer — queries HMO register for a property by UPRN or postcode.
+Returns status as "licensed", "expired", or "not_found".
 """
 
 import logging
@@ -23,52 +24,75 @@ router = APIRouter()
     summary="Check HMO status for a property",
 )
 async def check_hmo_status(
-    uprn: str = Query(..., description="Property UPRN to check"),
+    uprn: Optional[str] = Query(None, description="Property UPRN to check"),
+    postcode: Optional[str] = Query(None, description="Postcode to check"),
     db: Session = Depends(get_db),
 ) -> dict:
-    """Check if a property is on the HMO register.
+    """Check if a property or postcode is on the HMO register.
 
-    Looks up by UPRN first, then falls back to postcode match.
+    Accepts either UPRN or postcode (at least one required).
+    When UPRN is provided, verifies the property exists first.
+    When postcode is provided, searches HMO records directly.
 
     Returns:
-        Dict with is_hmo flag and licence details if applicable.
+        Dict with status ("licensed", "expired", "not_found") and record details.
     """
-    # Verify property exists
-    prop = db.query(Property).filter(Property.uprn == uprn).first()
-    if not prop:
+    if not uprn and not postcode:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Property with UPRN {uprn} not found",
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Provide either uprn or postcode query parameter",
         )
 
-    # Check HMO by UPRN
-    hmo = db.query(HmoRecord).filter(HmoRecord.uprn == uprn).first()
+    hmo: Optional[HmoRecord] = None
 
-    # Fallback: check by postcode
-    if not hmo and prop.postcode:
+    if uprn:
+        # ── UPRN-based lookup ─────────────────────────────────────────────
+        prop = db.query(Property).filter(Property.uprn == uprn).first()
+        if not prop:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Property with UPRN {uprn} not found",
+            )
+
+        # Check HMO by UPRN first
+        hmo = db.query(HmoRecord).filter(HmoRecord.uprn == uprn).first()
+
+        # Fallback: check by property's postcode
+        if not hmo and prop.postcode:
+            hmo = (
+                db.query(HmoRecord)
+                .filter(HmoRecord.postcode == prop.postcode)
+                .first()
+            )
+    else:
+        # ── Postcode-based lookup ─────────────────────────────────────────
+        normalised = postcode.strip().upper()
         hmo = (
             db.query(HmoRecord)
-            .filter(HmoRecord.postcode == prop.postcode)
+            .filter(HmoRecord.postcode == normalised)
             .first()
         )
 
+    # ── Build response ────────────────────────────────────────────────────
     if not hmo:
         return {
-            "uprn": uprn,
-            "is_hmo": False,
-            "message": "This property is not on the Guildford HMO register",
+            "status": "not_found",
+            "record": None,
         }
 
-    return {
-        "uprn": uprn,
-        "is_hmo": True,
-        "is_active": hmo.is_active,
+    record = {
+        "id": hmo.id,
+        "uprn": hmo.uprn,
+        "raw_address": hmo.raw_address,
+        "postcode": hmo.postcode,
         "licence_number": hmo.licence_number,
         "max_occupants": hmo.max_occupants,
         "licence_holder": hmo.licence_holder,
         "expiry_date": str(hmo.expiry_date) if hmo.expiry_date else None,
-        "message": (
-            "Active HMO licence found" if hmo.is_active
-            else "HMO licence found but has expired"
-        ),
+        "is_active": hmo.is_active,
+    }
+
+    return {
+        "status": "licensed" if hmo.is_active else "expired",
+        "record": record,
     }

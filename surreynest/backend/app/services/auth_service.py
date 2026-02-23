@@ -6,7 +6,7 @@ All auth config values come from app.config.settings.
 
 import logging
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import Depends, HTTPException, status
@@ -67,7 +67,7 @@ def create_access_token(user_id: uuid.UUID, role: str) -> str:
     payload = {
         "sub": str(user_id),
         "role": role,
-        "exp": datetime.utcnow() + timedelta(days=settings.access_token_expire_days),
+        "exp": datetime.now(timezone.utc) + timedelta(days=settings.access_token_expire_days),
     }
     return jwt.encode(payload, settings.secret_key, algorithm=settings.algorithm)
 

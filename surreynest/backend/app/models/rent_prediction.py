@@ -8,7 +8,7 @@ When the ML model is updated, recompute all predictions via:
 
 from typing import Optional
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import DateTime, Float, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column
@@ -43,7 +43,7 @@ class RentPrediction(Base):
     computed_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
-        default=datetime.utcnow,
+        default=lambda: datetime.now(timezone.utc),
     )
 
     def __repr__(self) -> str:

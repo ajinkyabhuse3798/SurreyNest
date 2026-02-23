@@ -8,7 +8,7 @@ Saves cleaned CSV to data/processed/epc_clean.csv and upserts to properties tabl
 
 import logging
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -245,7 +245,7 @@ def upsert_to_db(df: pd.DataFrame, db: Session) -> int:
     Returns:
         Number of rows upserted.
     """
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     rows_upserted = 0
     batch_size = 500
 

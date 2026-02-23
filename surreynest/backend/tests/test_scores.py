@@ -24,7 +24,7 @@ def test_rent_fairness_with_unknown_uprn_returns_404(client):
     """Rent fairness for non-existent property returns 404."""
     response = client.get(
         "/api/scores/rent-fairness",
-        params={"uprn": "NONEXISTENT", "asking_rent": 200},
+        params={"uprn": "NONEXISTENT", "weekly_rent": 200},
     )
 
     assert response.status_code == 404
@@ -47,3 +47,10 @@ def test_fairness_score_computation():
     # At market rate
     result = compute_fairness_score(200, 200)
     assert 50 <= result["score"] <= 75
+
+
+def test_safety_score_without_postcode_returns_422(client):
+    """Safety score without required postcode param returns 422."""
+    response = client.get("/api/scores/safety")
+
+    assert response.status_code == 422

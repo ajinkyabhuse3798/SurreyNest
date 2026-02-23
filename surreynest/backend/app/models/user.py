@@ -8,7 +8,7 @@ student ID, or any PII beyond email + hashed password.
 import uuid
 from typing import Optional
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import Boolean, String, DateTime
 from sqlalchemy.dialects.postgresql import UUID
@@ -57,7 +57,7 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
-        default=datetime.utcnow,
+        default=lambda: datetime.now(timezone.utc),
     )
     is_verified: Mapped[bool] = mapped_column(
         Boolean,

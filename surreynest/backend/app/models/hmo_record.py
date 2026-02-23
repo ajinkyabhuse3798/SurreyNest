@@ -8,7 +8,7 @@ A property can appear here with is_active=False (expired licence) or not at all
 
 from typing import Optional
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 
 from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
@@ -60,8 +60,8 @@ class HmoRecord(Base):
     last_updated: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
     )
 
     def __repr__(self) -> str:

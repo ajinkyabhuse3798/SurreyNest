@@ -8,7 +8,7 @@ If is_valid=False, do not retry — postcode is terminated or invalid.
 
 from typing import Optional
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import Boolean, DateTime, Float, String
 from sqlalchemy.orm import Mapped, mapped_column
@@ -49,7 +49,7 @@ class PostcodeCache(Base):
     cached_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
-        default=datetime.utcnow,
+        default=lambda: datetime.now(timezone.utc),
     )
 
     def __repr__(self) -> str:

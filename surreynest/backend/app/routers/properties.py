@@ -4,6 +4,7 @@ Thin route layer — delegates to property_service for all business logic.
 """
 
 import logging
+import re
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from slowapi import Limiter
@@ -22,6 +23,12 @@ router = APIRouter()
 # Rate limiter (uses the app-level limiter from main.py)
 limiter = Limiter(key_func=get_remote_address)
 
+# UK postcode regex — allows optional space between outward and inward parts
+POSTCODE_RE = re.compile(
+    r"^[A-Z]{1,2}[0-9][0-9A-Z]?\s*[0-9][A-Z]{2}$", re.IGNORECASE
+)
+ALLOWED_RADII = {250, 500, 1000, 2000}
+
 
 @router.get(
     "/properties",
@@ -31,7 +38,7 @@ limiter = Limiter(key_func=get_remote_address)
 @limiter.limit(f"{settings.rate_limit_search}/minute")
 async def search_properties(
     request: Request,
-    postcode: str = Query(..., description="Postcode to search near", example="GU2 7XH"),
+    postcode: str = Query(..., description="Postcode to search near", examples=["GU2 7XH"]),
     radius: int = Query(default=1000, ge=100, le=5000, description="Search radius in metres"),
     page: int = Query(default=1, ge=1, description="Page number"),
     per_page: int = Query(default=20, ge=1, le=50, description="Results per page"),
@@ -42,9 +49,24 @@ async def search_properties(
     Uses PostGIS ST_DWithin for efficient spatial queries.
     Results are ordered by distance from the search postcode.
     """
+    # ── Validate postcode format ──────────────────────────────────────────
+    normalised_postcode = postcode.strip().upper()
+    if not POSTCODE_RE.match(normalised_postcode):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid UK postcode format",
+        )
+
+    # ── Validate radius ───────────────────────────────────────────────────
+    if radius not in ALLOWED_RADII:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Radius must be one of {sorted(ALLOWED_RADII)}",
+        )
+
     try:
         result = property_service.search_properties(
-            postcode=postcode,
+            postcode=normalised_postcode,
             radius_m=radius,
             page=page,
             per_page=per_page,

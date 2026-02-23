@@ -6,7 +6,7 @@ score_service.py — they are not stored here.
 """
 
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 
 from sqlalchemy import Date, DateTime, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
@@ -40,8 +40,8 @@ class CrimeData(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
     )
 
     # Composite index for the primary access pattern:

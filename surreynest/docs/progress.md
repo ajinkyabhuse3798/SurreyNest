@@ -123,46 +123,46 @@ reviews:     is_moderated, is_flagged (soft delete only)
   - [x] slowapi rate limiting: 60/min per IP on GET, 5/hour per user on POST /reviews
 
 ### Step 3.6 — Auth Router
-- [ ] `app/routers/auth.py`
-  - [ ] `POST /api/auth/register`
+- [x] `app/routers/auth.py`
+  - [x] `POST /api/auth/register`
     - Check duplicate email → 400 with message "Email already registered"
     - Hash password, insert user, return UserResponse (201)
-  - [ ] `POST /api/auth/login`
+  - [x] `POST /api/auth/login`
     - Return 401 "Invalid credentials" for BOTH wrong email AND wrong password (never reveal which)
     - On success: update last_login, return Token
-  - [ ] `GET /api/auth/me` — returns current user (requires auth)
-  - [ ] `DELETE /api/auth/me` — anonymise reviews (user_id=NULL), delete user row
+  - [x] `GET /api/auth/me` — returns current user (requires auth)
+  - [x] `DELETE /api/auth/me` — anonymise reviews (user_id=NULL), delete user row
 
 ### Step 3.7 — Properties Router
-- [ ] `app/routers/properties.py`
-  - [ ] `GET /api/properties?postcode=GU2+7XH&radius=500`
+- [x] `app/routers/properties.py`
+  - [x] `GET /api/properties?postcode=GU2+7XH&radius=500`
     - Validate postcode regex: `^[A-Z]{1,2}[0-9][0-9A-Z]?\s*[0-9][A-Z]{2}$`
     - radius options: 250, 500, 1000, 2000 (metres)
     - Returns list of PropertySummary
-  - [ ] `GET /api/properties/{uprn}` → PropertyDetail or 404
+  - [x] `GET /api/properties/{uprn}` → PropertyDetail or 404
 
 ### Step 3.8 — HMO Router
-- [ ] `app/routers/hmo.py`
-  - [ ] `GET /api/hmo/check?uprn={uprn}` or `?postcode={postcode}`
+- [x] `app/routers/hmo.py`
+  - [x] `GET /api/hmo/check?uprn={uprn}` or `?postcode={postcode}`
     - Check hmo_records for active licence
     - Returns: `{"status": "licensed"|"expired"|"not_found", "record": {...}|null}`
 
 ### Step 3.9 — Scores Router
-- [ ] `app/routers/scores.py`
-  - [ ] `GET /api/scores/safety?postcode=GU2+7XH` → SafetyScoreResponse
-  - [ ] `GET /api/scores/rent-fairness?uprn={uprn}&weekly_rent={rent}` → FairnessScoreResponse
+- [x] `app/routers/scores.py`
+  - [x] `GET /api/scores/safety?postcode=GU2+7XH` → SafetyScoreResponse
+  - [x] `GET /api/scores/rent-fairness?uprn={uprn}&weekly_rent={rent}` → FairnessScoreResponse
     - Calls `predict.predict_rent()` then `score_service.compute_fairness_score()`
 
 ### Step 3.10 — Reviews Router
-- [ ] `app/routers/reviews.py`
-  - [ ] `GET /api/reviews/{uprn}` — paginated, only `is_moderated=True AND is_flagged=False`
-  - [ ] `POST /api/reviews/{uprn}` — requires auth, rate limited 5/hour per user
+- [x] `app/routers/reviews.py`
+  - [x] `GET /api/reviews/{uprn}` — paginated, only `is_moderated=True AND is_flagged=False`
+  - [x] `POST /api/reviews/{uprn}` — requires auth, rate limited 5/hour per user
     - Check one review per user per property → 400 if already reviewed
     - New reviews: `is_moderated=False` (not visible until approved)
-  - [ ] `DELETE /api/reviews/{review_id}` — own review OR admin, sets `is_flagged=True` (never hard delete)
-  - [ ] `GET /api/admin/reviews/queue` — admin only, returns `is_moderated=False AND is_flagged=False`
-  - [ ] `POST /api/admin/reviews/{id}/approve` — sets `is_moderated=True`
-  - [ ] `POST /api/admin/reviews/{id}/reject` — sets `is_flagged=True`
+  - [x] `DELETE /api/reviews/{review_id}` — own review OR admin, sets `is_flagged=True` (never hard delete)
+  - [x] `GET /api/admin/reviews/queue` — admin only, returns `is_moderated=False AND is_flagged=False`
+  - [x] `POST /api/admin/reviews/{id}/approve` — sets `is_moderated=True`
+  - [x] `POST /api/admin/reviews/{id}/reject` — sets `is_flagged=True`
 
 ### Step 3.11 — Tests (write alongside each step)
 - [ ] `tests/conftest.py` — test DB, TestClient, seed user + property + review fixtures

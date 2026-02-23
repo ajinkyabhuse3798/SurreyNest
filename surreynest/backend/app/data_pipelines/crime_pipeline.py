@@ -6,7 +6,7 @@ and upserts to the crime_data table.
 """
 
 import logging
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from dateutil.relativedelta import relativedelta
 from typing import Dict, List, Optional, Set, Tuple
 
@@ -205,7 +205,7 @@ def get_unique_sectors_with_coords(
                                 ward=result_data.get("admin_ward", ""),
                                 district=result_data.get("admin_district", ""),
                                 is_valid=True,
-                                cached_at=datetime.utcnow(),
+                                cached_at=datetime.now(timezone.utc),
                             )
                             cache_stmt = cache_stmt.on_conflict_do_nothing()
                             db.execute(cache_stmt)
@@ -353,7 +353,7 @@ def upsert_crime_data(aggregated: pd.DataFrame, db: Session) -> int:
     Returns:
         Number of rows upserted.
     """
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     rows_upserted = 0
 
     for _, row in aggregated.iterrows():

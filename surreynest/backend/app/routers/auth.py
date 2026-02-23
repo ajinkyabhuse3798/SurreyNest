@@ -1,21 +1,23 @@
-"""Auth routes: POST /auth/register, POST /auth/login.
+"""Auth routes: register, login, get profile, delete account.
 
 Thin route layer — delegates to auth_service for hashing and JWT creation.
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.models.review import Review
 from app.models.user import User
 from app.schemas.auth import Token
 from app.schemas.user import UserCreate, UserResponse
 from app.services.auth_service import (
     create_access_token,
+    get_current_user,
     hash_password,
     verify_password,
 )
@@ -60,7 +62,7 @@ async def register(
         email=user_data.email,
         hashed_password=hash_password(user_data.password),
         role="student",
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
     )
     db.add(user)
     db.commit()
@@ -103,10 +105,66 @@ async def login(
         )
 
     # Update last_login
-    user.last_login = datetime.utcnow()
+    user.last_login = datetime.now(timezone.utc)
     db.commit()
 
     token = create_access_token(user.id, user.role)
     logger.info("User logged in: %s", user.email)
 
     return Token(access_token=token)
+
+
+# ── Profile endpoints ────────────────────────────────────────────────────────
+
+
+@router.get(
+    "/auth/me",
+    response_model=UserResponse,
+    summary="Get current user profile",
+)
+async def get_me(
+    current_user: User = Depends(get_current_user),
+) -> UserResponse:
+    """Return the currently authenticated user's profile.
+
+    Args:
+        current_user: Authenticated user from JWT token.
+
+    Returns:
+        User profile data (never includes password).
+    """
+    return UserResponse.model_validate(current_user)
+
+
+@router.delete(
+    "/auth/me",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete account and anonymise reviews",
+)
+async def delete_me(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Response:
+    """Delete the authenticated user's account.
+
+    Anonymises all reviews by setting user_id to NULL (preserving the
+    review content), then deletes the user row.
+
+    Args:
+        current_user: Authenticated user from JWT token.
+        db: SQLAlchemy session.
+
+    Returns:
+        204 No Content on success.
+    """
+    # Anonymise all reviews by this user (set user_id=NULL)
+    db.query(Review).filter(Review.user_id == current_user.id).update(
+        {"user_id": None}, synchronize_session="fetch"
+    )
+
+    # Delete the user row
+    db.delete(current_user)
+    db.commit()
+
+    logger.info("User account deleted and reviews anonymised: %s", current_user.email)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
