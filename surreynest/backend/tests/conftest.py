@@ -1,5 +1,17 @@
 """Pytest fixtures: test database session, test client, seeded data."""
 
+import warnings
+
+# Suppress passlib's internal use of the deprecated 'crypt' module.
+# This is a third-party library issue — cannot be fixed in our code.
+# See: https://github.com/pyca/bcrypt/issues/684
+warnings.filterwarnings(
+    "ignore",
+    message="'crypt' is deprecated",
+    category=DeprecationWarning,
+    module="passlib",
+)
+
 import uuid
 from datetime import datetime
 from typing import Generator

@@ -40,7 +40,7 @@ def _extract_postcode_sector(postcode: str) -> str:
     summary="Get safety score for a postcode",
 )
 async def get_safety_score(
-    postcode: str = Query(..., description="Postcode to check", example="GU2 7XH"),
+    postcode: str = Query(..., description="Postcode to check", examples=["GU2 7XH"]),
     db: Session = Depends(get_db),
 ) -> SafetyScoreResponse:
     """Get safety score for the postcode sector.

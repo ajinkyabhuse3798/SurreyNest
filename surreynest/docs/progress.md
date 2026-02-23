@@ -165,12 +165,12 @@ reviews:     is_moderated, is_flagged (soft delete only)
   - [x] `POST /api/admin/reviews/{id}/reject` — sets `is_flagged=True`
 
 ### Step 3.11 — Tests (write alongside each step)
-- [ ] `tests/conftest.py` — test DB, TestClient, seed user + property + review fixtures
-- [ ] `tests/test_auth.py` — register, login, JWT, protected routes, admin guard
-- [ ] `tests/test_properties.py` — search, detail, invalid postcode, 404
-- [ ] `tests/test_scores.py` — fairness formula, safety score, graceful null
-- [ ] `tests/test_pipelines.py` — EPC cleaning functions, HMO is_active logic
-- [ ] `tests/test_reviews.py` — submit, moderate, duplicate prevention, soft delete
+- [x] `tests/conftest.py` — test DB, TestClient, seed user + property + review fixtures
+- [x] `tests/test_auth.py` — register, login, JWT, protected routes, admin guard
+- [x] `tests/test_properties.py` — search, detail, invalid postcode, 404
+- [x] `tests/test_scores.py` — fairness formula, safety score, graceful null
+- [x] `tests/test_pipelines.py` — EPC cleaning functions, HMO is_active logic
+- [x] `tests/test_reviews.py` — submit, moderate, duplicate prevention, soft delete
 
 **Phase 3 done when:** `pytest -v` exits 0 and `http://localhost:8000/docs` shows all endpoints
 
