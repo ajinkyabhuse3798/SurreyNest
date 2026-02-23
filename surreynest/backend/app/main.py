@@ -1,11 +1,15 @@
 """FastAPI application entry point.
 
 Configures CORS, mounts all routers under /api, loads the ML model on startup,
-and provides a global exception handler and health check endpoint.
+starts APScheduler for background jobs, and provides a global exception handler
+and health check endpoint.
 """
 
 import logging
+from contextlib import asynccontextmanager
+from typing import AsyncGenerator
 
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -20,6 +24,49 @@ logger = logging.getLogger(__name__)
 # ── Rate limiter singleton ────────────────────────────────────────────────────
 limiter = Limiter(key_func=get_remote_address)
 
+
+# ── Lifespan context manager ─────────────────────────────────────────────────
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    """Manage startup and shutdown lifecycle.
+
+    Startup:
+        1. Load ML model into memory (non-fatal if missing).
+        2. Start APScheduler (jobs added in Phase 5).
+
+    Shutdown:
+        1. Gracefully shut down APScheduler.
+    """
+    logger.info("SurreyNest API starting up (environment=%s)", settings.environment)
+
+    # ── Load ML model ─────────────────────────────────────────────────────
+    try:
+        from app.ml.predict import load_model
+
+        load_model()
+        logger.info("ML model loaded successfully")
+    except Exception:
+        logger.warning(
+            "ML model could not be loaded — predictions unavailable",
+            exc_info=True,
+        )
+
+    # ── Start APScheduler ─────────────────────────────────────────────────
+    scheduler = AsyncIOScheduler()
+    scheduler.start()
+    app.state.scheduler = scheduler
+    logger.info("APScheduler started (jobs will be added in Phase 5)")
+
+    logger.info("Startup complete")
+
+    yield
+
+    # ── Shutdown ──────────────────────────────────────────────────────────
+    scheduler.shutdown(wait=False)
+    logger.info("APScheduler shut down")
+    logger.info("SurreyNest API shutdown complete")
+
+
 # ── App instance ──────────────────────────────────────────────────────────────
 app = FastAPI(
     title="SurreyNest API",
@@ -27,6 +74,7 @@ app = FastAPI(
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
+    lifespan=lifespan,
 )
 
 # Attach limiter to app state (required by slowapi)
@@ -45,29 +93,11 @@ app.add_middleware(
 # ── Import and mount routers ─────────────────────────────────────────────────
 from app.routers import auth, hmo, properties, reviews, scores  # noqa: E402
 
-app.include_router(properties.router, prefix="/api", tags=["Properties"])
-app.include_router(scores.router, prefix="/api", tags=["Scores"])
-app.include_router(hmo.router, prefix="/api", tags=["HMO"])
 app.include_router(auth.router, prefix="/api", tags=["Auth"])
+app.include_router(properties.router, prefix="/api", tags=["Properties"])
+app.include_router(hmo.router, prefix="/api", tags=["HMO"])
+app.include_router(scores.router, prefix="/api", tags=["Scores"])
 app.include_router(reviews.router, prefix="/api", tags=["Reviews"])
-
-
-# ── Startup event ─────────────────────────────────────────────────────────────
-@app.on_event("startup")
-async def startup_event() -> None:
-    """Run on application startup: load ML model into memory."""
-    logger.info("SurreyNest API starting up (environment=%s)", settings.environment)
-
-    # Load ML model once into memory
-    try:
-        from app.ml.predict import load_model
-
-        load_model()
-        logger.info("ML model loaded successfully")
-    except Exception:
-        logger.warning("ML model could not be loaded — predictions unavailable", exc_info=True)
-
-    logger.info("Startup complete")
 
 
 # ── Global exception handler ─────────────────────────────────────────────────

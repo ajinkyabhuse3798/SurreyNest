@@ -113,14 +113,14 @@ reviews:     is_moderated, is_flagged (soft delete only)
     - Raises 404 if uprn not found
 
 ### Step 3.5 — FastAPI main.py
-- [ ] `app/main.py`
-  - [ ] FastAPI app with title "SurreyNest API", version "1.0.0"
-  - [ ] CORSMiddleware from `settings.allowed_origins`
-  - [ ] Mount all routers under `/api` prefix
-  - [ ] `GET /health` → `{"status": "ok", "environment": settings.environment}`
-  - [ ] Global exception handler: log full traceback, return `{"detail": "Internal server error"}`
-  - [ ] APScheduler lifespan: start on startup, shutdown on exit (schedules added in Phase 5)
-  - [ ] slowapi rate limiting: 60/min per IP on GET, 5/hour per user on POST /reviews
+- [x] `app/main.py`
+  - [x] FastAPI app with title "SurreyNest API", version "1.0.0"
+  - [x] CORSMiddleware from `settings.allowed_origins`
+  - [x] Mount all routers under `/api` prefix
+  - [x] `GET /health` → `{"status": "ok", "environment": settings.environment}`
+  - [x] Global exception handler: log full traceback, return `{"detail": "Internal server error"}`
+  - [x] APScheduler lifespan: start on startup, shutdown on exit (schedules added in Phase 5)
+  - [x] slowapi rate limiting: 60/min per IP on GET, 5/hour per user on POST /reviews
 
 ### Step 3.6 — Auth Router
 - [ ] `app/routers/auth.py`
