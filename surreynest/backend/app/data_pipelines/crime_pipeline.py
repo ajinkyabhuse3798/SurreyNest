@@ -344,7 +344,11 @@ def compute_safety_scores(
 
 
 def upsert_crime_data(aggregated: pd.DataFrame, db: Session) -> int:
-    """Upsert aggregated crime data to the crime_data table.
+    """Bulk upsert aggregated crime data to the crime_data table.
+
+    Uses PostgreSQL ON CONFLICT DO UPDATE on the composite unique constraint
+    (postcode_sector, category, month) for atomic, race-condition-free upserts
+    in batches of 1000.
 
     Args:
         aggregated: DataFrame with postcode_sector, category, month, count columns.
@@ -353,41 +357,56 @@ def upsert_crime_data(aggregated: pd.DataFrame, db: Session) -> int:
     Returns:
         Number of rows upserted.
     """
+    import time
+
+    if aggregated.empty:
+        logger.info("No crime data to upsert")
+        return 0
+
     now = datetime.now(timezone.utc)
     rows_upserted = 0
+    batch_size = 1000
+    start_time = time.time()
 
+    # Pre-process: convert month strings to date objects
+    records = []
     for _, row in aggregated.iterrows():
-        # Convert month string to date (first of month)
         month_date = datetime.strptime(row["month"], "%Y-%m").date()
+        records.append({
+            "postcode_sector": row["postcode_sector"],
+            "category": row["category"],
+            "month": month_date,
+            "count": int(row["count"]),
+            "updated_at": now,
+        })
 
-        # Check-and-insert/update pattern (no unique constraint on composite key)
-        existing = (
-            db.query(CrimeData)
-            .filter(
-                CrimeData.postcode_sector == row["postcode_sector"],
-                CrimeData.category == row["category"],
-                CrimeData.month == month_date,
-            )
-            .first()
+    # Bulk upsert in batches
+    num_batches = 0
+    for start in range(0, len(records), batch_size):
+        batch = records[start : start + batch_size]
+
+        stmt = insert(CrimeData).values(batch)
+        stmt = stmt.on_conflict_do_update(
+            constraint="uq_crime_sector_category_month",
+            set_={
+                "count": stmt.excluded.count,
+                "updated_at": stmt.excluded.updated_at,
+            },
         )
-
-        if existing:
-            existing.count = int(row["count"])
-            existing.updated_at = now
-        else:
-            db.add(
-                CrimeData(
-                    postcode_sector=row["postcode_sector"],
-                    category=row["category"],
-                    month=month_date,
-                    count=int(row["count"]),
-                    updated_at=now,
-                )
-            )
-        rows_upserted += 1
+        db.execute(stmt)
+        rows_upserted += len(batch)
+        num_batches += 1
 
     db.commit()
-    logger.info("Upserted %d crime data rows", rows_upserted)
+
+    elapsed = time.time() - start_time
+    logger.info(
+        "Upserted %d crime records in %.1fs (%d batches of %d)",
+        rows_upserted,
+        elapsed,
+        num_batches,
+        batch_size,
+    )
     return rows_upserted
 
 

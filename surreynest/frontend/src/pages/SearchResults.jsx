@@ -136,7 +136,17 @@ export default function SearchResults() {
                 <div
                     className={`${showMap ? 'block' : 'hidden'} md:block md:w-7/12 md:sticky md:top-16 h-[50vh] md:h-auto`}
                 >
-                    <MapView properties={properties} centre={mapCentre} />
+                    <MapView
+                        markers={properties.map((p) => ({
+                            id: p.uprn,
+                            lat: p.lat,
+                            lng: p.lng,
+                            label: p.address,
+                            score: p.fairness_score,
+                        }))}
+                        centre={mapCentre}
+                        fitBounds
+                    />
                 </div>
             </div>
         </main>

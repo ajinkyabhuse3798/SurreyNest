@@ -12,17 +12,14 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 import pandas as pd
-from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
 from app.data_pipelines.utils import (
-    RateLimiter,
-    api_call_with_retry,
     run_pipeline_with_tracking,
 )
 from app.models.hmo_record import HmoRecord
-from app.models.postcode_cache import PostcodeCache
+from app.services.geocoding_service import geocode_batch
 
 logger = logging.getLogger(__name__)
 
@@ -31,10 +28,6 @@ RAW_PATH = Path(__file__).resolve().parents[2] / "data" / "raw" / "hmo_register_
 
 # ── Postcode regex for GU area ───────────────────────────────────────────────
 POSTCODE_REGEX = re.compile(r"GU\d{1,2}\s?\d[A-Z]{2}", re.IGNORECASE)
-
-# ── Postcodes.io batch endpoint ──────────────────────────────────────────────
-POSTCODES_BATCH_URL = "https://api.postcodes.io/postcodes"
-POSTCODES_BATCH_SIZE = 100
 
 
 def _normalise_postcode(pc: str) -> str:
@@ -88,105 +81,6 @@ def _parse_date(date_str: str) -> Optional[date]:
     return None
 
 
-def geocode_postcodes_batch(
-    postcodes: List[str],
-    db: Session,
-) -> Dict[str, Tuple[Optional[float], Optional[float]]]:
-    """Geocode postcodes via Postcodes.io batch API with DB cache.
-
-    Args:
-        postcodes: List of normalised postcodes to geocode.
-        db: SQLAlchemy session for cache reads/writes.
-
-    Returns:
-        Dict mapping postcode → (lat, lng). Missing postcodes get (None, None).
-    """
-    results: Dict[str, Tuple[Optional[float], Optional[float]]] = {}
-    uncached: List[str] = []
-
-    # ── Check cache first (per conventions.md: always check cache) ────────
-    for pc in postcodes:
-        cached = db.query(PostcodeCache).filter(PostcodeCache.postcode == pc).first()
-        if cached:
-            if cached.is_valid:
-                results[pc] = (cached.lat, cached.lng)
-            else:
-                results[pc] = (None, None)
-        else:
-            uncached.append(pc)
-
-    if not uncached:
-        return results
-
-    logger.info("Geocoding %d uncached postcodes via Postcodes.io", len(uncached))
-    rate_limiter = RateLimiter(requests_per_second=50.0)
-
-    # ── Batch API calls ──────────────────────────────────────────────────
-    for i in range(0, len(uncached), POSTCODES_BATCH_SIZE):
-        batch = uncached[i : i + POSTCODES_BATCH_SIZE]
-        rate_limiter.wait()
-
-        try:
-            response = api_call_with_retry(
-                POSTCODES_BATCH_URL,
-                method="POST",
-                json_body={"postcodes": batch},
-            )
-        except Exception:
-            logger.error("Batch geocode failed for batch starting at %d", i)
-            for pc in batch:
-                results[pc] = (None, None)
-            continue
-
-        for item in response.get("result", []):
-            query_pc = item.get("query", "")
-            normalised_pc = _normalise_postcode(query_pc)
-            result_data = item.get("result")
-
-            if result_data:
-                lat = result_data.get("latitude")
-                lng = result_data.get("longitude")
-                ward = result_data.get("admin_ward", "")
-                district = result_data.get("admin_district", "")
-                results[normalised_pc] = (lat, lng)
-
-                # Cache the result
-                cache_stmt = insert(PostcodeCache).values(
-                    postcode=normalised_pc,
-                    lat=lat or 0.0,
-                    lng=lng or 0.0,
-                    ward=ward,
-                    district=district,
-                    is_valid=True,
-                    cached_at=datetime.now(timezone.utc),
-                )
-                cache_stmt = cache_stmt.on_conflict_do_update(
-                    index_elements=["postcode"],
-                    set_={
-                        "lat": cache_stmt.excluded.lat,
-                        "lng": cache_stmt.excluded.lng,
-                        "ward": cache_stmt.excluded.ward,
-                        "district": cache_stmt.excluded.district,
-                        "cached_at": datetime.now(timezone.utc),
-                    },
-                )
-                db.execute(cache_stmt)
-            else:
-                results[normalised_pc] = (None, None)
-                # Cache as invalid so we don't retry
-                cache_stmt = insert(PostcodeCache).values(
-                    postcode=normalised_pc,
-                    lat=0.0,
-                    lng=0.0,
-                    is_valid=False,
-                    cached_at=datetime.now(timezone.utc),
-                )
-                cache_stmt = cache_stmt.on_conflict_do_nothing()
-                db.execute(cache_stmt)
-
-        db.commit()
-
-    return results
 
 
 def load_hmo_register(raw_path: Optional[Path] = None) -> pd.DataFrame:
@@ -303,10 +197,26 @@ def run_hmo_pipeline(db: Optional[Session] = None) -> int:
         db = SessionLocal()
     try:
         # Geocode
-        geocode_map = geocode_postcodes_batch(unique_postcodes, db)
+        geocode_map = geocode_batch(unique_postcodes, db)
 
         # Upsert
         rows = upsert_to_db(df, geocode_map, db)
+
+        # Match HMO records to properties by address
+        try:
+            from app.utils.address_matcher import match_hmo_to_properties
+            stats = match_hmo_to_properties(db)
+            logger.info(
+                "UPRN matching: %d/%d matched (exact=%d, fuzzy=%d)",
+                stats["matched"], stats["total"],
+                stats["exact"], stats["fuzzy"],
+            )
+        except Exception:
+            logger.error(
+                "UPRN matching failed — HMO records saved without UPRNs",
+                exc_info=True,
+            )
+
         logger.info("HMO pipeline complete: %d rows", rows)
         return rows
     finally:

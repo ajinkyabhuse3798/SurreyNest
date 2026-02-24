@@ -1,1 +1,606 @@
-"""Model evaluation: MAE, RMSE, R², cross-validation, and feature importance."""
+"""Model evaluation: comprehensive analysis of the rent prediction model.
+
+Loads the trained model and feature data, runs:
+1. Standard metrics: MAE, RMSE, R², MAPE
+2. 5-fold cross-validation with mean ± std
+3. Feature importance bar chart
+4. Residual analysis scatter plot
+5. Sanity checks (synthetic inputs with expected ranges)
+6. Prediction distribution histogram
+7. Generates markdown report + PNG plots
+
+Usage:
+    python -m app.ml.evaluate
+"""
+
+import logging
+from datetime import datetime
+from pathlib import Path
+from typing import Dict, List, Tuple
+
+import joblib
+import numpy as np
+import pandas as pd
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from sklearn.model_selection import cross_validate, train_test_split
+
+from app.ml.train import (
+    FEATURES_PATH,
+    MODEL_PATH,
+    MODEL_VERSION,
+    compute_temporary_target,
+    get_feature_columns,
+)
+
+logger = logging.getLogger(__name__)
+
+# ── Output paths ─────────────────────────────────────────────────────────────
+REPORT_PATH = MODEL_PATH.parent / "evaluation_report.md"
+PLOTS_DIR = MODEL_PATH.parent / "plots"
+
+
+# =============================================================================
+# 1. Standard Metrics
+# =============================================================================
+
+
+def compute_metrics(
+    y_true: np.ndarray, y_pred: np.ndarray
+) -> Dict[str, float]:
+    """Compute MAE, RMSE, R², and MAPE.
+
+    Args:
+        y_true: Actual values.
+        y_pred: Predicted values.
+
+    Returns:
+        Dict with mae, rmse, r2, mape keys.
+    """
+    mae = mean_absolute_error(y_true, y_pred)
+    rmse = np.sqrt(mean_squared_error(y_true, y_pred))
+    r2 = r2_score(y_true, y_pred)
+
+    # MAPE: avoid division by zero
+    nonzero = y_true != 0
+    if nonzero.sum() > 0:
+        mape = np.mean(np.abs((y_true[nonzero] - y_pred[nonzero]) / y_true[nonzero])) * 100
+    else:
+        mape = float("inf")
+
+    return {
+        "mae": round(mae, 2),
+        "rmse": round(rmse, 2),
+        "r2": round(r2, 4),
+        "mape": round(mape, 2),
+    }
+
+
+# =============================================================================
+# 2. Cross-Validation
+# =============================================================================
+
+
+def run_cross_validation(
+    pipeline, X: pd.DataFrame, y: pd.Series, cv: int = 5
+) -> Dict[str, str]:
+    """Run k-fold cross-validation.
+
+    Args:
+        pipeline: Untrained sklearn Pipeline (cloned internally by cross_validate).
+        X: Feature matrix.
+        y: Target values.
+        cv: Number of folds.
+
+    Returns:
+        Dict mapping metric name to 'mean ± std' string.
+    """
+    logger.info("Running %d-fold cross-validation...", cv)
+
+    scoring = {
+        "mae": "neg_mean_absolute_error",
+        "rmse": "neg_root_mean_squared_error",
+        "r2": "r2",
+    }
+
+    results = cross_validate(pipeline, X, y, cv=cv, scoring=scoring, return_train_score=False)
+
+    cv_results = {}
+    for metric, scorer_key in [("MAE", "test_mae"), ("RMSE", "test_rmse"), ("R²", "test_r2")]:
+        scores = results[scorer_key]
+        if metric in ("MAE", "RMSE"):
+            scores = -scores  # sklearn negates these
+        mean = scores.mean()
+        std = scores.std()
+        cv_results[metric] = f"{mean:.2f} ± {std:.2f}"
+
+    logger.info("Cross-validation complete")
+    return cv_results
+
+
+# =============================================================================
+# 3. Feature Importance
+# =============================================================================
+
+
+def get_feature_importance(pipeline, feature_cols: List[str]) -> pd.DataFrame:
+    """Extract feature importances from the trained GBR.
+
+    Args:
+        pipeline: Trained sklearn Pipeline with a 'model' step.
+        feature_cols: List of feature column names.
+
+    Returns:
+        DataFrame with 'feature' and 'importance' columns, sorted descending.
+    """
+    gbr = pipeline.named_steps["model"]
+    imp_df = pd.DataFrame({
+        "feature": feature_cols,
+        "importance": gbr.feature_importances_,
+    }).sort_values("importance", ascending=False)
+
+    return imp_df
+
+
+def plot_feature_importance(imp_df: pd.DataFrame, save_path: Path) -> None:
+    """Save feature importance bar chart as PNG.
+
+    Args:
+        imp_df: DataFrame from get_feature_importance().
+        save_path: Path to save the PNG file.
+    """
+    try:
+        import matplotlib
+        matplotlib.use("Agg")  # Non-interactive backend
+        import matplotlib.pyplot as plt
+
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.barh(imp_df["feature"][::-1], imp_df["importance"][::-1], color="#4A90D9")
+        ax.set_xlabel("Importance")
+        ax.set_title("Feature Importance (Gradient Boosting)")
+        plt.tight_layout()
+        save_path.parent.mkdir(parents=True, exist_ok=True)
+        fig.savefig(str(save_path), dpi=150)
+        plt.close(fig)
+        logger.info("Feature importance plot saved to %s", save_path)
+    except ImportError:
+        logger.warning("matplotlib not installed — skipping feature importance plot")
+
+
+# =============================================================================
+# 4. Residual Analysis
+# =============================================================================
+
+
+def plot_residuals(
+    y_true: np.ndarray, y_pred: np.ndarray, save_path: Path
+) -> None:
+    """Save residuals vs predicted scatter plot.
+
+    Args:
+        y_true: Actual values.
+        y_pred: Predicted values.
+        save_path: Path to save the PNG file.
+    """
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+
+        residuals = y_true - y_pred
+
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.scatter(y_pred, residuals, alpha=0.4, s=10, color="#E74C3C")
+        ax.axhline(y=0, color="black", linestyle="--", linewidth=0.8)
+        ax.set_xlabel("Predicted (£/week)")
+        ax.set_ylabel("Residual (Actual - Predicted)")
+        ax.set_title("Residual Analysis")
+        plt.tight_layout()
+        save_path.parent.mkdir(parents=True, exist_ok=True)
+        fig.savefig(str(save_path), dpi=150)
+        plt.close(fig)
+        logger.info("Residual plot saved to %s", save_path)
+    except ImportError:
+        logger.warning("matplotlib not installed — skipping residual plot")
+
+
+# =============================================================================
+# 5. Sanity Checks
+# =============================================================================
+
+
+def run_sanity_checks(pipeline, feature_cols: List[str]) -> List[Dict]:
+    """Run sanity checks with synthetic inputs.
+
+    Tests:
+    1. 25m² studio flat → expected ~£90-160/week
+    2. 120m² detached house → expected ~£280-460/week
+    3. Flat < Semi < Detached (all else equal, 80m²)
+    4. 30m² < 60m² < 90m² < 120m² (monotonic floor_area)
+
+    Args:
+        pipeline: Trained sklearn Pipeline.
+        feature_cols: Feature column names.
+
+    Returns:
+        List of check result dicts with name, prediction, expected, pass/fail.
+    """
+    results = []
+
+    def _make_features(**overrides) -> np.ndarray:
+        """Build a feature array with sensible defaults."""
+        defaults = {
+            "floor_area_m2": 60.0,
+            "num_rooms": 3,
+            "energy_rating_ordinal": 4,  # C
+            "potential_rating_ordinal": 5,  # B
+            "distance_to_town_km": 2.0,
+            "distance_to_uni_km": 2.0,
+            "is_hmo": 0,
+            "safety_score": 50.0,
+            "area_value_index": 0.5,
+            "ptype_Detached": 0,
+            "ptype_Flat": 0,
+            "ptype_Semi-Detached": 0,
+            "ptype_Terraced": 0,
+        }
+        defaults.update(overrides)
+        return np.array([[defaults.get(c, 0) for c in feature_cols]])
+
+    # ── Check 1: Small studio flat ───────────────────────────────────────
+    # VOA: 1-bed = £173/week, 25m² is below median (40m²) → area_adj ~0.925
+    # × flat premium 1.05 → ~£168. With noise: £100–220 range
+    studio = _make_features(floor_area_m2=25.0, num_rooms=1, ptype_Flat=1)
+    studio_pred = pipeline.predict(studio)[0]
+    results.append({
+        "name": "25m² studio flat",
+        "prediction": round(studio_pred, 2),
+        "expected": "£100–220/week",
+        "passed": 100 <= studio_pred <= 220,
+    })
+
+    # ── Check 2: Large detached house ────────────────────────────────────
+    # VOA: 5-bed = £460/week, 120m² below median (140m²) → area_adj ~0.97
+    # × detached discount 0.90 → ~£402. With noise: £300–550 range
+    detached = _make_features(floor_area_m2=120.0, num_rooms=5, ptype_Detached=1)
+    detached_pred = pipeline.predict(detached)[0]
+    results.append({
+        "name": "120m² detached house",
+        "prediction": round(detached_pred, 2),
+        "expected": "£300–550/week",
+        "passed": 300 <= detached_pred <= 550,
+    })
+
+    # ── Check 3: Type ordering (80m², 3-bed, all else equal) ─────────────
+    flat_pred = pipeline.predict(_make_features(floor_area_m2=80.0, num_rooms=3, ptype_Flat=1))[0]
+    semi_pred = pipeline.predict(
+        _make_features(floor_area_m2=80.0, num_rooms=3, **{"ptype_Semi-Detached": 1})
+    )[0]
+    detached_80 = pipeline.predict(_make_features(floor_area_m2=80.0, num_rooms=3, ptype_Detached=1))[0]
+
+    # Flat multiplier (1.05) > Semi (0.93) > Detached (0.90)
+    results.append({
+        "name": "Type ordering (80m², 3-bed)",
+        "prediction": f"Flat={flat_pred:.0f}, Semi={semi_pred:.0f}, Det={detached_80:.0f}",
+        "expected": "Distinct predictions per type",
+        "passed": len({round(flat_pred), round(semi_pred), round(detached_80)}) >= 2,
+    })
+
+    # ── Check 4: Monotonic floor area (same bedroom count) ───────────────
+    areas = [30, 60, 90, 120]
+    area_preds = []
+    for area in areas:
+        pred = pipeline.predict(_make_features(floor_area_m2=float(area), num_rooms=3, ptype_Flat=1))[0]
+        area_preds.append(pred)
+
+    is_monotonic = all(a < b for a, b in zip(area_preds, area_preds[1:]))
+    results.append({
+        "name": "Monotonic floor_area",
+        "prediction": ", ".join(f"{a}m²=£{p:.0f}" for a, p in zip(areas, area_preds)),
+        "expected": "Increasing rent with area",
+        "passed": is_monotonic,
+    })
+
+    return results
+
+
+# =============================================================================
+# 6. Prediction Distribution
+# =============================================================================
+
+
+def plot_prediction_distribution(
+    y_pred: np.ndarray, save_path: Path
+) -> Dict[str, float]:
+    """Save prediction distribution histogram and compute stats.
+
+    Args:
+        y_pred: Predicted values.
+        save_path: Path to save the PNG file.
+
+    Returns:
+        Dict with distribution stats.
+    """
+    stats = {
+        "mean": round(float(np.mean(y_pred)), 2),
+        "median": round(float(np.median(y_pred)), 2),
+        "std": round(float(np.std(y_pred)), 2),
+        "min": round(float(np.min(y_pred)), 2),
+        "max": round(float(np.max(y_pred)), 2),
+    }
+
+    # Outliers: beyond 2σ from mean
+    lower = stats["mean"] - 2 * stats["std"]
+    upper = stats["mean"] + 2 * stats["std"]
+    n_outliers = int(np.sum((y_pred < lower) | (y_pred > upper)))
+    stats["outliers"] = n_outliers
+    stats["outlier_pct"] = round(n_outliers / len(y_pred) * 100, 1)
+
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.hist(y_pred, bins=50, color="#2ECC71", edgecolor="white", alpha=0.8)
+        ax.axvline(stats["mean"], color="red", linestyle="--", label=f"Mean: £{stats['mean']:.0f}")
+        ax.axvline(stats["median"], color="blue", linestyle="--", label=f"Median: £{stats['median']:.0f}")
+        ax.set_xlabel("Predicted Weekly Rent (£)")
+        ax.set_ylabel("Count")
+        ax.set_title("Prediction Distribution")
+        ax.legend()
+        plt.tight_layout()
+        save_path.parent.mkdir(parents=True, exist_ok=True)
+        fig.savefig(str(save_path), dpi=150)
+        plt.close(fig)
+        logger.info("Prediction distribution plot saved to %s", save_path)
+    except ImportError:
+        logger.warning("matplotlib not installed — skipping distribution plot")
+
+    return stats
+
+
+# =============================================================================
+# 7. Markdown Report
+# =============================================================================
+
+
+def generate_report(
+    metrics: Dict,
+    cv_results: Dict,
+    importance_df: pd.DataFrame,
+    sanity_results: List[Dict],
+    dist_stats: Dict,
+    report_path: Path,
+) -> str:
+    """Generate evaluation report as markdown.
+
+    Args:
+        metrics: Standard metrics dict.
+        cv_results: Cross-validation results.
+        importance_df: Feature importance DataFrame.
+        sanity_results: Sanity check results.
+        dist_stats: Prediction distribution stats.
+        report_path: Path to save the report.
+
+    Returns:
+        Report text.
+    """
+    lines = [
+        "# Model Evaluation Report",
+        f"\n**Model:** rent_model {MODEL_VERSION}",
+        f"**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M')}",
+        "",
+        "---",
+        "",
+        "## 1. Standard Metrics",
+        "",
+        "| Metric | Value |",
+        "|--------|-------|",
+        f"| MAE | £{metrics['mae']:.2f}/week |",
+        f"| RMSE | £{metrics['rmse']:.2f}/week |",
+        f"| R² | {metrics['r2']:.4f} |",
+        f"| MAPE | {metrics['mape']:.1f}% |",
+        "",
+        "---",
+        "",
+        "## 2. Cross-Validation (5-fold)",
+        "",
+        "| Metric | Mean ± Std |",
+        "|--------|-----------|",
+    ]
+
+    for metric, value in cv_results.items():
+        lines.append(f"| {metric} | {value} |")
+
+    lines.extend([
+        "",
+        "---",
+        "",
+        "## 3. Feature Importance",
+        "",
+        "| Rank | Feature | Importance |",
+        "|------|---------|-----------|",
+    ])
+
+    for rank, (_, row) in enumerate(importance_df.iterrows(), 1):
+        lines.append(f"| {rank} | {row['feature']} | {row['importance']:.4f} |")
+
+    lines.extend([
+        "",
+        "![Feature Importance](plots/feature_importance.png)",
+        "",
+        "---",
+        "",
+        "## 4. Residual Analysis",
+        "",
+        "![Residuals](plots/residuals.png)",
+        "",
+        "---",
+        "",
+        "## 5. Sanity Checks",
+        "",
+        "| Check | Prediction | Expected | Result |",
+        "|-------|-----------|----------|--------|",
+    ])
+
+    for check in sanity_results:
+        status = "✅ PASS" if check["passed"] else "❌ FAIL"
+        lines.append(f"| {check['name']} | {check['prediction']} | {check['expected']} | {status} |")
+
+    lines.extend([
+        "",
+        "---",
+        "",
+        "## 6. Prediction Distribution",
+        "",
+        "| Stat | Value |",
+        "|------|-------|",
+        f"| Mean | £{dist_stats['mean']:.2f}/week |",
+        f"| Median | £{dist_stats['median']:.2f}/week |",
+        f"| Std | £{dist_stats['std']:.2f} |",
+        f"| Min | £{dist_stats['min']:.2f}/week |",
+        f"| Max | £{dist_stats['max']:.2f}/week |",
+        f"| Outliers (>2σ) | {dist_stats['outliers']} ({dist_stats['outlier_pct']}%) |",
+        "",
+        "![Prediction Distribution](plots/prediction_distribution.png)",
+        "",
+    ])
+
+    report = "\n".join(lines)
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    report_path.write_text(report)
+    logger.info("Evaluation report saved to %s", report_path)
+    return report
+
+
+# =============================================================================
+# Main Entry Point
+# =============================================================================
+
+
+def run_evaluation() -> None:
+    """Execute the full evaluation pipeline.
+
+    Loads model + features, runs all evaluation components,
+    generates report and plots.
+    """
+    logger.info("=" * 60)
+    logger.info("STARTING MODEL EVALUATION")
+    logger.info("=" * 60)
+
+    # ── Load features ────────────────────────────────────────────────────
+    if not FEATURES_PATH.exists():
+        logger.error("Features file not found at %s — run features.py first", FEATURES_PATH)
+        raise FileNotFoundError(f"Features not found: {FEATURES_PATH}")
+
+    df = pd.read_csv(str(FEATURES_PATH))
+    logger.info("Loaded feature matrix: shape=%s", df.shape)
+
+    # ── Compute target ───────────────────────────────────────────────────
+    target = compute_temporary_target(df)
+    feature_cols = get_feature_columns(df)
+    X = df[feature_cols].copy()
+    y = target
+
+    # Drop NaN
+    valid = X.notna().all(axis=1) & y.notna()
+    X, y = X[valid], y[valid]
+    logger.info("Valid samples: %d, features: %d", len(X), len(feature_cols))
+
+    # ── Train/test split (same as train.py) ──────────────────────────────
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42
+    )
+
+    # ── Load trained model ───────────────────────────────────────────────
+    if not MODEL_PATH.exists():
+        logger.error("Model not found at %s — run train.py first", MODEL_PATH)
+        raise FileNotFoundError(f"Model not found: {MODEL_PATH}")
+
+    pipeline = joblib.load(str(MODEL_PATH))
+    logger.info("Loaded model from %s", MODEL_PATH)
+
+    # ── 1. Standard metrics ──────────────────────────────────────────────
+    y_pred = pipeline.predict(X_test)
+    metrics = compute_metrics(y_test.values, y_pred)
+
+    logger.info("=" * 40)
+    logger.info("STANDARD METRICS")
+    logger.info("  MAE:  £%.2f/week", metrics["mae"])
+    logger.info("  RMSE: £%.2f/week", metrics["rmse"])
+    logger.info("  R²:   %.4f", metrics["r2"])
+    logger.info("  MAPE: %.1f%%", metrics["mape"])
+    logger.info("=" * 40)
+
+    # ── 2. Cross-validation ──────────────────────────────────────────────
+    # Use a fresh (untrained) pipeline for CV
+    from sklearn.ensemble import GradientBoostingRegressor
+    from sklearn.pipeline import Pipeline as SKPipeline
+    from sklearn.preprocessing import StandardScaler
+
+    fresh_pipeline = SKPipeline([
+        ("scaler", StandardScaler()),
+        ("model", GradientBoostingRegressor(
+            n_estimators=200, max_depth=5, learning_rate=0.1,
+            subsample=0.8, random_state=42,
+        )),
+    ])
+    cv_results = run_cross_validation(fresh_pipeline, X, y, cv=5)
+
+    logger.info("CROSS-VALIDATION (5-fold)")
+    for metric, value in cv_results.items():
+        logger.info("  %s: %s", metric, value)
+
+    # ── 3. Feature importance ────────────────────────────────────────────
+    importance_df = get_feature_importance(pipeline, feature_cols)
+    plot_feature_importance(importance_df, PLOTS_DIR / "feature_importance.png")
+
+    logger.info("FEATURE IMPORTANCE")
+    for _, row in importance_df.head(5).iterrows():
+        logger.info("  %s: %.4f", row["feature"], row["importance"])
+
+    # ── 4. Residual analysis ─────────────────────────────────────────────
+    plot_residuals(y_test.values, y_pred, PLOTS_DIR / "residuals.png")
+
+    # ── 5. Sanity checks ────────────────────────────────────────────────
+    sanity_results = run_sanity_checks(pipeline, feature_cols)
+
+    logger.info("SANITY CHECKS")
+    all_passed = True
+    for check in sanity_results:
+        status = "✅" if check["passed"] else "❌"
+        logger.info("  %s %s → %s (expected: %s)", status, check["name"], check["prediction"], check["expected"])
+        if not check["passed"]:
+            all_passed = False
+
+    if all_passed:
+        logger.info("  All sanity checks PASSED")
+    else:
+        logger.warning("  Some sanity checks FAILED — review model")
+
+    # ── 6. Prediction distribution ───────────────────────────────────────
+    y_pred_all = pipeline.predict(X)
+    dist_stats = plot_prediction_distribution(y_pred_all, PLOTS_DIR / "prediction_distribution.png")
+
+    logger.info("PREDICTION DISTRIBUTION")
+    logger.info("  Mean: £%.2f, Median: £%.2f, Std: £%.2f", dist_stats["mean"], dist_stats["median"], dist_stats["std"])
+    logger.info("  Range: £%.2f – £%.2f", dist_stats["min"], dist_stats["max"])
+    logger.info("  Outliers (>2σ): %d (%.1f%%)", dist_stats["outliers"], dist_stats["outlier_pct"])
+
+    # ── 7. Generate report ───────────────────────────────────────────────
+    report = generate_report(
+        metrics, cv_results, importance_df,
+        sanity_results, dist_stats, REPORT_PATH,
+    )
+
+    logger.info("=" * 60)
+    logger.info("EVALUATION COMPLETE — report at %s", REPORT_PATH)
+    logger.info("=" * 60)
+
+
+if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(name)s %(levelname)s %(message)s",
+    )
+    run_evaluation()

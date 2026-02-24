@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 from app.database import SessionLocal
 from app.data_pipelines.utils import run_pipeline_with_tracking
 from app.models.property import Property
+from app.services.geocoding_service import geocode_batch
 
 logger = logging.getLogger(__name__)
 
@@ -237,9 +238,11 @@ def upsert_to_db(df: pd.DataFrame, db: Session) -> int:
     """Upsert cleaned EPC data into the properties table.
 
     Uses PostgreSQL ON CONFLICT DO UPDATE pattern per conventions.md.
+    DataFrame must have lat/lng columns populated from geocoding.
 
     Args:
-        df: Cleaned DataFrame with columns matching Property model.
+        df: Cleaned DataFrame with columns matching Property model,
+            including lat and lng from geocoding.
         db: SQLAlchemy session.
 
     Returns:
@@ -270,6 +273,8 @@ def upsert_to_db(df: pd.DataFrame, db: Session) -> int:
             set_={
                 "address": stmt.excluded.address,
                 "postcode": stmt.excluded.postcode,
+                "lat": stmt.excluded.lat,
+                "lng": stmt.excluded.lng,
                 "property_type": stmt.excluded.property_type,
                 "built_form": stmt.excluded.built_form,
                 "floor_area_m2": stmt.excluded.floor_area_m2,
@@ -290,7 +295,11 @@ def upsert_to_db(df: pd.DataFrame, db: Session) -> int:
 
 
 def run_epc_pipeline(db: Optional[Session] = None) -> int:
-    """Execute the full EPC pipeline: clean → save CSV → upsert to DB.
+    """Execute the full EPC pipeline: clean → geocode → save CSV → upsert to DB.
+
+    Geocoding step populates lat/lng for every property using Postcodes.io
+    batch API with postcode_cache. Without coordinates, PostGIS spatial
+    search (ST_DWithin) cannot find properties.
 
     Args:
         db: SQLAlchemy session. Creates one if not provided.
@@ -304,16 +313,50 @@ def run_epc_pipeline(db: Optional[Session] = None) -> int:
     df = clean_epc_data()
     logger.info("Cleaned EPC data: %d rows", len(df))
 
-    # Save processed CSV
+    # Save processed CSV (before geocoding — coordinates aren't needed in CSV)
     save_clean_csv(df)
 
-    # Upsert to DB
+    # Geocode and upsert to DB
     own_session = db is None
     if own_session:
         db = SessionLocal()
     try:
+        # Extract unique postcodes and batch geocode
+        unique_postcodes = df["postcode"].dropna().unique().tolist()
+        logger.info("Found %d unique postcodes to geocode", len(unique_postcodes))
+        geocode_map = geocode_batch(unique_postcodes, db)
+
+        # Merge lat/lng into the DataFrame
+        df["lat"] = df["postcode"].map(
+            lambda pc: geocode_map.get(pc, (None, None))[0] if pc else None
+        )
+        df["lng"] = df["postcode"].map(
+            lambda pc: geocode_map.get(pc, (None, None))[1] if pc else None
+        )
+
+        geocoded_count = df["lat"].notna().sum()
+        logger.info(
+            "Geocoded %d/%d properties (%.1f%%)",
+            geocoded_count,
+            len(df),
+            100 * geocoded_count / len(df) if len(df) > 0 else 0,
+        )
+
         rows = upsert_to_db(df, db)
         logger.info("EPC pipeline complete: %d rows upserted", rows)
+
+        # Run geocoding backfill — error-isolated so EPC data is saved even
+        # if geocoding fails (e.g. Postcodes.io down)
+        try:
+            from app.data_pipelines.geocoding_pipeline import run_geocoding_pipeline
+            updated = run_geocoding_pipeline(db)
+            logger.info("Geocoding backfill: %d properties updated", updated)
+        except Exception:
+            logger.error(
+                "Geocoding backfill failed — EPC data was saved successfully",
+                exc_info=True,
+            )
+
         return rows
     finally:
         if own_session:

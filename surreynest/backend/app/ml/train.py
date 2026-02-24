@@ -37,54 +37,106 @@ VOA_PATH = Path(__file__).resolve().parents[2] / "data" / "raw" / "voa_rental_st
 # ── Model version ────────────────────────────────────────────────────────────
 MODEL_VERSION = "v1.0.0"  # Bumps to v1.1.0 when VOA data is used
 
-# ── TEMPORARY_TARGET adjustments ─────────────────────────────────────────────
-# Base rate: £18/m²/month (rough Guildford average)
-BASE_RATE_PER_M2 = 18.0
-
-# Property type multipliers
-PROPERTY_TYPE_MULTIPLIERS = {
-    "ptype_Flat": 1.05,
-    "ptype_Terraced": 0.95,
-    "ptype_Semi-Detached": 0.90,
-    "ptype_Detached": 0.85,
-    "ptype_Other": 0.90,
+# ── VOA Rent Bands (Guildford median weekly rent by bedroom count) ────────────
+# Source: docs/ml-model.md (from VOA Private Rental Market Statistics)
+# These are the anchor — adjustments are layered on top
+VOA_RENT_BANDS = {
+    1: 173,   # £/week median for 1-bed Guildford
+    2: 230,   # £/week median for 2-bed
+    3: 290,   # £/week median for 3-bed
+    4: 375,   # £/week median for 4-bed
+    5: 460,   # £/week median for 5+ bed
 }
+
+# Approximate median floor area by bedroom count (from EPC data analysis)
+MEDIAN_AREA_BY_ROOMS = {
+    1: 40.0,
+    2: 60.0,
+    3: 80.0,
+    4: 110.0,
+    5: 140.0,
+}
+
+# Property type per-m² price multipliers (mild adjustments)
+PROPERTY_TYPE_MULTIPLIERS = {
+    "ptype_Flat": 1.05,       # flats: higher per-m² rent
+    "ptype_Terraced": 0.97,
+    "ptype_Semi-Detached": 0.93,
+    "ptype_Detached": 0.90,   # detached: lower per-m²
+    "ptype_Other": 0.95,
+}
+
+# Noise level: ±12% Gaussian spread (matches real market variation)
+TARGET_NOISE_STD = 0.12
 
 
 def compute_temporary_target(df: pd.DataFrame) -> pd.Series:
-    """Compute a rule-based temporary rent target for MODE A training.
+    """Compute VOA-band-based rent target for MODE A training.
 
-    TEMPORARY_TARGET = floor_area_m2 × £18/m²/month, adjusted for:
-    - property_type: flats higher per m², detached lower per m²
-    - distance_to_uni_km: closer to university = higher rent (student premium)
+    Anchors on VOA median weekly rent by bedroom count, then applies
+    mild adjustments for property characteristics and adds realistic
+    noise. This gives the model non-trivial relationships to learn
+    while staying grounded in real market data.
+
+    Adjustments (all multiplicative, order-independent):
+        - floor_area: ±20% vs median for bedroom count
+        - property_type: ±5-10% (Flat premium, Detached discount)
+        - distance_to_uni: ±10% student proximity premium
+        - safety_score: ±5% (safer areas slightly higher)
+        - area_value_index: ±10% (pricier areas higher)
 
     Args:
         df: Feature DataFrame.
 
     Returns:
-        Series of estimated monthly rent in £.
+        Series of estimated weekly rent in £.
     """
-    # Base rent from floor area
-    rent = df["floor_area_m2"] * BASE_RATE_PER_M2
+    rng = np.random.RandomState(42)  # reproducible noise
 
-    # Property type adjustment
-    type_multiplier = pd.Series(1.0, index=df.index)
+    # ── 1. VOA band base (anchor by bedroom count) ───────────────────────
+    rooms = df["num_rooms"].clip(1, 5).astype(int)
+    base_rent = rooms.map(VOA_RENT_BANDS)
+
+    # ── 2. Floor area adjustment (±20% vs median for room count) ─────────
+    median_area = rooms.map(MEDIAN_AREA_BY_ROOMS)
+    area_ratio = (df["floor_area_m2"] - median_area) / median_area
+    area_adj = 1 + 0.20 * area_ratio.clip(-1, 1)
+
+    # ── 3. Property type adjustment (±5-10%) ─────────────────────────────
+    type_adj = pd.Series(1.0, index=df.index)
     for col, mult in PROPERTY_TYPE_MULTIPLIERS.items():
         if col in df.columns:
-            type_multiplier = type_multiplier.where(df[col] != 1, mult)
+            type_adj = type_adj.where(df[col] != 1, mult)
 
-    rent = rent * type_multiplier
-
-    # Distance to uni adjustment: closer = higher
-    # Formula: multiply by (1.2 - 0.04 × distance_km), clamped to [0.85, 1.25]
+    # ── 4. University distance adjustment (±10%) ────────────────────────
     if "distance_to_uni_km" in df.columns:
-        uni_factor = (1.2 - 0.04 * df["distance_to_uni_km"]).clip(0.85, 1.25)
-        rent = rent * uni_factor
+        uni_adj = (1.10 - 0.02 * df["distance_to_uni_km"]).clip(0.90, 1.10)
+    else:
+        uni_adj = 1.0
 
-    # Convert monthly to weekly
-    weekly_rent = rent / 4.33
+    # ── 5. Safety score adjustment (±5%) ─────────────────────────────────
+    if "safety_score" in df.columns:
+        safety_adj = 1 + 0.05 * (df["safety_score"] - 50) / 50
+    else:
+        safety_adj = 1.0
 
-    return weekly_rent.round(2)
+    # ── 6. Area value index adjustment (±10%) ────────────────────────────
+    if "area_value_index" in df.columns:
+        avi_adj = 1 + 0.10 * (df["area_value_index"] - 0.5)
+    else:
+        avi_adj = 1.0
+
+    # ── Combine ──────────────────────────────────────────────────────────
+    rent = base_rent * area_adj * type_adj * uni_adj * safety_adj * avi_adj
+
+    # ── Add realistic noise (±12% Gaussian) ──────────────────────────────
+    noise = 1 + rng.normal(0, TARGET_NOISE_STD, size=len(df))
+    rent = rent * noise
+
+    # Clamp to reasonable bounds
+    rent = rent.clip(lower=50, upper=900)
+
+    return rent.round(2)
 
 
 def get_feature_columns(df: pd.DataFrame) -> list:
@@ -228,19 +280,31 @@ def train_model(
     for feat, imp in importances[:10]:
         logger.info("  %s: %.4f", feat, imp)
 
-    return pipeline, metrics
+    return pipeline, metrics, feature_cols
 
 
-def save_model(pipeline: Pipeline, model_path: Path = MODEL_PATH) -> None:
-    """Serialize trained model to disk.
+def save_model(
+    pipeline: Pipeline,
+    feature_cols: list,
+    model_path: Path = MODEL_PATH,
+) -> None:
+    """Serialize trained model and feature column manifest to disk.
 
     Args:
         pipeline: Trained sklearn Pipeline.
+        feature_cols: List of feature column names used for training.
         model_path: Destination path for the .pkl file.
     """
+    import json
+
     model_path.parent.mkdir(parents=True, exist_ok=True)
     joblib.dump(pipeline, str(model_path))
     logger.info("Model saved to %s", model_path)
+
+    # Save feature columns for predict.py alignment
+    columns_path = model_path.parent / "feature_columns.json"
+    columns_path.write_text(json.dumps(feature_cols, indent=2))
+    logger.info("Feature columns saved to %s (%d columns)", columns_path, len(feature_cols))
 
 
 def run_training(mode: str = "A") -> Dict[str, float]:
@@ -263,10 +327,10 @@ def run_training(mode: str = "A") -> Dict[str, float]:
     logger.info("Loaded feature matrix: shape=%s", df.shape)
 
     # Train
-    pipeline, metrics = train_model(df, mode=mode)
+    pipeline, metrics, feature_cols = train_model(df, mode=mode)
 
     # Save
-    save_model(pipeline)
+    save_model(pipeline, feature_cols)
 
     return metrics
 

@@ -8,7 +8,7 @@ score_service.py — they are not stored here.
 
 from datetime import date, datetime, timezone
 
-from sqlalchemy import Date, DateTime, Index, Integer, String
+from sqlalchemy import Date, DateTime, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -44,10 +44,13 @@ class CrimeData(Base):
         onupdate=lambda: datetime.now(timezone.utc),
     )
 
-    # Composite index for the primary access pattern:
-    # aggregate by sector + category over a date range
+    # Composite unique constraint — enables ON CONFLICT DO UPDATE
+    # and prevents duplicate rows for same sector+category+month
     __table_args__ = (
-        Index("ix_crime_data_sector_category_month", "postcode_sector", "category", "month"),
+        UniqueConstraint(
+            "postcode_sector", "category", "month",
+            name="uq_crime_sector_category_month",
+        ),
     )
 
     def __repr__(self) -> str:

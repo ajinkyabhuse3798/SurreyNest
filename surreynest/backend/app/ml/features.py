@@ -276,8 +276,25 @@ def build_features(db: Optional[Session] = None) -> pd.DataFrame:
         else:
             df["safety_score"] = 50.0
 
-        # ── Area value index (placeholder until Land Registry data) ──────
-        df["area_value_index"] = 0.5  # Neutral placeholder
+        # ── Area value index from Land Registry data ────────────────────
+        from app.models.area_value import AreaValue
+        area_values = db.query(AreaValue).all()
+
+        if area_values:
+            av_df = pd.DataFrame(
+                [(av.postcode, av.area_value_index) for av in area_values],
+                columns=["postcode", "area_value_index"],
+            )
+            df = df.merge(av_df, on="postcode", how="left")
+            df["area_value_index"] = df["area_value_index"].fillna(0.5)
+            logger.info(
+                "Loaded %d area values from DB (%.1f%% coverage)",
+                len(av_df),
+                (1 - df["area_value_index"].eq(0.5).mean()) * 100,
+            )
+        else:
+            df["area_value_index"] = 0.5  # Fallback if no data
+            logger.warning("No area_value data in DB — using default 0.5")
 
         # ── Handle nulls ────────────────────────────────────────────────
         # Critical features: drop rows missing floor area

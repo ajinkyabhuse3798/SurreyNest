@@ -32,12 +32,13 @@ Status key: ⬜ Not started | 🔄 In progress | ✅ Done | ❌ Blocked
 ## ✅ Phase 1 — Data Pipelines (Complete)
 
 ### What was built
-- `epc_pipeline.py` — EPC bulk CSV → properties table (UPSERT on uprn)
-- `hmo_pipeline.py` — HMO register CSV → hmo_records table, is_active flag computed
-- `crime_pipeline.py` — police.uk API for all GU postcodes, 12 months, → crime_data table
-- `land_registry_pipeline.py` — PPD CSV filtered to GU postcodes → area_value_index per postcode
+- `epc_pipeline.py` — EPC bulk CSV → properties table (UPSERT on uprn), calls geocoding at end
+- `hmo_pipeline.py` — HMO register CSV → hmo_records table, is_active flag computed, UPRN matching via address_matcher
+- `crime_pipeline.py` — police.uk API for all GU postcodes, 12 months, → crime_data table (bulk ON CONFLICT upsert)
+- `land_registry_pipeline.py` — PPD CSV filtered to GU postcodes → area_value_index per postcode → area_values DB table
+- `geocoding_pipeline.py` — standalone backfill: queries properties with NULL lat/lng, batch-geocodes via Postcodes.io, bulk-updates
 - `utils.py` — `api_call_with_retry()`, `log_pipeline_run()`, rate limit helper
-- `geocoding_service.py` — cache-first Postcodes.io batch lookup
+- `geocoding_service.py` — cache-first Postcodes.io lookup (single + batch via `geocode_batch()`)
 
 ### Verified row counts
 - properties table: _______ rows (expected 8,000–15,000)
@@ -51,8 +52,8 @@ Status key: ⬜ Not started | 🔄 In progress | ✅ Done | ❌ Blocked
 
 ### What was built
 - `features.py` — joins properties + hmo_records + crime_data + land_registry, computes distance features
-- `train.py` — GBR Pipeline with GridSearchCV, trained on VOA rent bands as target
-- `evaluate.py` — MAE, RMSE, R², 5-fold CV, feature importance + residual plots
+- `train.py` — GBR Pipeline, VOA-band-based target (bedroom × adjustments + noise), saves feature_columns.json
+- `evaluate.py` — comprehensive: metrics (MAE/RMSE/R²/MAPE), 5-fold CV, feature importance + residual plots, sanity checks, prediction distribution, generates `evaluation_report.md`
 - `predict.py` — `load_model()`, `predict_rent()`, `compute_fairness_score()`
 
 ### Model metrics (fill in after training)
@@ -275,7 +276,7 @@ See `docs/deployment.md` for full instructions.
 
 | Date | Issue | Status |
 |------|-------|--------|
-| | | |
+| 2026-02-24 | EPC pipeline not populating lat/lng — search returns 0 results (ST_DWithin requires coords) | ✅ Fixed — geocoding_pipeline.py backfills, epc_pipeline.py calls geocoding at end |
 
 ---
 

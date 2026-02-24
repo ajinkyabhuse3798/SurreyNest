@@ -1,0 +1,15 @@
+[
+  "floor_area_m2",
+  "num_rooms",
+  "energy_rating_ordinal",
+  "potential_rating_ordinal",
+  "distance_to_town_km",
+  "distance_to_uni_km",
+  "is_hmo",
+  "safety_score",
+  "area_value_index",
+  "ptype_Detached",
+  "ptype_Flat",
+  "ptype_Semi-Detached",
+  "ptype_Terraced"
+]

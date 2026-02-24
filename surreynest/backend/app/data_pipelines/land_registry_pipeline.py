@@ -139,13 +139,69 @@ def save_clean_csv(df: pd.DataFrame, output_path: Optional[Path] = None) -> None
     logger.info("Saved %d rows to %s", len(df), path)
 
 
+def upsert_to_db(df: pd.DataFrame, db: Session) -> int:
+    """Bulk upsert area values to the area_values table.
+
+    Uses PostgreSQL ON CONFLICT DO UPDATE on postcode primary key.
+
+    Args:
+        df: DataFrame with postcode, median_sale_price, area_value_index columns.
+        db: SQLAlchemy session.
+
+    Returns:
+        Number of rows upserted.
+    """
+    import time
+    from sqlalchemy.dialects.postgresql import insert
+    from app.models.area_value import AreaValue
+
+    if df.empty:
+        return 0
+
+    now = datetime.now(timezone.utc)
+    start_time = time.time()
+
+    records = []
+    for _, row in df.iterrows():
+        records.append({
+            "postcode": row["postcode"],
+            "median_sale_price": float(row["median_sale_price"]),
+            "area_value_index": float(row["area_value_index"]),
+            "updated_at": now,
+        })
+
+    # Bulk upsert in one batch (typically < 1000 postcodes)
+    stmt = insert(AreaValue).values(records)
+    stmt = stmt.on_conflict_do_update(
+        index_elements=["postcode"],
+        set_={
+            "median_sale_price": stmt.excluded.median_sale_price,
+            "area_value_index": stmt.excluded.area_value_index,
+            "updated_at": stmt.excluded.updated_at,
+        },
+    )
+    db.execute(stmt)
+    db.commit()
+
+    elapsed = time.time() - start_time
+    logger.info(
+        "Upserted %d area values to DB in %.1fs (min=%.4f, max=%.4f, mean=%.4f)",
+        len(records),
+        elapsed,
+        df["area_value_index"].min(),
+        df["area_value_index"].max(),
+        df["area_value_index"].mean(),
+    )
+    return len(records)
+
+
 def run_land_registry_pipeline(db: Optional[Session] = None) -> int:
     """Execute the full Land Registry pipeline.
 
     Skips gracefully if the raw file is not available.
 
     Args:
-        db: SQLAlchemy session (unused currently — no DB table for this).
+        db: SQLAlchemy session. Creates one if not provided.
 
     Returns:
         Number of rows processed, or 0 if skipped.
@@ -160,13 +216,27 @@ def run_land_registry_pipeline(db: Optional[Session] = None) -> int:
         )
         return 0
 
+    own_session = db is None
+    if own_session:
+        db = SessionLocal()
+
     try:
         df = clean_land_registry_data()
         save_clean_csv(df)
-        logger.info("Land Registry pipeline complete: %d postcodes processed", len(df))
+
+        # Upsert to DB — error-isolated so CSV is always saved
+        try:
+            rows = upsert_to_db(df, db)
+            logger.info("Land Registry pipeline complete: %d postcodes processed, %d upserted to DB", len(df), rows)
+        except Exception:
+            logger.error("DB upsert failed — CSV was saved", exc_info=True)
+
         return len(df)
     except FileNotFoundError:
         return 0
+    finally:
+        if own_session:
+            db.close()
 
 
 if __name__ == "__main__":
@@ -175,3 +245,4 @@ if __name__ == "__main__":
         format="%(asctime)s %(name)s %(levelname)s %(message)s",
     )
     run_pipeline_with_tracking("land_registry_pipeline", run_land_registry_pipeline)
+

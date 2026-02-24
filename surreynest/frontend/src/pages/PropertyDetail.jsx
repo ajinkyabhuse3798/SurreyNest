@@ -10,6 +10,7 @@ import HMOBadge from '../components/HMOBadge'
 import ReviewList from '../components/ReviewList'
 import ReviewForm from '../components/ReviewForm'
 import SafetyScorePanel from '../components/SafetyScorePanel'
+import MapView from '../components/MapView'
 import api from '../services/api'
 
 const TABS = ['Overview', 'Reviews', 'Safety', 'Rights']
@@ -144,6 +145,8 @@ function OverviewTab({ property }) {
         { label: 'Built form', value: property.built_form },
     ].filter((d) => d.value)
 
+    const hasCoords = property.lat && property.lng
+
     return (
         <div className="space-y-4">
             <div className="grid gap-3 md:grid-cols-2">
@@ -172,6 +175,25 @@ function OverviewTab({ property }) {
                                 £{property.rent_prediction.confidence_high?.toFixed(0)}/wk
                             </p>
                         )}
+                </div>
+            )}
+
+            {/* Map */}
+            {hasCoords && (
+                <div className="mt-4">
+                    <MapView
+                        markers={[{
+                            id: property.uprn,
+                            lat: property.lat,
+                            lng: property.lng,
+                            label: property.address,
+                            score: property.safety_score,
+                        }]}
+                        singleMode
+                        zoom={16}
+                        height="h-[250px]"
+                        className="rounded-xl overflow-hidden border border-gray-200"
+                    />
                 </div>
             )}
         </div>

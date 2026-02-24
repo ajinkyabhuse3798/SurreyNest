@@ -57,6 +57,10 @@ class HmoRecord(Base):
         default=False,
         server_default="false",
     )
+    match_confidence: Mapped[Optional[str]] = mapped_column(
+        String(20),
+        nullable=True,
+    )  # "exact", "fuzzy", or None (unmatched)
     last_updated: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,

@@ -167,15 +167,17 @@ These files exist as empty stubs. **Build them in this order** (dependencies fir
 ### Phase 3 — Backend (current priority)
 Build in this exact order:
 1. `backend/app/data_pipelines/utils.py` — retry, logging, pipeline_run helpers
-2. `backend/app/data_pipelines/epc_pipeline.py` — loads EPC CSV → properties table
-3. `backend/app/data_pipelines/hmo_pipeline.py` — loads HMO CSV → hmo_records table
-4. `backend/app/services/geocoding_service.py` — cache-first Postcodes.io lookup
-5. `backend/app/data_pipelines/crime_pipeline.py` — police.uk → crime_data table
-6. `backend/app/data_pipelines/land_registry_pipeline.py` — PPD CSV → processed CSV
-7. `backend/app/ml/features.py` — build feature matrix from DB + processed CSVs
-8. `backend/app/ml/train.py` — train GBR, save pkl
-9. `backend/app/ml/evaluate.py` — MAE/RMSE/R² metrics
-10. `backend/app/ml/predict.py` — load model, predict, compute fairness score
+2. `backend/app/data_pipelines/epc_pipeline.py` — loads EPC CSV → properties table, calls geocoding at end
+3. `backend/app/data_pipelines/hmo_pipeline.py` — loads HMO CSV → hmo_records table, matches UPRN via address_matcher
+4. `backend/app/utils/address_matcher.py` — normalises addresses, matches HMO records to properties (exact + fuzzy)
+5. `backend/app/services/geocoding_service.py` — cache-first Postcodes.io lookup (single + batch)
+6. `backend/app/data_pipelines/geocoding_pipeline.py` — standalone backfill: finds properties with NULL lat/lng, batch-geocodes, bulk-updates
+7. `backend/app/data_pipelines/crime_pipeline.py` — police.uk → crime_data table (bulk ON CONFLICT upsert, UniqueConstraint on sector+category+month)
+8. `backend/app/data_pipelines/land_registry_pipeline.py` — PPD CSV → processed CSV
+9. `backend/app/ml/features.py` — build feature matrix from DB + processed CSVs
+10. `backend/app/ml/train.py` — train GBR, save pkl
+9. `backend/app/ml/evaluate.py` — comprehensive evaluation: MAE/RMSE/R²/MAPE, 5-fold CV, feature importance, residual analysis, sanity checks, prediction distribution, markdown report
+10. `backend/app/ml/predict.py` — load model + feature_columns.json dynamically, predict rent, input validation
 11. `backend/app/schemas/` — all Pydantic schemas (user, auth, property, review, score)
 12. `backend/app/services/auth_service.py` — password hashing + JWT
 13. `backend/app/services/property_service.py` — assemble full property detail
