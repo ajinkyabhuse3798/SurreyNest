@@ -111,8 +111,35 @@ def search_properties(
         },
     ).fetchall()
 
+    # ── Batch HMO lookup (1 query for all rows) ───────────────────────────
+    uprns = [row.uprn for row in rows]
+    postcodes = [row.postcode for row in rows if row.postcode]
+    hmo_records = db.query(HmoRecord).filter(
+        (HmoRecord.uprn.in_(uprns)) | (HmoRecord.postcode.in_(postcodes))
+    ).all()
+    hmo_by_uprn = {r.uprn: r for r in hmo_records if r.uprn}
+    hmo_by_postcode = {r.postcode: r for r in hmo_records if r.postcode}
+
+    # ── Deduplicated safety score lookups (1 query per unique sector) ─────
+    unique_sectors = {
+        _extract_postcode_sector(row.postcode)
+        for row in rows if row.postcode
+    }
+    safety_by_sector: Dict[str, Optional[float]] = {}
+    for sector in unique_sectors:
+        result = get_safety_score(sector, db)
+        safety_by_sector[sector] = result["safety_score"] if result else None
+
     results = []
     for row in rows:
+        # Derive HMO status string
+        rec = hmo_by_uprn.get(row.uprn) or hmo_by_postcode.get(row.postcode)
+        hmo_status = "not_found" if not rec else ("licensed" if rec.is_active else "unlicensed")
+
+        # Derive safety score from precomputed sector map
+        sector = _extract_postcode_sector(row.postcode) if row.postcode else ""
+        safety_score = safety_by_sector.get(sector)
+
         results.append({
             "uprn": row.uprn,
             "address": row.address,
@@ -124,6 +151,9 @@ def search_properties(
             "lat": row.lat,
             "lng": row.lng,
             "distance_m": round(row.distance_m, 1) if row.distance_m else None,
+            "safety_score": safety_score,
+            "fairness_score": None,
+            "hmo_status": hmo_status,
         })
 
     pages = math.ceil(total / per_page) if total > 0 else 0

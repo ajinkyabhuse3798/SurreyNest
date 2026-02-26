@@ -20,6 +20,9 @@ class PropertyResponse(BaseModel):
         lat: Latitude.
         lng: Longitude.
         distance_m: Distance from search postcode in metres (only in search results).
+        safety_score: Area safety score 0-100 derived from crime data (null if no data).
+        fairness_score: Rent fairness score 0-100 (null until user reviews supply actual rent).
+        hmo_status: HMO licence status — 'licensed', 'unlicensed', or 'not_found'.
     """
 
     uprn: str
@@ -32,6 +35,9 @@ class PropertyResponse(BaseModel):
     lat: Optional[float] = None
     lng: Optional[float] = None
     distance_m: Optional[float] = None
+    safety_score: Optional[float] = None
+    fairness_score: Optional[float] = None
+    hmo_status: Optional[str] = None
 
     model_config = {"from_attributes": True}
 

@@ -10,11 +10,12 @@
  *   - Mobile map/list tab toggle
  */
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { useSearchParams } from 'react-router-dom'
-import { Search, SlidersHorizontal, MapPin, List, Map as MapIcon, X } from 'lucide-react'
+import { useSearchParams, useNavigate } from 'react-router-dom'
+import { Search, SlidersHorizontal, MapPin, List, Map as MapIcon, X, ArrowLeftRight } from 'lucide-react'
 import Navbar from '../components/Navbar'
 import PropertyCard from '../components/PropertyCard'
 import MapView from '../components/MapView'
+import { useCompare } from '../hooks/useCompare'
 import api from '../services/api'
 
 // ── EPC sort order ───────────────────────────────────────────────────────────
@@ -99,6 +100,13 @@ export default function SearchResults() {
     const [filterEpc, setFilterEpc] = useState('') // min EPC filter
     const [hoveredId, setHoveredId] = useState(null)
     const [showFilters, setShowFilters] = useState(false)
+
+    // Compare
+    const navigate = useNavigate()
+    const { compareList, addToCompare, removeFromCompare, clearCompare, isInCompare } = useCompare()
+    const handleToggleCompare = useCallback((uprn) => {
+        isInCompare(uprn) ? removeFromCompare(uprn) : addToCompare(uprn)
+    }, [isInCompare, addToCompare, removeFromCompare])
 
     // ── Fetch ────────────────────────────────────────────────────────────
     useEffect(() => {
@@ -211,8 +219,8 @@ export default function SearchResults() {
                         <button
                             onClick={() => setShowFilters((s) => !s)}
                             className={`hidden sm:flex items-center gap-1.5 border rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${showFilters || activeFilterCount > 0
-                                    ? 'border-indigo-200 text-indigo-600 bg-indigo-50'
-                                    : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                                ? 'border-indigo-200 text-indigo-600 bg-indigo-50'
+                                : 'border-gray-200 text-gray-600 hover:border-gray-300'
                                 }`}
                         >
                             <SlidersHorizontal size={12} />
@@ -375,6 +383,9 @@ export default function SearchResults() {
                                     isHighlighted={p.uprn === hoveredId}
                                     onMouseEnter={() => setHoveredId(p.uprn)}
                                     onMouseLeave={() => setHoveredId(null)}
+                                    showCompare
+                                    isCompared={isInCompare(p.uprn)}
+                                    onToggleCompare={handleToggleCompare}
                                 />
                             ))}
 
@@ -422,6 +433,32 @@ export default function SearchResults() {
                     />
                 </div>
             </div>
+            {/* ── Floating compare bar ──────────────────────────────── */}
+            {compareList.length > 0 && (
+                <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg px-4 py-3 animate-[fadeIn_200ms_ease-out]">
+                    <div className="max-w-7xl mx-auto flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-sm text-gray-700">
+                            <ArrowLeftRight size={16} className="text-indigo-600" />
+                            <span className="font-medium">{compareList.length}</span> propert{compareList.length === 1 ? 'y' : 'ies'} selected
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => clearCompare()}
+                                className="text-xs text-gray-400 hover:text-red-500 px-2 py-1"
+                            >
+                                Clear
+                            </button>
+                            <button
+                                onClick={() => navigate(`/compare?uprns=${compareList.join(',')}`)}
+                                disabled={compareList.length < 2}
+                                className="bg-indigo-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                Compare Now →
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </main>
     )
 }

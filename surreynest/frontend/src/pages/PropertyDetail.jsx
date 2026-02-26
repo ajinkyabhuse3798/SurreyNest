@@ -20,7 +20,7 @@ import {
     Shield, PoundSterling, Bed, Home, CheckCircle2, XCircle,
     AlertTriangle, MapPin, Star, Scale, ArrowLeft, Building2,
     Ruler, Zap, GraduationCap, TrainFront, ShoppingBag, Moon,
-    Wifi, Droplets, Landmark, Info as InfoIcon,
+    Wifi, Droplets, Landmark, Info as InfoIcon, ArrowLeftRight,
 } from 'lucide-react'
 import Navbar from '../components/Navbar'
 import ScoreGauge from '../components/ScoreGauge'
@@ -30,6 +30,7 @@ import CrimeBreakdown from '../components/CrimeBreakdown'
 import InfoTip from '../components/InfoTip'
 import ReviewList from '../components/ReviewList'
 import ReviewForm from '../components/ReviewForm'
+import { useCompare } from '../hooks/useCompare'
 import api from '../services/api'
 
 // ── constants ────────────────────────────────────────────────────────────────
@@ -146,6 +147,10 @@ export default function PropertyDetail() {
 
     // ── State: UI ────────────────────────────────────────────────────
     const [showReviews, setShowReviews] = useState(false)
+
+    // ── Compare ──────────────────────────────────────────────────────
+    const { addToCompare, removeFromCompare, isInCompare } = useCompare()
+    const compared = isInCompare(uprn)
 
     // ── Parallel fetch ───────────────────────────────────────────────
     useEffect(() => {
@@ -285,6 +290,18 @@ export default function PropertyDetail() {
                         colour="text-gray-700"
                     />
                 </div>
+
+                {/* Compare button */}
+                <button
+                    onClick={() => compared ? removeFromCompare(p.uprn) : addToCompare(p.uprn)}
+                    className={`mt-3 w-full flex items-center justify-center gap-2 text-sm font-medium py-2.5 rounded-lg border transition-colors ${compared
+                        ? 'bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100'
+                        : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                        }`}
+                >
+                    <ArrowLeftRight size={14} />
+                    {compared ? 'Added to Compare ✓' : 'Add to Compare'}
+                </button>
 
                 {/* ═══════════════════════════════════════════════════════
                     2. SAFETY

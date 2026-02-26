@@ -1,12 +1,16 @@
 /**
  * PropertyCard — summary card for search results.
  * Supports hover highlighting for bidirectional card↔map interaction.
+ * Optional compare checkbox for side-by-side comparison workflow.
  *
  * @param {{
  *   property: object,
  *   isHighlighted?: boolean,
  *   onMouseEnter?: () => void,
  *   onMouseLeave?: () => void,
+ *   showCompare?: boolean,
+ *   isCompared?: boolean,
+ *   onToggleCompare?: (uprn: string) => void,
  * }} props
  */
 import { Link } from 'react-router-dom'
@@ -24,6 +28,9 @@ export default function PropertyCard({
     isHighlighted = false,
     onMouseEnter,
     onMouseLeave,
+    showCompare = false,
+    isCompared = false,
+    onToggleCompare,
 }) {
     const {
         uprn,
@@ -42,48 +49,78 @@ export default function PropertyCard({
     const distLabel = formatDistance(distance_m)
 
     return (
-        <Link
-            to={`/property/${uprn}`}
-            className={`block border rounded-xl p-4 transition-all duration-200 ${isHighlighted
-                    ? 'border-indigo-400 ring-2 ring-indigo-100 shadow-md'
-                    : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
+        <div
+            className={`relative border rounded-xl p-4 transition-all duration-200 ${isHighlighted
+                ? 'border-indigo-400 ring-2 ring-indigo-100 shadow-md'
+                : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
                 }`}
             onMouseEnter={onMouseEnter}
             onMouseLeave={onMouseLeave}
         >
-            {/* Header row */}
-            <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                    <p className="text-sm font-medium text-[#0A0A0A] leading-tight truncate">
-                        {address}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                        {postcode} · {property_type || 'Property'}
-                    </p>
+            {/* Compare checkbox */}
+            {showCompare && (
+                <button
+                    onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        onToggleCompare?.(uprn)
+                    }}
+                    className={`absolute top-3 right-3 z-10 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${isCompared
+                            ? 'bg-indigo-600 border-indigo-600 text-white'
+                            : 'border-gray-300 hover:border-indigo-400 bg-white'
+                        }`}
+                    title={isCompared ? 'Remove from compare' : 'Add to compare'}
+                >
+                    {isCompared && (
+                        <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                            <path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                    )}
+                </button>
+            )}
+
+            <Link to={`/property/${uprn}`} className="block">
+                {/* Header row */}
+                <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 pr-6">
+                        <p className="text-sm font-medium text-[#0A0A0A] leading-tight truncate">
+                            {address}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                            {postcode} · {property_type || 'Property'}
+                        </p>
+                    </div>
+                    {distLabel && !showCompare && (
+                        <span className="flex-shrink-0 text-[10px] font-medium text-indigo-600 bg-indigo-50 rounded-full px-2 py-0.5">
+                            {distLabel}
+                        </span>
+                    )}
                 </div>
-                {distLabel && (
-                    <span className="flex-shrink-0 text-[10px] font-medium text-indigo-600 bg-indigo-50 rounded-full px-2 py-0.5">
-                        {distLabel}
+
+                {/* Score row */}
+                <div className="border-t border-gray-100 mt-3 pt-3 flex flex-wrap gap-3">
+                    <ScoreBadge score={fairness_score} label="Fair Rent" />
+                    <ScoreBadge score={safety_score} label="Safety" />
+                    <HMOBadge status={hmo_status || 'not_found'} />
+                </div>
+
+                {/* Footer */}
+                <div className="border-t border-gray-100 mt-3 pt-3 flex items-center justify-between">
+                    <span className="text-xs text-gray-500">
+                        {num_rooms ? `${num_rooms} bed` : '—'} ·{' '}
+                        {floor_area_m2 ? `${floor_area_m2}m²` : '—'} ·{' '}
+                        EPC: {energy_rating || '—'}
                     </span>
-                )}
-            </div>
+                    <span className="text-xs font-medium text-indigo-600">View →</span>
+                </div>
+            </Link>
 
-            {/* Score row */}
-            <div className="border-t border-gray-100 mt-3 pt-3 flex flex-wrap gap-3">
-                <ScoreBadge score={fairness_score} label="Fair Rent" />
-                <ScoreBadge score={safety_score} label="Safety" />
-                <HMOBadge status={hmo_status || 'not_found'} />
-            </div>
-
-            {/* Footer */}
-            <div className="border-t border-gray-100 mt-3 pt-3 flex items-center justify-between">
-                <span className="text-xs text-gray-500">
-                    {num_rooms ? `${num_rooms} bed` : '—'} ·{' '}
-                    {floor_area_m2 ? `${floor_area_m2}m²` : '—'} ·{' '}
-                    EPC: {energy_rating || '—'}
+            {/* Distance badge below when compare is shown */}
+            {distLabel && showCompare && (
+                <span className="absolute bottom-3 right-3 text-[10px] font-medium text-indigo-600 bg-indigo-50 rounded-full px-2 py-0.5">
+                    {distLabel}
                 </span>
-                <span className="text-xs font-medium text-indigo-600">View →</span>
-            </div>
-        </Link>
+            )}
+        </div>
     )
 }

@@ -12,6 +12,7 @@ import React, { Suspense, Component } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from './hooks/useAuth'
 import { SearchProvider } from './hooks/useSearch'
+import { CompareProvider } from './hooks/useCompare'
 import Home from './pages/Home'
 import NotFound from './pages/NotFound'
 import Footer from './components/Footer'
@@ -88,29 +89,31 @@ export default function App() {
     return (
         <AuthProvider>
             <SearchProvider>
-                <BrowserRouter>
-                    <div className="flex flex-col min-h-screen">
-                        <ErrorBoundary>
-                            <Suspense fallback={<RouteLoader />}>
-                                <div className="flex-1">
-                                    <Routes>
-                                        <Route path="/" element={<Home />} />
-                                        <Route path="/search" element={<SearchResults />} />
-                                        <Route path="/property/:uprn" element={<PropertyDetail />} />
-                                        <Route path="/compare" element={<CompareProperties />} />
-                                        <Route path="/about" element={<About />} />
-                                        <Route path="/login" element={<Login />} />
-                                        <Route path="/register" element={<Register />} />
-                                        <Route path="/rights" element={<RightsGuide />} />
-                                        <Route path="/admin" element={<AdminDashboard />} />
-                                        <Route path="*" element={<NotFound />} />
-                                    </Routes>
-                                </div>
-                            </Suspense>
-                        </ErrorBoundary>
-                        <Footer />
-                    </div>
-                </BrowserRouter>
+                <CompareProvider>
+                    <BrowserRouter>
+                        <div className="flex flex-col min-h-screen">
+                            <ErrorBoundary>
+                                <Suspense fallback={<RouteLoader />}>
+                                    <div className="flex-1">
+                                        <Routes>
+                                            <Route path="/" element={<Home />} />
+                                            <Route path="/search" element={<SearchResults />} />
+                                            <Route path="/property/:uprn" element={<PropertyDetail />} />
+                                            <Route path="/compare" element={<CompareProperties />} />
+                                            <Route path="/about" element={<About />} />
+                                            <Route path="/login" element={<Login />} />
+                                            <Route path="/register" element={<Register />} />
+                                            <Route path="/rights" element={<RightsGuide />} />
+                                            <Route path="/admin" element={<AdminDashboard />} />
+                                            <Route path="*" element={<NotFound />} />
+                                        </Routes>
+                                    </div>
+                                </Suspense>
+                            </ErrorBoundary>
+                            <Footer />
+                        </div>
+                    </BrowserRouter>
+                </CompareProvider>
             </SearchProvider>
         </AuthProvider>
     )

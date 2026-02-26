@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd \"/Users/ajinkyabhuse/Downloads/Aj Projects/surreynest\" && docker-compose up -d 2>&1\\\\)",
+      "Bash(cd \"/Users/ajinkyabhuse/Downloads/Aj Projects/surreynest/frontend\" && npm run dev 2>&1)",
+      "Bash(cd \"/Users/ajinkyabhuse/Downloads/Aj Projects/surreynest\" && docker-compose restart backend 2>&1)",
+      "Bash(sleep 5:*)"
+    ]
+  }
+}
