@@ -87,7 +87,6 @@ async def check_hmo_status(
         "postcode": hmo.postcode,
         "licence_number": hmo.licence_number,
         "max_occupants": hmo.max_occupants,
-        "licence_holder": hmo.licence_holder,
         "expiry_date": str(hmo.expiry_date) if hmo.expiry_date else None,
         "is_active": hmo.is_active,
     }

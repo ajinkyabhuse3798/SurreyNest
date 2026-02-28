@@ -11,6 +11,7 @@ from typing import Dict, List, Optional, Tuple
 from sqlalchemy import func, text
 from sqlalchemy.orm import Session
 
+from app.models.flood_risk import FloodRisk
 from app.models.hmo_record import HmoRecord
 from app.models.property import Property
 from app.models.review import Review
@@ -84,7 +85,7 @@ def search_properties(
 
     search_sql = text("""
         SELECT uprn, address, postcode, property_type, floor_area_m2,
-               num_rooms, energy_rating, lat, lng,
+               num_rooms, energy_rating, tenure, lat, lng,
                ST_Distance(
                    ST_SetSRID(ST_Point(lng, lat), 4326)::geography,
                    ST_SetSRID(ST_Point(:search_lng, :search_lat), 4326)::geography
@@ -154,6 +155,7 @@ def search_properties(
             "safety_score": safety_score,
             "fairness_score": None,
             "hmo_status": hmo_status,
+            "tenure": row.tenure,
         })
 
     pages = math.ceil(total / per_page) if total > 0 else 0
@@ -244,6 +246,31 @@ def get_property_detail(uprn: str, db: Session) -> Optional[Dict]:
             "computed_at": rent_pred["computed_at"],
         }
 
+    # ── Flood risk ────────────────────────────────────────────────────────
+    flood_data = None
+    try:
+        flood_record = (
+            db.query(FloodRisk)
+            .filter(FloodRisk.postcode == prop.postcode)
+            .filter(FloodRisk.area_code != "NONE")
+            .order_by(FloodRisk.distance_km.asc().nullslast())
+            .first()
+        )
+        if flood_record:
+            flood_data = {
+                "area_code": flood_record.area_code,
+                "label": flood_record.label,
+                "description": flood_record.description,
+                "river_or_sea": flood_record.river_or_sea,
+                "distance_km": flood_record.distance_km,
+                "current_severity": flood_record.current_severity,
+                "severity_label": flood_record.severity_label,
+                "message": flood_record.message,
+            }
+    except Exception:
+        # Table may not exist yet (migration not run) — gracefully skip
+        logger.debug("Flood risk query failed — table may not exist yet", exc_info=True)
+
     return {
         "uprn": prop.uprn,
         "address": prop.address,
@@ -257,8 +284,10 @@ def get_property_detail(uprn: str, db: Session) -> Optional[Dict]:
         "epc_date": prop.epc_date,
         "lat": prop.lat,
         "lng": prop.lng,
+        "tenure": prop.tenure,
         "hmo": hmo_data,
         "reviews": review_data,
         "safety_score": safety_score_val,
         "rent_prediction": rent_pred_data,
+        "flood_risk": flood_data,
     }

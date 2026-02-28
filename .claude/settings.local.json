@@ -4,7 +4,14 @@
       "Bash(cd \"/Users/ajinkyabhuse/Downloads/Aj Projects/surreynest\" && docker-compose up -d 2>&1\\\\)",
       "Bash(cd \"/Users/ajinkyabhuse/Downloads/Aj Projects/surreynest/frontend\" && npm run dev 2>&1)",
       "Bash(cd \"/Users/ajinkyabhuse/Downloads/Aj Projects/surreynest\" && docker-compose restart backend 2>&1)",
-      "Bash(sleep 5:*)"
+      "Bash(sleep 5:*)",
+      "Bash(docker ps:*)",
+      "Bash(docker exec:*)",
+      "Bash(docker restart:*)",
+      "Bash(head:*)",
+      "Bash(curl -s http://localhost:5173)",
+      "Bash(curl:*)",
+      "Bash(echo API docs served \\(HTML\\):*)"
     ]
   }
 }

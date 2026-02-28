@@ -5,10 +5,10 @@
 
 ---
 
-## Current Phase: Phase 3 — FastAPI Backend
+## Current Phase: Phase 6 — New Data Sources
 
-**Last updated:** 2026-02-22
-**Session summary:** Updated CLAUDE.md, README.md, docs/progress.md to reflect Phase 1 + Phase 2 complete. Phase 3 starting now — build FastAPI backend in the order listed below.
+**Last updated:** 2026-02-28
+**Session summary:** Completed Phase 5 — Scheduler. Registered 4 APScheduler cron jobs (crime nightly, HMO weekly, EPC monthly, land registry monthly). Added admin pipeline status + manual trigger endpoints. Updated CLAUDE.md and README.md.
 
 ---
 
@@ -18,11 +18,11 @@
 |-------|--------|-------|
 | Phase 1: Data Pipelines | ✅ Done | EPC + HMO + crime data in PostgreSQL |
 | Phase 2: ML Model | ✅ Done | rent_model_v1.pkl trained and saved |
-| Phase 3: FastAPI Backend | 🔄 In progress | See detailed checklist below |
-| Phase 4: React Frontend | ⬜ Not started | Depends on Phase 3 |
-| Phase 5: Scheduler | ⬜ Not started | APScheduler nightly jobs |
+| Phase 3: FastAPI Backend | ✅ Done | All routers, services, schemas, tests passing |
+| Phase 4: React Frontend | ✅ Done | Stitch design integration complete |
+| Phase 5: Scheduler | ✅ Done | APScheduler cron jobs + admin endpoints |
 | Phase 6: New Data Sources | ⬜ Not started | Flood + VOA pipelines |
-| Phase 7: Testing | ⬜ Not started | Build tests alongside Phase 3 |
+| Phase 7: Testing | ⬜ Not started | Frontend tests, E2E |
 | Phase 8: Deployment | ⬜ Not started | Railway + Vercel |
 
 Status key: ⬜ Not started | 🔄 In progress | ✅ Done | ❌ Blocked
@@ -210,15 +210,16 @@ Build only after Phase 3 backend endpoints are verified in `/docs`.
 
 ---
 
-## ⬜ Phase 5 — Scheduler
+## ✅ Phase 5 — Scheduler
 
-- [ ] `app/data_pipelines/scheduler.py`
-  - [ ] APScheduler AsyncIOScheduler
-  - [ ] SQLAlchemyJobStore (persists jobs through restarts)
-  - [ ] Jobs: crime (nightly 3am), HMO (weekly Mon 2am), EPC (monthly 1st 2am), Land Registry (monthly 1st 3am)
-  - [ ] Each job: write `pipeline_runs` record at start, update at end
-  - [ ] Start in FastAPI lifespan (already wired in main.py)
-- [ ] `GET /api/admin/pipelines/status` — last run per pipeline (admin only)
+- [x] `app/data_pipelines/scheduler.py`
+  - [x] APScheduler AsyncIOScheduler with CronTrigger
+  - [x] Jobs: crime (nightly 3am), HMO (weekly Mon 2am), EPC (monthly 1st 2am), Land Registry (monthly 1st 3am)
+  - [x] Each job: wraps `run_pipeline_with_tracking` → writes `pipeline_runs` record
+  - [x] ThreadPoolExecutor to run sync pipelines off async event loop
+  - [x] Start in FastAPI lifespan (wired in main.py)
+- [x] `GET /api/admin/pipelines/status` — last run per pipeline (admin only)
+- [x] `POST /api/admin/pipelines/{name}/trigger` — manual trigger (admin only)
 
 ---
 
@@ -285,29 +286,22 @@ See `docs/deployment.md` for full instructions.
 *Always fill this in before ending a session:*
 
 ```
-Session 2 — 2026-02-22
+Session 3 — 2026-02-28
 Last thing done:
-  - Rewrote CLAUDE.md to be precise about actual codebase state
-  - Rewrote README.md to match real build status
-  - Rewrote progress.md with Phase 3 detailed checklist
-  - Fixed all column name references to match real SQLAlchemy models:
-    floor_area_m2 (not total_floor_area), num_rooms (not number_habitable_rooms)
-    hmo_records table (not hmo_licences), raw_address (not address)
+  - Completed Phase 5 (Scheduler)
+  - Created scheduler.py with 4 CronTrigger jobs
+  - Created pipelines.py admin router (GET status + POST trigger)
+  - Modified main.py to wire register_jobs() and mount router
+  - Also completed Stitch design integration for frontend (Phase 4)
 
 Next step for next session:
-  1. Enter plan mode for Phase 3 Step 3.1 — Pydantic schemas
-  2. Build all 5 schema files (no DB dependencies, safe starting point)
-  3. Then Step 3.2 — auth_service.py
-  4. Work down the Phase 3 checklist in order
+  1. Phase 7 — Testing: add frontend Vitest tests + E2E flow
+  2. Phase 8 — Deployment: Railway backend + Vercel frontend
+  3. Phase 6 — New Data Sources: flood risk + VOA rent bands (nice-to-have)
 
 Gotchas to remember:
-  - hmo_records table, NOT hmo_licences (common mistake)
-  - floor_area_m2 column, NOT total_floor_area
-  - num_rooms column, NOT number_habitable_rooms
-  - Fairness score needs actual_rent provided by user in the request
-    (we don't store asking_price — user enters what they've been quoted)
-  - Reviews: is_moderated=False by default, not shown until admin approves
-  - Soft delete only: set is_flagged=True, never DELETE FROM reviews
-  - PostGIS GIST index already exists from initial migration — don't recreate
-  - alembic.ini sqlalchemy.url is blank by design — env.py overrides it
+  - APScheduler is 3.x (3.10.4), NOT 4.x — CronTrigger not AsyncTrigger
+  - Pipeline jobs run in ThreadPoolExecutor (max_workers=1) to avoid blocking
+  - Admin endpoints require JWT with role='admin'
+  - Pipelines already write to pipeline_runs table via run_pipeline_with_tracking
 ```

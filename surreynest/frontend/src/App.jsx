@@ -26,6 +26,7 @@ const Login = React.lazy(() => import('./pages/Login'))
 const Register = React.lazy(() => import('./pages/Register'))
 const RightsGuide = React.lazy(() => import('./pages/RightsGuide'))
 const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard'))
+const CheckListing = React.lazy(() => import('./pages/CheckListing'))
 
 // ── Route-level loading spinner ──────────────────────────────────────────────
 function RouteLoader() {
@@ -101,6 +102,7 @@ export default function App() {
                                             <Route path="/property/:uprn" element={<PropertyDetail />} />
                                             <Route path="/compare" element={<CompareProperties />} />
                                             <Route path="/about" element={<About />} />
+                                            <Route path="/check-listing" element={<CheckListing />} />
                                             <Route path="/login" element={<Login />} />
                                             <Route path="/register" element={<Register />} />
                                             <Route path="/rights" element={<RightsGuide />} />

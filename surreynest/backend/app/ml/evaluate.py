@@ -28,7 +28,9 @@ from app.ml.train import (
     FEATURES_PATH,
     MODEL_PATH,
     MODEL_VERSION,
+    VOA_PATH,
     compute_temporary_target,
+    compute_voa_target,
     get_feature_columns,
 )
 
@@ -497,7 +499,7 @@ def run_evaluation() -> None:
     logger.info("Loaded feature matrix: shape=%s", df.shape)
 
     # ── Compute target ───────────────────────────────────────────────────
-    target = compute_temporary_target(df)
+    target = compute_voa_target(df) if VOA_PATH.exists() else compute_temporary_target(df)
     feature_cols = get_feature_columns(df)
     X = df[feature_cols].copy()
     y = target

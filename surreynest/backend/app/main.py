@@ -52,10 +52,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         )
 
     # ── Start APScheduler ─────────────────────────────────────────────────
+    from app.data_pipelines.scheduler import register_jobs
+
     scheduler = AsyncIOScheduler()
     scheduler.start()
+    register_jobs(scheduler)
     app.state.scheduler = scheduler
-    logger.info("APScheduler started (jobs will be added in Phase 5)")
+    logger.info("APScheduler started with %d jobs", len(scheduler.get_jobs()))
 
     logger.info("Startup complete")
 
@@ -91,13 +94,15 @@ app.add_middleware(
 )
 
 # ── Import and mount routers ─────────────────────────────────────────────────
-from app.routers import auth, hmo, properties, reviews, scores  # noqa: E402
+from app.routers import auth, hmo, listings, pipelines, properties, reviews, scores  # noqa: E402
 
 app.include_router(auth.router, prefix="/api", tags=["Auth"])
 app.include_router(properties.router, prefix="/api", tags=["Properties"])
 app.include_router(hmo.router, prefix="/api", tags=["HMO"])
 app.include_router(scores.router, prefix="/api", tags=["Scores"])
 app.include_router(reviews.router, prefix="/api", tags=["Reviews"])
+app.include_router(pipelines.router, prefix="/api", tags=["Pipelines (Admin)"])
+app.include_router(listings.router, prefix="/api", tags=["Listings"])
 
 
 # ── Global exception handler ─────────────────────────────────────────────────

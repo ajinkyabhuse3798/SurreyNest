@@ -263,9 +263,18 @@ export default function PropertyDetail() {
                 <h1 className="text-2xl font-bold text-gray-900 mt-3 md:text-3xl leading-tight">
                     {p.address}
                 </h1>
-                <p className="text-sm text-gray-500 mt-1">
-                    {p.postcode} · {p.property_type || 'Property'}
-                    {p.built_form ? ` · ${p.built_form}` : ''}
+                <p className="text-sm text-gray-500 mt-1 flex items-center gap-2">
+                    <span>{p.postcode} · {p.property_type || 'Property'}{p.built_form ? ` · ${p.built_form}` : ''}</span>
+                    {p.tenure && (
+                        <span className={`inline-flex items-center text-[10px] font-medium rounded px-1.5 py-0.5 leading-none ${p.tenure.includes('rental') || p.tenure.includes('rented')
+                            ? 'bg-emerald-50 text-emerald-700'
+                            : p.tenure.includes('owner')
+                                ? 'bg-gray-100 text-gray-500'
+                                : 'bg-gray-50 text-gray-400'
+                            }`}>
+                            {p.tenure.includes('rental') || p.tenure.includes('rented') ? 'Rental' : p.tenure.includes('owner') ? 'Owner' : 'Unknown'}
+                        </span>
+                    )}
                 </p>
 
                 <div className="flex gap-3 mt-5">
@@ -517,12 +526,7 @@ export default function PropertyDetail() {
                                             <p className="font-medium text-gray-700">{hmo.licence_number || p.hmo?.licence_number}</p>
                                         </div>
                                     )}
-                                    {hmo.licence_holder && (
-                                        <div className="bg-gray-50 rounded-lg px-3 py-2">
-                                            <span className="text-gray-400">Licence holder</span>
-                                            <p className="font-medium text-gray-700">{hmo.licence_holder}</p>
-                                        </div>
-                                    )}
+
                                     {(hmo.max_occupants || p.hmo?.max_occupants) && (
                                         <div className="bg-gray-50 rounded-lg px-3 py-2">
                                             <span className="text-gray-400">Max occupants</span>
@@ -599,6 +603,68 @@ export default function PropertyDetail() {
                         )}
                     </Section>
                 )}
+
+                {/* ═══════════════════════════════════════════════════════
+                    6b. FLOOD RISK
+                ═══════════════════════════════════════════════════════ */}
+                <Section id="flood-risk" icon={Droplets} title="Flood Risk">
+                    {p.flood_risk ? (
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-3">
+                                {p.flood_risk.current_severity ? (
+                                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${p.flood_risk.current_severity === 1 ? 'bg-red-100 text-red-700' :
+                                        p.flood_risk.current_severity === 2 ? 'bg-orange-100 text-orange-700' :
+                                            p.flood_risk.current_severity === 3 ? 'bg-yellow-100 text-yellow-700' :
+                                                'bg-green-100 text-green-700'
+                                        }`}>
+                                        <AlertTriangle size={12} />
+                                        {p.flood_risk.severity_label}
+                                    </span>
+                                ) : (
+                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+                                        <CheckCircle2 size={12} />
+                                        No Active Warnings
+                                    </span>
+                                )}
+                            </div>
+
+                            <div className="bg-gray-50 rounded-xl p-4 space-y-2">
+                                <h4 className="text-sm font-semibold text-gray-800">
+                                    Nearest Flood Area
+                                </h4>
+                                <p className="text-sm text-gray-700">{p.flood_risk.label}</p>
+                                {p.flood_risk.description && (
+                                    <p className="text-xs text-gray-500">{p.flood_risk.description}</p>
+                                )}
+                                <div className="flex flex-wrap gap-3 pt-1">
+                                    {p.flood_risk.river_or_sea && (
+                                        <span className="inline-flex items-center gap-1 text-xs text-blue-600 bg-blue-50 rounded px-2 py-0.5">
+                                            <Droplets size={12} />
+                                            {p.flood_risk.river_or_sea}
+                                        </span>
+                                    )}
+                                    {p.flood_risk.distance_km != null && (
+                                        <span className="text-xs text-gray-500">
+                                            {p.flood_risk.distance_km.toFixed(1)} km away
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+
+                            {p.flood_risk.message && (
+                                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                                    <p className="text-xs text-amber-800">{p.flood_risk.message}</p>
+                                </div>
+                            )}
+
+                            <p className="text-[10px] text-gray-400">
+                                Data: Environment Agency flood and river level data (Open Government Licence v3)
+                            </p>
+                        </div>
+                    ) : (
+                        <p className="text-sm text-gray-400">No flood risk data available for this area.</p>
+                    )}
+                </Section>
 
                 {/* ═══════════════════════════════════════════════════════
                     7. REVIEWS

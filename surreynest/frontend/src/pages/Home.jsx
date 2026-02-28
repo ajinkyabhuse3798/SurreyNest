@@ -11,7 +11,12 @@
 import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, useInView } from 'framer-motion'
-import { Search, BarChart3, Shield, Home as HomeIcon, MapPin, CheckCircle2, ArrowRight, Loader2 } from 'lucide-react'
+import {
+    Search, BarChart3, Shield, Home as HomeIcon, MapPin, CheckCircle2, ArrowRight, Loader2,
+    GraduationCap, Scale, Star,
+} from 'lucide-react'
+import Navbar from '../components/Navbar'
+import SearchAutocomplete from '../components/SearchAutocomplete'
 
 // UK postcode regex — allows optional space between outward and inward parts
 const POSTCODE_RE = /^[A-Z]{1,2}\d[0-9A-Z]?\s*\d[A-Z]{2}$/i
@@ -81,11 +86,10 @@ export default function Home() {
     const [error, setError] = useState('')
     const [loading, setLoading] = useState(false)
 
-    function handleSearch(e) {
-        e.preventDefault()
+    function handleSearch(postcodeValue) {
         setError('')
 
-        const trimmed = postcode.trim()
+        const trimmed = (postcodeValue || postcode).trim()
         if (!trimmed) {
             setError('Please enter a postcode.')
             return
@@ -95,8 +99,8 @@ export default function Home() {
             return
         }
 
+        setPostcode(trimmed)
         setLoading(true)
-        // Small delay for visual feedback, then navigate
         setTimeout(() => {
             navigate(`/search?postcode=${encodeURIComponent(trimmed)}&radius=${radius}`)
         }, 300)
@@ -141,29 +145,19 @@ export default function Home() {
 
                     {/* ── Search card ──────────────────────────────────────── */}
                     <motion.form
-                        onSubmit={handleSearch}
+                        onSubmit={(e) => { e.preventDefault(); handleSearch() }}
                         initial={{ opacity: 0, y: 30 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.7, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
                         className="bg-white/80 backdrop-blur-md rounded-2xl border border-white/60 shadow-xl shadow-indigo-500/5 p-5 md:p-6 max-w-2xl mx-auto"
                     >
                         <div className="flex flex-col gap-3 md:flex-row">
-                            <div className="relative flex-1">
-                                <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-                                <input
-                                    type="text"
-                                    value={postcode}
-                                    onChange={(e) => {
-                                        setPostcode(e.target.value)
-                                        if (error) setError('')
-                                    }}
-                                    placeholder="Enter postcode e.g. GU2 7XH"
-                                    className={`w-full pl-10 pr-4 py-3 border rounded-xl text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 ${error ? 'border-red-300 bg-red-50/50' : 'border-gray-200 bg-white'
-                                        }`}
-                                    aria-label="UK postcode"
-                                    aria-invalid={!!error}
-                                />
-                            </div>
+                            <SearchAutocomplete
+                                onPostcodeSearch={handleSearch}
+                                defaultValue={postcode}
+                                placeholder="Search by postcode or address..."
+                                className="flex-1"
+                            />
 
                             <select
                                 value={radius}

@@ -1,10 +1,11 @@
-"""Property routes: GET /properties, GET /properties/{uprn}.
+"""Property routes: GET /properties, GET /properties/{uprn}, GET /properties/suggest.
 
 Thin route layer — delegates to property_service for all business logic.
 """
 
 import logging
 import re
+from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from slowapi import Limiter
@@ -13,7 +14,12 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database import get_db
-from app.schemas.property import PropertyDetail, PropertySearchResponse
+from app.models.property import Property
+from app.schemas.property import (
+    PropertyDetail,
+    PropertySearchResponse,
+    PropertySuggestion,
+)
 from app.services import property_service
 
 logger = logging.getLogger(__name__)
@@ -28,6 +34,43 @@ POSTCODE_RE = re.compile(
     r"^[A-Z]{1,2}[0-9][0-9A-Z]?\s*[0-9][A-Z]{2}$", re.IGNORECASE
 )
 ALLOWED_RADII = {250, 500, 1000, 2000}
+
+
+@router.get(
+    "/properties/suggest",
+    response_model=List[PropertySuggestion],
+    summary="Autocomplete property search",
+)
+@limiter.limit("60/minute")
+async def suggest_properties(
+    request: Request,
+    q: str = Query(..., min_length=2, max_length=100, description="Search query"),
+    limit: int = Query(default=8, ge=1, le=20, description="Max results"),
+    db: Session = Depends(get_db),
+) -> List[PropertySuggestion]:
+    """Return property suggestions matching a partial address or postcode.
+
+    Used by the frontend typeahead/autocomplete component.
+    """
+    query = q.strip()
+    if len(query) < 2:
+        return []
+
+    results = (
+        db.query(Property.uprn, Property.address, Property.postcode)
+        .filter(
+            (Property.address.ilike(f"%{query}%"))
+            | (Property.postcode.ilike(f"%{query}%"))
+        )
+        .order_by(Property.address.asc())
+        .limit(limit)
+        .all()
+    )
+
+    return [
+        PropertySuggestion(uprn=r.uprn, address=r.address, postcode=r.postcode)
+        for r in results
+    ]
 
 
 @router.get(

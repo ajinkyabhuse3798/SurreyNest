@@ -6,6 +6,20 @@ from typing import List, Optional
 from pydantic import BaseModel, Field, field_validator
 
 
+class PropertySuggestion(BaseModel):
+    """Lightweight property suggestion for autocomplete.
+
+    Attributes:
+        uprn: Unique Property Reference Number.
+        address: Full address.
+        postcode: Normalised postcode.
+    """
+
+    uprn: str
+    address: str
+    postcode: str
+
+
 class PropertyResponse(BaseModel):
     """Summary property data returned in search results.
 
@@ -38,6 +52,7 @@ class PropertyResponse(BaseModel):
     safety_score: Optional[float] = None
     fairness_score: Optional[float] = None
     hmo_status: Optional[str] = None
+    tenure: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
@@ -94,6 +109,30 @@ class RentPredictionSummary(BaseModel):
     model_config = {"protected_namespaces": ()}
 
 
+class FloodRiskDetail(BaseModel):
+    """Flood risk data for a property's postcode area.
+
+    Attributes:
+        area_code: EA flood area ID.
+        label: Short area name.
+        description: Full description of the flood area.
+        river_or_sea: Water body name.
+        distance_km: Distance from property to flood area centre.
+        current_severity: Active warning severity (1-4), None if no warning.
+        severity_label: Human readable severity.
+        message: Current warning message.
+    """
+
+    area_code: str
+    label: str
+    description: Optional[str] = None
+    river_or_sea: Optional[str] = None
+    distance_km: Optional[float] = None
+    current_severity: Optional[int] = None
+    severity_label: Optional[str] = None
+    message: Optional[str] = None
+
+
 class PropertyDetail(BaseModel):
     """Full property detail with all associated data.
 
@@ -110,12 +149,14 @@ class PropertyDetail(BaseModel):
     energy_rating: Optional[str] = None
     potential_rating: Optional[str] = None
     epc_date: Optional[date] = None
+    tenure: Optional[str] = None
     lat: Optional[float] = None
     lng: Optional[float] = None
     hmo: HmoDetail
     reviews: ReviewSummary
     safety_score: Optional[float] = None
     rent_prediction: Optional[RentPredictionSummary] = None
+    flood_risk: Optional[FloodRiskDetail] = None
 
     model_config = {"from_attributes": True}
 

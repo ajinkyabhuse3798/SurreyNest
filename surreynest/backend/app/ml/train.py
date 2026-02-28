@@ -15,7 +15,7 @@ Reports MAE, RMSE, R² on test set.
 
 import logging
 from pathlib import Path
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple
 
 import joblib
 import numpy as np
@@ -35,7 +35,8 @@ MODEL_PATH = MODEL_DIR / "rent_model_v1.pkl"
 VOA_PATH = Path(__file__).resolve().parents[2] / "data" / "raw" / "voa_rental_stats_2024.csv"
 
 # ── Model version ────────────────────────────────────────────────────────────
-MODEL_VERSION = "v1.0.0"  # Bumps to v1.1.0 when VOA data is used
+MODEL_VERSION = "v1.0.0"  # MODE A — synthetic target
+MODEL_VERSION_B = "v1.1.0"  # MODE B — real ONS/VOA data from voa_pipeline
 
 # ── VOA Rent Bands (Guildford median weekly rent by bedroom count) ────────────
 # Source: docs/ml-model.md (from VOA Private Rental Market Statistics)
@@ -139,6 +140,130 @@ def compute_temporary_target(df: pd.DataFrame) -> pd.Series:
     return rent.round(2)
 
 
+def load_voa_bands_from_csv() -> Optional[Dict[int, float]]:
+    """Load VOA weekly rent bands from the pipeline-generated slim CSV.
+
+    Reads ``VOA_PATH`` (``data/raw/voa_rental_stats_2024.csv``) which is
+    written by ``voa_pipeline.py``.  The file has two columns:
+    ``bedroom_count`` and ``weekly_rent``.
+
+    Returns:
+        Dict mapping bedroom count → weekly rent (£), or ``None`` if the
+        file is missing or cannot be parsed.
+    """
+    if not VOA_PATH.exists():
+        return None
+    try:
+        df = pd.read_csv(str(VOA_PATH))
+        bands = {
+            int(row["bedroom_count"]): float(row["weekly_rent"])
+            for _, row in df.iterrows()
+        }
+        logger.info("Loaded %d VOA bands from %s: %s", len(bands), VOA_PATH, bands)
+        return bands
+    except Exception:
+        logger.warning(
+            "Failed to load VOA bands from %s", VOA_PATH, exc_info=True
+        )
+        return None
+
+
+def compute_voa_target(df: pd.DataFrame) -> pd.Series:
+    """Compute rent target using real ONS/VOA median bands (MODE B).
+
+    Applies the SAME multiplicative adjustment stack as
+    ``compute_temporary_target`` — floor area, property type, university
+    distance, safety score, area value index, and ±12 % Gaussian noise.
+    The only difference is that the base rent comes from real ONS data
+    rather than the hardcoded ``VOA_RENT_BANDS`` dict.
+
+    Falls back gracefully:
+    - Per-bedroom: if a specific bedroom count is absent from the CSV,
+      uses the nearest available band.
+    - Entirely: if the CSV is missing or unreadable, delegates to
+      ``compute_temporary_target()``.
+
+    Args:
+        df: Feature DataFrame.
+
+    Returns:
+        Series of estimated weekly rents in £, rounded to 2 d.p.
+    """
+    voa_bands = load_voa_bands_from_csv()
+    if voa_bands is None:
+        logger.warning(
+            "VOA bands unavailable — falling back to MODE A (compute_temporary_target)"
+        )
+        return compute_temporary_target(df)
+
+    rng = np.random.RandomState(42)
+    rooms = df["num_rooms"].clip(1, 5).astype(int)
+
+    def _get_base_rent(r: int) -> float:
+        """Return weekly rent for bedroom count r, falling back to nearest band."""
+        if r in voa_bands:
+            return voa_bands[r]
+        available = sorted(voa_bands.keys())
+        if not available:
+            return float(VOA_RENT_BANDS.get(r, 230))
+        closest = min(available, key=lambda k: abs(k - r))
+        logger.warning(
+            "VOA band missing for %d beds — using %d beds (£%.2f/week)",
+            r,
+            closest,
+            voa_bands[closest],
+        )
+        return voa_bands[closest]
+
+    base_rent = rooms.map(_get_base_rent)
+
+    # ── Same adjustment stack as compute_temporary_target ────────────────
+
+    # Floor area adjustment (±20 % vs median for bedroom count)
+    median_area = rooms.map(MEDIAN_AREA_BY_ROOMS)
+    area_ratio = (df["floor_area_m2"] - median_area) / median_area
+    area_adj = 1 + 0.20 * area_ratio.clip(-1, 1)
+
+    # Property type adjustment (±5-10 %)
+    type_adj = pd.Series(1.0, index=df.index)
+    for col, mult in PROPERTY_TYPE_MULTIPLIERS.items():
+        if col in df.columns:
+            type_adj = type_adj.where(df[col] != 1, mult)
+
+    # University distance adjustment (±10 %)
+    if "distance_to_uni_km" in df.columns:
+        uni_adj = (1.10 - 0.02 * df["distance_to_uni_km"]).clip(0.90, 1.10)
+    else:
+        uni_adj = 1.0
+
+    # Safety score adjustment (±5 %)
+    if "safety_score" in df.columns:
+        safety_adj = 1 + 0.05 * (df["safety_score"] - 50) / 50
+    else:
+        safety_adj = 1.0
+
+    # Area value index adjustment (±10 %)
+    if "area_value_index" in df.columns:
+        avi_adj = 1 + 0.10 * (df["area_value_index"] - 0.5)
+    else:
+        avi_adj = 1.0
+
+    rent = base_rent * area_adj * type_adj * uni_adj * safety_adj * avi_adj
+
+    # Add realistic noise (±12 % Gaussian)
+    noise = 1 + rng.normal(0, TARGET_NOISE_STD, size=len(df))
+    rent = rent * noise
+    rent = rent.clip(lower=50, upper=900)
+
+    logger.info(
+        "VOA target (MODE B): mean=£%.1f  median=£%.1f  std=£%.1f",
+        rent.mean(),
+        rent.median(),
+        rent.std(),
+    )
+    return rent.round(2)
+
+
 def get_feature_columns(df: pd.DataFrame) -> list:
     """Get the list of numeric feature columns for training.
 
@@ -183,14 +308,18 @@ def train_model(
         Tuple of (trained pipeline, metrics dict).
     """
     # ── Compute target ───────────────────────────────────────────────────
-    if mode == "B" and VOA_PATH.exists():
-        logger.info("MODE B: Loading VOA rental statistics")
-        # TODO: Implement MODE B when voa_rental_stats_2024.csv is available
-        # Read VOA data, map properties to VOA medians by num_rooms and area
-        # Replace TEMPORARY_TARGET with real VOA medians
-        # For now, fall back to MODE A
-        logger.warning("VOA data loading not yet implemented — falling back to MODE A")
-        target = compute_temporary_target(df)
+    effective_version = (
+        MODEL_VERSION_B if (mode == "B" and VOA_PATH.exists()) else MODEL_VERSION
+    )
+    if mode == "B":
+        if VOA_PATH.exists():
+            logger.info(
+                "MODE B: Using real ONS/VOA rent bands (version %s)", MODEL_VERSION_B
+            )
+            target = compute_voa_target(df)
+        else:
+            logger.warning("MODE B: VOA_PATH not found — falling back to MODE A")
+            target = compute_temporary_target(df)
     else:
         logger.info("MODE A: Using TEMPORARY_TARGET (rule-based rent estimate)")
         target = compute_temporary_target(df)
@@ -257,7 +386,7 @@ def train_model(
         "train_size": len(X_train),
         "test_size": len(X_test),
         "n_features": len(feature_cols),
-        "model_version": MODEL_VERSION,
+        "model_version": effective_version,
         "mode": mode,
     }
 
@@ -329,8 +458,14 @@ def run_training(mode: str = "A") -> Dict[str, float]:
     # Train
     pipeline, metrics, feature_cols = train_model(df, mode=mode)
 
-    # Save
-    save_model(pipeline, feature_cols)
+    # Save versioned archive (e.g. rent_model_v1.1.0.pkl)
+    effective_version = metrics["model_version"]
+    versioned_path = MODEL_DIR / f"rent_model_{effective_version}.pkl"
+    save_model(pipeline, feature_cols, versioned_path)
+
+    # Also save to the fixed MODEL_PATH so evaluate.py / predict.py always find it
+    if versioned_path != MODEL_PATH:
+        save_model(pipeline, feature_cols, MODEL_PATH)
 
     return metrics
 

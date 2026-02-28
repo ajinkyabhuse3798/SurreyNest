@@ -129,10 +129,9 @@ def clean_epc_data(raw_path: Optional[Path] = None) -> pd.DataFrame:
     df = df[df["UPRN"].str.len() > 0]
     logger.info("After UPRN filter: %d rows", len(df))
 
-    # ── Filter: rental tenure ────────────────────────────────────────────
+    # ── Clean tenure (keep all types — no longer filter to rental only) ──
     df["TENURE"] = df["TENURE"].fillna("").str.lower()
-    df = df[df["TENURE"].str.contains("rental", case=False, na=False)]
-    logger.info("After rental tenure filter: %d rows", len(df))
+    logger.info("Tenure cleaned: %d rows (all tenure types kept)", len(df))
 
     # ── Filter: post-2018 lodgement date ─────────────────────────────────
     df["LODGEMENT_DATE"] = pd.to_datetime(df["LODGEMENT_DATE"], errors="coerce")
@@ -209,7 +208,7 @@ def clean_epc_data(raw_path: Optional[Path] = None) -> pd.DataFrame:
             "energy_rating": df["CURRENT_ENERGY_RATING"].fillna("").str.strip().str.upper(),
             "potential_rating": df["POTENTIAL_ENERGY_RATING"].fillna("").str.strip().str.upper(),
             "epc_date": df["LODGEMENT_DATE"].dt.date,
-            "tenure": df["TENURE"],
+            "tenure": df["TENURE"].str[:100],
         }
     )
 

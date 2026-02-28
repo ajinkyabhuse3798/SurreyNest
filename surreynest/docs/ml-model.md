@@ -82,7 +82,14 @@ Source: VOA Private Rental Market Statistics (quarterly)
 - This is coarse but sufficient for MVP fairness scoring
 
 ```python
-# Approximate VOA bands for Guildford (update from latest VOA data each quarter)
+# Fallback VOA bands used only when the VOA pipeline has not yet run (MODE A).
+# When voa_pipeline.py has been executed, train.py and evaluate.py switch to
+# MODE B automatically: they read real ONS median rents from
+# data/raw/voa_rental_stats_2024.csv (written by the pipeline).
+#
+# Data source: ONS Private Rental Market Summary Statistics
+# Licence: Open Government Licence v3.0 (completely free, no restrictions)
+# MODE A fallback (stale estimates — superseded by pipeline output in MODE B):
 VOA_RENT_BANDS = {
     1: 173,   # £/week median for 1-bed Guildford
     2: 230,   # £/week median for 2-bed

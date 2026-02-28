@@ -44,9 +44,16 @@ export default function PropertyCard({
         safety_score,
         hmo_status,
         distance_m,
+        tenure,
     } = property
 
     const distLabel = formatDistance(distance_m)
+
+    const tenureLabel = tenure?.includes('rental') || tenure?.includes('rented')
+        ? 'Rental'
+        : tenure?.includes('owner')
+            ? 'Owner'
+            : null
 
     return (
         <div
@@ -66,8 +73,8 @@ export default function PropertyCard({
                         onToggleCompare?.(uprn)
                     }}
                     className={`absolute top-3 right-3 z-10 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${isCompared
-                            ? 'bg-indigo-600 border-indigo-600 text-white'
-                            : 'border-gray-300 hover:border-indigo-400 bg-white'
+                        ? 'bg-indigo-600 border-indigo-600 text-white'
+                        : 'border-gray-300 hover:border-indigo-400 bg-white'
                         }`}
                     title={isCompared ? 'Remove from compare' : 'Add to compare'}
                 >
@@ -86,8 +93,16 @@ export default function PropertyCard({
                         <p className="text-sm font-medium text-[#0A0A0A] leading-tight truncate">
                             {address}
                         </p>
-                        <p className="text-xs text-gray-500 mt-0.5">
+                        <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1.5">
                             {postcode} · {property_type || 'Property'}
+                            {tenureLabel && (
+                                <span className={`inline-flex items-center text-[10px] font-medium rounded px-1.5 py-0.5 leading-none ${tenureLabel === 'Rental'
+                                        ? 'bg-emerald-50 text-emerald-700'
+                                        : 'bg-gray-100 text-gray-500'
+                                    }`}>
+                                    {tenureLabel}
+                                </span>
+                            )}
                         </p>
                     </div>
                     {distLabel && !showCompare && (

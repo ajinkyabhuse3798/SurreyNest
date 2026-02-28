@@ -11,6 +11,7 @@ import { useAuth } from '../hooks/useAuth'
 
 const NAV_LINKS = [
     { to: '/search', label: 'Search' },
+    { to: '/check-listing', label: 'Check Listing' },
     { to: '/compare', label: 'Compare' },
     { to: '/rights', label: 'Rights Guide' },
     { to: '/about', label: 'About' },
@@ -48,8 +49,8 @@ export default function Navbar() {
                             key={to}
                             to={to}
                             className={`text-sm px-3 py-2 rounded-lg transition-colors ${isActive(to)
-                                    ? 'text-indigo-600 bg-indigo-50 font-medium'
-                                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                                ? 'text-indigo-600 bg-indigo-50 font-medium'
+                                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                                 }`}
                         >
                             {label}
@@ -124,8 +125,8 @@ export default function Navbar() {
                                     to={to}
                                     onClick={() => setMobileOpen(false)}
                                     className={`block text-sm px-3 py-2.5 rounded-lg transition-colors ${isActive(to)
-                                            ? 'text-indigo-600 bg-indigo-50 font-medium'
-                                            : 'text-gray-600 hover:bg-gray-50'
+                                        ? 'text-indigo-600 bg-indigo-50 font-medium'
+                                        : 'text-gray-600 hover:bg-gray-50'
                                         }`}
                                 >
                                     {label}
