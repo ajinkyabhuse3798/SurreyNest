@@ -27,10 +27,8 @@ from sklearn.model_selection import cross_validate, train_test_split
 from app.ml.train import (
     FEATURES_PATH,
     MODEL_PATH,
-    MODEL_VERSION,
-    VOA_PATH,
-    compute_temporary_target,
-    compute_voa_target,
+    MODEL_VERSION_C,
+    compute_real_target,
     get_feature_columns,
 )
 
@@ -389,7 +387,7 @@ def generate_report(
     """
     lines = [
         "# Model Evaluation Report",
-        f"\n**Model:** rent_model {MODEL_VERSION}",
+        f"\n**Model:** rent_model {MODEL_VERSION_C}",
         f"**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M')}",
         "",
         "---",
@@ -498,8 +496,8 @@ def run_evaluation() -> None:
     df = pd.read_csv(str(FEATURES_PATH))
     logger.info("Loaded feature matrix: shape=%s", df.shape)
 
-    # ── Compute target ───────────────────────────────────────────────────
-    target = compute_voa_target(df) if VOA_PATH.exists() else compute_temporary_target(df)
+    # ── Compute target (MODE C — real Price Paid implied rents) ─────────
+    target = compute_real_target(df)
     feature_cols = get_feature_columns(df)
     X = df[feature_cols].copy()
     y = target

@@ -40,6 +40,24 @@ const TOWN_CENTRE = { lat: 51.2362, lng: -0.5704, label: 'Town Centre', icon: Sh
 const TRAIN_STATION = { lat: 51.2372, lng: -0.5617, label: 'Train Station', icon: TrainFront }
 const KEY_LOCATIONS = [UNI_SURREY, TOWN_CENTRE, TRAIN_STATION]
 
+// Stable Guildford transit facts — hardcoded (no API), update if services change
+const GUILDFORD_TRANSIT_FACTS = [
+    {
+        icon: TrainFront,
+        title: 'Guildford → London Waterloo',
+        detail: 'Direct service ~35 min · every 15–30 min off-peak · no changes',
+        colour: 'text-blue-700',
+        bg: 'bg-blue-50',
+    },
+    {
+        icon: GraduationCap,
+        title: 'Bus to Surrey campus',
+        detail: 'Arriva routes 5 and X1 — town centre to Stag Hill campus',
+        colour: 'text-indigo-700',
+        bg: 'bg-indigo-50',
+    },
+]
+
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 function haversine(lat1, lng1, lat2, lng2) {
@@ -54,6 +72,66 @@ function haversine(lat1, lng1, lat2, lng2) {
 
 function walkingTime(km) {
     return Math.round((km / 5) * 60)
+}
+
+function cyclingTime(km) {
+    return Math.round((km / 15) * 60)
+}
+
+function proximityBadge(km, type) {
+    const thresholds = {
+        uni:     { excellent: 0.8, good: 1.5, moderate: 3.0 },
+        station: { excellent: 0.5, good: 1.2, moderate: 2.5 },
+        town:    { excellent: 0.6, good: 1.5, moderate: 3.0 },
+    }
+    const t = thresholds[type] || thresholds.town
+    if (km <= t.excellent) return { label: 'Excellent', colour: 'bg-green-100 text-green-700' }
+    if (km <= t.good)      return { label: 'Good',      colour: 'bg-blue-100 text-blue-700' }
+    if (km <= t.moderate)  return { label: 'Moderate',  colour: 'bg-amber-100 text-amber-700' }
+    return                        { label: 'Far',        colour: 'bg-red-100 text-red-700' }
+}
+
+function computeRentFactors(p, distances) {
+    const factors = []
+    if (!distances || distances.length === 0) return factors
+
+    const stationDist = distances.find(d => d.label === 'Train Station')
+    const uniDist     = distances.find(d => d.label === 'University of Surrey')
+    const epc         = p.energy_rating?.toUpperCase()
+
+    if (stationDist && stationDist.km <= 0.6) {
+        factors.push({ text: 'Right by the station', positive: true })
+    } else if (stationDist && stationDist.km >= 2.5) {
+        factors.push({ text: 'Far from the station', positive: false })
+    }
+
+    if (uniDist && uniDist.km <= 1.2) {
+        factors.push({ text: 'Walking distance to Surrey', positive: true })
+    } else if (uniDist && uniDist.km >= 3.0) {
+        factors.push({ text: 'Long commute to campus', positive: false })
+    }
+
+    if (epc === 'A' || epc === 'B') {
+        factors.push({ text: 'Excellent EPC — low bills', positive: true })
+    } else if (epc === 'F' || epc === 'G') {
+        factors.push({ text: 'Poor EPC — high bills', positive: false })
+    }
+
+    if (p.safety_score != null && p.safety_score >= 75) {
+        factors.push({ text: 'Very safe area', positive: true })
+    } else if (p.safety_score != null && p.safety_score < 35) {
+        factors.push({ text: 'Higher crime area', positive: false })
+    }
+
+    if (p.property_type === 'Detached') {
+        factors.push({ text: 'Detached — space premium', positive: true })
+    } else if (p.property_type === 'Flat') {
+        factors.push({ text: 'Flat — compact pricing', positive: false })
+    }
+
+    const positive = factors.filter(f => f.positive).slice(0, 2)
+    const negative = factors.filter(f => !f.positive).slice(0, 2)
+    return [...positive, ...negative]
 }
 
 function estimateEnergy(epc) {
@@ -183,9 +261,20 @@ export default function PropertyDetail() {
 
     const distances = useMemo(() => {
         if (!property?.lat || !property?.lng) return []
+        const typeMap = {
+            'University of Surrey': 'uni',
+            'Town Centre': 'town',
+            'Train Station': 'station',
+        }
         return KEY_LOCATIONS.map((loc) => {
             const km = haversine(property.lat, property.lng, loc.lat, loc.lng)
-            return { ...loc, km, walkMin: walkingTime(km) }
+            return {
+                ...loc,
+                km,
+                walkMin: walkingTime(km),
+                cycleMin: cyclingTime(km),
+                proximityType: typeMap[loc.label] || 'town',
+            }
         })
     }, [property])
 
@@ -242,6 +331,7 @@ export default function PropertyDetail() {
     const areaCtx = floorAreaContext(p.floor_area_m2, p.num_rooms)
     const epcCtx = epcImpact(p.energy_rating)
     const hasCoords = p.lat && p.lng
+    const rentFactors = weeklyRent ? computeRentFactors(p, distances) : []
 
     // Use HMO detail from ③ if available, else embedded from ①
     const hmo = hmoDetail?.record || p.hmo || {}
@@ -281,8 +371,8 @@ export default function PropertyDetail() {
                     <StatCard
                         icon={PoundSterling}
                         label="Est. rent"
-                        value={weeklyRent ? `£${Math.round(weeklyRent)}` : '—'}
-                        sub={weeklyRent ? '/week' : 'Not available'}
+                        value={weeklyRent ? `£${Math.round(weeklyRent * 0.92)}–${Math.round(weeklyRent * 1.08)}` : '—'}
+                        sub={weeklyRent ? '/wk range' : 'Not available'}
                     />
                     <StatCard
                         icon={Shield}
@@ -293,7 +383,7 @@ export default function PropertyDetail() {
                     />
                     <StatCard
                         icon={Bed}
-                        label="Bedrooms"
+                        label="Rooms"
                         value={p.num_rooms || '—'}
                         sub={p.floor_area_m2 ? `${p.floor_area_m2}m²` : null}
                         colour="text-gray-700"
@@ -367,21 +457,66 @@ export default function PropertyDetail() {
                 <Section id="cost" icon={PoundSterling} title="What will it cost?">
                     {weeklyRent ? (
                         <div className="space-y-4">
-                            {/* Rent card */}
-                            <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-2xl p-5 sm:p-6">
-                                <p className="text-3xl font-bold text-indigo-600">
-                                    £{Math.round(weeklyRent)}
-                                    <span className="text-base font-normal text-gray-500"> /week</span>
+                            {/* Rent confidence band */}
+                            <div className="rounded-2xl border border-gray-100 p-5 sm:p-6">
+                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+                                    Typical rent range · {p.postcode}
                                 </p>
-                                {monthlyRent && (
-                                    <p className="text-sm text-gray-600 mt-1">
-                                        ≈ <span className="font-semibold">£{monthlyRent}</span> /month
-                                    </p>
-                                )}
-                                <p className="text-xs text-gray-400 mt-2">
-                                    Predicted by our ML model. Actual rent may vary.
+
+                                {/* 3-zone bar */}
+                                <div className="flex rounded-lg overflow-hidden h-12 text-xs font-medium">
+                                    <div className="flex-1 flex flex-col items-center justify-center bg-green-50 text-green-700 border-r-2 border-white">
+                                        <span>Less typical</span>
+                                        <span className="font-bold">&lt;£{Math.round(weeklyRent * 0.92)}/wk</span>
+                                    </div>
+                                    <div className="flex-[2] flex flex-col items-center justify-center bg-indigo-100 text-indigo-800">
+                                        <span>Typical market</span>
+                                        <span className="font-bold">
+                                            £{Math.round(weeklyRent * 0.92)}–£{Math.round(weeklyRent * 1.08)}/wk
+                                        </span>
+                                    </div>
+                                    <div className="flex-1 flex flex-col items-center justify-center bg-amber-50 text-amber-700 border-l-2 border-white">
+                                        <span>More typical</span>
+                                        <span className="font-bold">&gt;£{Math.round(weeklyRent * 1.08)}/wk</span>
+                                    </div>
+                                </div>
+
+                                {/* Monthly range */}
+                                <p className="text-sm text-gray-500 mt-3">
+                                    ≈ <span className="font-semibold text-gray-800">
+                                        £{Math.round(weeklyRent * 0.92 * 52 / 12)}–£{Math.round(weeklyRent * 1.08 * 52 / 12)}
+                                    </span> /month typical range
+                                </p>
+                                <p className="text-xs text-gray-400 mt-1">
+                                    Range = ±8% of ML estimate (based on model accuracy). Actual rent varies by condition, floor, and landlord.
                                 </p>
                             </div>
+
+                            {/* What drives this estimate */}
+                            {rentFactors.length > 0 && (
+                                <div className="border border-gray-100 rounded-xl p-4">
+                                    <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+                                        What drives this estimate
+                                    </h3>
+                                    <div className="flex flex-wrap gap-2">
+                                        {rentFactors.map((factor) => (
+                                            <span
+                                                key={factor.text}
+                                                className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full ${
+                                                    factor.positive
+                                                        ? 'bg-green-50 text-green-700'
+                                                        : 'bg-amber-50 text-amber-700'
+                                                }`}
+                                            >
+                                                {factor.positive ? '✓' : '⚠'} {factor.text}
+                                            </span>
+                                        ))}
+                                    </div>
+                                    <p className="text-[10px] text-gray-400 mt-2">
+                                        Factors derived from property data — not ML model internals.
+                                    </p>
+                                </div>
+                            )}
 
                             {/* Bills estimate */}
                             <div className="border border-gray-100 rounded-xl p-4 space-y-3">
@@ -421,7 +556,7 @@ export default function PropertyDetail() {
                                     </div>
                                     {perPerson && (
                                         <p className="text-sm text-indigo-600 font-medium mt-2">
-                                            Shared between {p.num_rooms}: ~£{perPerson} each/month
+                                            Across {p.num_rooms} habitable rooms: ~£{perPerson}/room per month
                                         </p>
                                     )}
                                     {annualCost && (
@@ -451,7 +586,7 @@ export default function PropertyDetail() {
                         <div className="grid gap-3 sm:grid-cols-2">
                             {[
                                 { icon: Home, label: 'Type', value: p.property_type },
-                                { icon: Bed, label: 'Bedrooms', value: p.num_rooms },
+                                { icon: Bed, label: 'Habitable rooms', value: p.num_rooms },
                                 { icon: Ruler, label: 'Floor area', value: p.floor_area_m2 ? `${p.floor_area_m2} m²` : null },
                                 { icon: Building2, label: 'Built form', value: p.built_form },
                             ].filter(d => d.value).map(d => (
@@ -588,19 +723,41 @@ export default function PropertyDetail() {
 
                         {distances.length > 0 && (
                             <div className="mt-4 space-y-2">
-                                {distances.map((d) => (
-                                    <div key={d.label} className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3">
-                                        <span className="flex items-center gap-2 text-sm text-gray-700">
-                                            <d.icon size={16} className="text-indigo-500" />
-                                            {d.label}
-                                        </span>
-                                        <span className="text-xs text-gray-500 font-medium">
-                                            {d.km.toFixed(1)} km · ~{d.walkMin} min walk
-                                        </span>
-                                    </div>
-                                ))}
+                                {distances.map((d) => {
+                                    const badge = proximityBadge(d.km, d.proximityType)
+                                    return (
+                                        <div key={d.label} className="bg-gray-50 rounded-lg px-4 py-3">
+                                            <div className="flex items-center justify-between">
+                                                <span className="flex items-center gap-2 text-sm text-gray-700">
+                                                    <d.icon size={16} className="text-indigo-500" />
+                                                    {d.label}
+                                                </span>
+                                                <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${badge.colour}`}>
+                                                    {badge.label}
+                                                </span>
+                                            </div>
+                                            <p className="text-xs text-gray-500 mt-1.5 pl-6">
+                                                {d.km.toFixed(1)} km · ~{d.walkMin} min walk · ~{d.cycleMin} min cycle
+                                            </p>
+                                        </div>
+                                    )
+                                })}
                             </div>
                         )}
+
+                        {/* Getting Around — Guildford-specific transit context */}
+                        <div className="mt-4 border border-gray-100 rounded-xl p-4 space-y-3">
+                            <h3 className="text-sm font-semibold text-gray-700">Getting Around Guildford</h3>
+                            {GUILDFORD_TRANSIT_FACTS.map((fact) => (
+                                <div key={fact.title} className={`flex items-start gap-3 ${fact.bg} rounded-lg px-3 py-2.5`}>
+                                    <fact.icon size={15} className={`${fact.colour} flex-shrink-0 mt-0.5`} />
+                                    <div>
+                                        <p className={`text-xs font-semibold ${fact.colour}`}>{fact.title}</p>
+                                        <p className="text-xs text-gray-600 mt-0.5">{fact.detail}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </Section>
                 )}
 

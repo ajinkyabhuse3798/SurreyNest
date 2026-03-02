@@ -18,11 +18,9 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
 from app.config import settings
+from app.rate_limit import limiter  # shared singleton — one instance for the whole app
 
 logger = logging.getLogger(__name__)
-
-# ── Rate limiter singleton ────────────────────────────────────────────────────
-limiter = Limiter(key_func=get_remote_address)
 
 
 # ── Lifespan context manager ─────────────────────────────────────────────────

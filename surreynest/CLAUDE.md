@@ -84,39 +84,39 @@ surreynest/
 │   └── progress.md            ← ⭐ READ THIS FIRST — current phase checklist
 ├── backend/
 │   ├── app/
-│   │   ├── main.py            ← FastAPI entry point [STUB — needs implementation]
+│   │   ├── main.py            ← ✅ FastAPI entry point (complete)
 │   │   ├── config.py          ← ✅ Env var loading (complete)
 │   │   ├── database.py        ← ✅ SQLAlchemy engine + session (complete)
 │   │   ├── models/            ← ✅ All 8 ORM models complete (see below)
-│   │   ├── schemas/           ← All Pydantic schemas [STUBS — needs implementation]
-│   │   ├── routers/           ← All route handlers [STUBS — needs implementation]
-│   │   ├── services/          ← All business logic [STUBS — needs implementation]
-│   │   ├── ml/                ← ML pipeline [STUBS — needs implementation]
-│   │   └── data_pipelines/    ← ETL jobs [STUBS — needs implementation]
+│   │   ├── schemas/           ← ✅ All Pydantic schemas complete
+│   │   ├── routers/           ← ✅ All route handlers complete (incl. listings)
+│   │   ├── services/          ← ✅ All business logic complete
+│   │   ├── ml/                ← ✅ ML pipeline complete (train, predict, evaluate, features)
+│   │   └── data_pipelines/    ← ✅ All ETL jobs complete
 │   ├── data/
 │   │   ├── raw/               ← Downloaded source files (gitignored)
+│   │   │   ├── land_registry/ ← pp-2021.csv to pp-2025.csv (Price Paid, NO headers)
+│   │   │   ├── hpi/           ← UK-HPI-full-file CSVs (2024+2025)
+│   │   │   ├── iphrp/         ← Rental index XLSX (South East regional)
+│   │   │   ├── certificates.csv ← EPC bulk data
+│   │   │   └── voa_rental_stats_2024.csv
 │   │   └── processed/         ← Cleaned CSVs (gitignored)
-│   ├── tests/
-│   │   ├── conftest.py        ← [STUB]
-│   │   ├── test_auth.py       ← [STUB]
-│   │   ├── test_pipelines.py  ← [STUB]
-│   │   ├── test_properties.py ← [STUB]
-│   │   └── test_scores.py     ← [STUB]
-│   ├── alembic/
-│   │   ├── env.py             ← ✅ Complete
-│   │   └── versions/
-│   │       └── 62efbusz7xg4_initial_schema.py ← ✅ Full schema migration
+│   │       ├── epc_clean.csv
+│   │       ├── features.csv
+│   │       └── land_registry_guildford.csv ← 2,515 postcodes with implied rents
+│   ├── tests/                 ← ✅ All tests passing
+│   ├── alembic/               ← ✅ Migrations complete
 │   ├── requirements.txt       ← ✅ All dependencies pinned
 │   ├── .env.example           ← ✅ Template
 │   └── Dockerfile             ← ✅ Production container
 └── frontend/
     ├── src/
-    │   ├── pages/             ← All pages [STUBS]
-    │   ├── components/        ← All components [STUBS]
-    │   ├── hooks/             ← useAuth.js [STUB]
-    │   ├── services/          ← api.js [STUB]
-    │   └── utils/             ← [empty]
-    ├── vite.config.js         ← [STUB]
+    │   ├── pages/             ← ✅ All pages complete (incl. CheckListing)
+    │   ├── components/        ← ✅ All components complete
+    │   ├── hooks/             ← ✅ useAuth complete
+    │   ├── services/          ← ✅ api.js complete
+    │   └── utils/
+    ├── vite.config.js         ← ✅ Complete
     └── package.json           ← ✅ All dependencies listed
 ```
 
@@ -160,43 +160,47 @@ review.is_flagged            # NOT deleted, NOT removed
 
 ---
 
-## ❌ What Does NOT Exist Yet (stub files only)
+## Data Pipeline Cleaning Rules
 
-These files exist as empty stubs. **Build them in this order** (dependencies first):
+These rules are applied during ingestion. **Do not change them** without explicit instruction:
 
-### Phase 3 — Backend (current priority)
-Build in this exact order:
-1. `backend/app/data_pipelines/utils.py` — retry, logging, pipeline_run helpers
-2. `backend/app/data_pipelines/epc_pipeline.py` — loads EPC CSV → properties table, calls geocoding at end
-3. `backend/app/data_pipelines/hmo_pipeline.py` — loads HMO CSV → hmo_records table, matches UPRN via address_matcher
-4. `backend/app/utils/address_matcher.py` — normalises addresses, matches HMO records to properties (exact + fuzzy)
-5. `backend/app/services/geocoding_service.py` — cache-first Postcodes.io lookup (single + batch)
-6. `backend/app/data_pipelines/geocoding_pipeline.py` — standalone backfill: finds properties with NULL lat/lng, batch-geocodes, bulk-updates
-7. `backend/app/data_pipelines/crime_pipeline.py` — police.uk → crime_data table (bulk ON CONFLICT upsert, UniqueConstraint on sector+category+month)
-8. `backend/app/data_pipelines/land_registry_pipeline.py` — PPD CSV → processed CSV
-9. `backend/app/ml/features.py` — build feature matrix from DB + processed CSVs
-10. `backend/app/ml/train.py` — train GBR, save pkl
-9. `backend/app/ml/evaluate.py` — comprehensive evaluation: MAE/RMSE/R²/MAPE, 5-fold CV, feature importance, residual analysis, sanity checks, prediction distribution, markdown report
-10. `backend/app/ml/predict.py` — load model + feature_columns.json dynamically, predict rent, input validation
-11. `backend/app/schemas/` — all Pydantic schemas (user, auth, property, review, score)
-12. `backend/app/services/auth_service.py` — password hashing + JWT
-13. `backend/app/services/property_service.py` — assemble full property detail
-14. `backend/app/services/score_service.py` — safety + fairness score computation
-15. `backend/app/main.py` — FastAPI app, CORS, routers, APScheduler lifespan
-16. `backend/app/routers/auth.py` — register + login routes
-17. `backend/app/routers/properties.py` — search + detail routes
-18. `backend/app/routers/hmo.py` — HMO check route
-19. `backend/app/routers/scores.py` — safety + fairness score routes
-20. `backend/app/routers/reviews.py` — CRUD reviews + admin moderation
-21. `backend/tests/conftest.py` + all test files
+### EPC Pipeline (`epc_pipeline.py`)
+- Filter: GU1–GU5, GU7 postcodes only (Guildford core + Godalming)
+- Post-2018 lodgement dates only
+- Tenure normalisation: `rented (private)` → `rental (private)`, `rented (social)` → `rental (social)`
+- Remove: `floor_area_m2 < 10` (data errors), `num_rooms > 15` (commercial)
+- Cap: `floor_area_m2` at 300m²
+- Dedup on UPRN (keep most recent EPC)
 
-### Phase 4 — New Data Pipelines (after Phase 3 backend works)
-These are NEW files not in the original scaffold — add them:
-- `backend/app/data_pipelines/flood_pipeline.py` — EA Environment Agency flood data
-- `backend/app/data_pipelines/voa_pipeline.py` — ONS/VOA rent bands
+### Land Registry Pipeline (`land_registry_pipeline.py`)
+- Loads all `data/raw/land_registry/pp-*.csv` files (NO headers — use COLUMN_NAMES)
+- Filter: GU1–GU5, GU7 districts only
+- Outlier removal: drop prices < £30,000 or > £3,000,000
+- HPI time-adjustment: normalises all sale prices to latest month using Guildford-specific UK HPI index
+- Implied weekly rent: `adjusted_price × 4% ÷ 52`
+- Output: `data/processed/land_registry_guildford.csv` (2,515 postcodes)
+- DB upsert: `area_values` table with `area_value_index` (0.0–1.0)
 
-### Phase 5 — Frontend (after backend API is working)
-All frontend files need implementation (currently all stubs).
+### HMO Pipeline (`hmo_pipeline.py`)
+- `licence_holder` stored in DB but **NOT exposed via API** (UK GDPR)
+- `is_active` computed from `expiry_date > today`
+
+### Crime Pipeline (`crime_pipeline.py`)
+- police.uk API, all GU postcode sectors, 12 months rolling
+
+### EDA Script (`eda_all_datasets.py`)
+- Run: `python -m app.data_pipelines.eda_all_datasets`
+- Audits all 7 datasets, flags anomalies with ⚠️, checks cross-dataset consistency
+
+---
+
+## Remaining Work
+
+### Next priorities:
+1. Retrain ML model with real Price Paid rent targets (instead of synthetic formula)
+2. Update `features.py` to use `land_registry_guildford.csv` implied rents
+3. Phase 7 — Testing (frontend Vitest + E2E)
+4. Phase 8 — Deployment (Railway + Vercel)
 
 ---
 
@@ -211,6 +215,44 @@ These were not in the original plan but are free and add significant value:
 | Companies House | `https://developer.companieshouse.gov.uk` | Free key | Corporate landlord detection |
 
 **When to add:** After the Phase 3 backend is fully working. Add new models + migration first.
+
+---
+
+## ⛔ ML Model — Known Bugs (MUST FIX before next retrain)
+
+These bugs were found on 2026-03-02 after user observed predictions too low for GU1 properties.
+**Do NOT retrain the model without fixing all three first.**
+
+### Bug 1: Circular Dependency in MODE C Training (`train.py`)
+**File:** `backend/app/ml/train.py` — `get_feature_columns()` and `compute_real_target()`
+**Problem:** `implied_weekly_rent` is used as BOTH a training feature AND the basis for the training target.
+The GBR learns `output ≈ implied_weekly_rent_input`. All other features (floor area, rooms, property type,
+distance to uni/town, safety score) become near-irrelevant. Changing datasets has no effect because
+the model just echoes back the `implied_weekly_rent` feature.
+**Fix:** Remove `implied_weekly_rent` from `get_feature_columns()` so it is used only as the target.
+Keep `median_sale_price`, `sale_count`, `area_value_index` as features (they don't cause circularity).
+
+### Bug 2: `area_value_index` Missing from Prediction Features (`score_service.py`)
+**File:** `backend/app/services/score_service.py` — `get_rent_prediction()`
+**Problem:** The `features` dict built and passed to `predict_rent()` never includes `area_value_index`.
+Every prediction falls back to the hardcoded default of 0.5, meaning GU1 (expensive) and GU5 (cheaper)
+properties get the same area adjustment.
+**Fix:** Add to features dict:
+```python
+"area_value_index": float(area_val.area_value_index) if area_val else 0.5,
+```
+
+### Bug 3: 4% Yield Underestimates GU1 Rents (`land_registry_pipeline.py`)
+**Problem:** The implied_weekly_rent formula uses `adjusted_price × 4% ÷ 52`. In GU1 (town centre),
+property prices have risen faster than rents — actual gross yield is 3–3.5%, not 4%.
+Using 4% makes the training signal systematically too low for expensive GU1 postcodes.
+**Fix:** Change yield rate from 4% to 3.5% in `land_registry_pipeline.py`, then re-run the pipeline
+before retraining.
+
+### Bug 4: Stale Prediction Cache After Retrain
+**Problem:** `score_service.get_rent_prediction()` checks `cached.model_version == settings.ml_model_version`.
+If `.env` ML_MODEL_VERSION is not bumped after retraining, old wrong predictions are served from cache.
+**Fix:** Always update `ML_MODEL_VERSION` in `backend/.env` after every retrain (e.g. v2.0.0 → v2.1.0).
 
 ---
 
@@ -242,6 +284,14 @@ The ML model in `docs/ml-model.md` uses these features. Column names must match 
 # From processed Land Registry CSV:
 'area_value_index'        # Median sale price per postcode, normalised 0-1
                           # Fill with 0.5 (median) when data missing
+'median_sale_price'       # Absolute neighbourhood value (£) — OK as feature
+'sale_count'              # Market liquidity signal — OK as feature
+
+# ⛔ NOT a training feature — training target only:
+# 'implied_weekly_rent'   # NEVER put this in get_feature_columns()
+#                         # It IS the MODE C training target basis.
+#                         # Using it as both feature AND target creates a circular
+#                         # dependency: model learns output ≈ input, ignores all else.
 ```
 
 ---

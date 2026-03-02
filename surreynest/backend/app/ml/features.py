@@ -1,14 +1,18 @@
-"""ML feature engineering: build features from EPC, HMO, crime, and geocoding data.
+"""ML feature engineering: build features from EPC, HMO, crime, geocoding, and
+Land Registry / HPI / IPHRP data.
 
 Merges data from multiple sources to create a feature matrix for rent prediction:
 - EPC data: floor area, rooms, energy rating, property type, built form
 - HMO register: is_hmo flag
 - Crime data: safety scores by postcode sector
 - Geocoding: lat/lng, distances to town centre and university
-- Area value index: placeholder (0.5) until Land Registry data arrives
+- Land Registry (Price Paid): implied_weekly_rent, median_sale_price, sale_count
+- IPHRP: South East rental growth trend (iphrp_growth_pct)
+- Area value index: 0–1 normalised per postcode from Land Registry
 """
 
 import logging
+from glob import glob
 from pathlib import Path
 from typing import Optional
 
@@ -25,13 +29,17 @@ from app.models.property import Property
 
 logger = logging.getLogger(__name__)
 
-# ── Paths ────────────────────────────────────────────────────────────────────
-EPC_CLEAN_PATH = Path(__file__).resolve().parents[2] / "data" / "processed" / "epc_clean.csv"
-FEATURES_PATH = Path(__file__).resolve().parents[2] / "data" / "processed" / "features.csv"
+# ── Paths ──────────────────────────────────────────────────────────────────────────────
+DATA_BASE = Path(__file__).resolve().parents[2] / "data"
+EPC_CLEAN_PATH = DATA_BASE / "processed" / "epc_clean.csv"
+FEATURES_PATH = DATA_BASE / "processed" / "features.csv"
+LAND_REGISTRY_PATH = DATA_BASE / "processed" / "land_registry_guildford.csv"
+IPHRP_DIR = DATA_BASE / "raw" / "iphrp"
 
 # ── Guildford reference points ───────────────────────────────────────────────
 GUILDFORD_TOWN_CENTRE = (51.2362, -0.5704)  # High Street area
 UNIVERSITY_OF_SURREY = (51.2430, -0.5890)   # Stag Hill campus
+GUILDFORD_STATION = (51.2372, -0.5617)       # London Road station forecourt
 
 # ── Energy rating ordinal encoding (from data-dictionary.md) ─────────────────
 ENERGY_RATING_MAP = {"A": 6, "B": 5, "C": 4, "D": 3, "E": 2, "F": 1, "G": 0}
@@ -187,6 +195,93 @@ def load_safety_scores(db: Session) -> pd.DataFrame:
     return scores
 
 
+def load_land_registry_features() -> pd.DataFrame:
+    """Load Price Paid derived features from processed CSV.
+
+    Returns a DataFrame with per-postcode columns:
+      - implied_weekly_rent  (median, HPI-adjusted, 4% yield)
+      - median_sale_price
+      - sale_count           (market liquidity signal)
+
+    For properties whose postcode is not in the CSV, we fall back to
+    the postcode-sector median so coverage stays close to 100%.
+
+    Returns:
+        DataFrame with postcode, implied_weekly_rent, median_sale_price, sale_count.
+    """
+    if not LAND_REGISTRY_PATH.exists():
+        logger.warning(
+            "land_registry_guildford.csv not found at %s — skipping LR features",
+            LAND_REGISTRY_PATH,
+        )
+        return pd.DataFrame(columns=["postcode", "implied_weekly_rent",
+                                      "median_sale_price", "sale_count"])
+
+    df = pd.read_csv(str(LAND_REGISTRY_PATH))
+    df = df[["postcode", "median_weekly_rent", "median_sale_price", "sale_count"]].copy()
+    df = df.rename(columns={"median_weekly_rent": "implied_weekly_rent"})
+
+    # Build sector-level fallback medians
+    df["_sector"] = df["postcode"].str.strip().str.split(r"\s+").str[0] + " " + \
+                    df["postcode"].str.strip().str.split(r"\s+").str[1].str[0]
+    sector_medians = df.groupby("_sector").agg(
+        implied_weekly_rent=("implied_weekly_rent", "median"),
+        median_sale_price=("median_sale_price", "median"),
+        sale_count=("sale_count", "median"),
+    ).reset_index().rename(columns={"_sector": "postcode_sector"})
+
+    df = df.drop(columns=["_sector"])
+    logger.info(
+        "Loaded %d postcodes from land_registry_guildford.csv (implied rent: £%.0f–£%.0f/wk)",
+        len(df),
+        df["implied_weekly_rent"].min(),
+        df["implied_weekly_rent"].max(),
+    )
+    return df, sector_medians
+
+
+def load_iphrp_growth() -> float:
+    """Extract latest South East annual rental growth % from IPHRP XLSX.
+
+    Returns:
+        Latest annual % change for South East, or 0.0 if unavailable.
+    """
+    xlsx_files = list(IPHRP_DIR.glob("*.xlsx"))
+    if not xlsx_files:
+        logger.warning("No IPHRP XLSX found in %s", IPHRP_DIR)
+        return 0.0
+
+    try:
+        df = pd.read_excel(str(xlsx_files[0]), sheet_name="Table 2", header=None)
+
+        # Find header row containing 'South East'
+        header_row = None
+        for i in range(min(10, len(df))):
+            if "South East" in " ".join([str(v) for v in df.iloc[i].values]):
+                header_row = i
+                break
+
+        if header_row is None:
+            return 0.0
+
+        df2 = pd.read_excel(str(xlsx_files[0]), sheet_name="Table 2", header=header_row)
+        se_col = [c for c in df2.columns if "south east" in str(c).lower()]
+        if not se_col:
+            return 0.0
+
+        growth_series = pd.to_numeric(df2[se_col[0]], errors="coerce").dropna()
+        if growth_series.empty:
+            return 0.0
+
+        latest = float(growth_series.iloc[-1])
+        logger.info("IPHRP South East latest annual growth: %.1f%%", latest)
+        return latest
+
+    except Exception as e:
+        logger.warning("Error reading IPHRP: %s", e)
+        return 0.0
+
+
 def geocode_properties(df: pd.DataFrame, db: Session) -> pd.DataFrame:
     """Add lat/lng to properties from postcode cache where missing.
 
@@ -251,6 +346,10 @@ def build_features(db: Optional[Session] = None) -> pd.DataFrame:
             lambda row: _compute_distance(row["lat"], row["lng"], UNIVERSITY_OF_SURREY),
             axis=1,
         )
+        df["distance_to_station_km"] = df.apply(
+            lambda row: _compute_distance(row["lat"], row["lng"], GUILDFORD_STATION),
+            axis=1,
+        )
 
         # ── Ordinal encode energy_rating ─────────────────────────────────
         df["energy_rating_ordinal"] = df["energy_rating"].map(ENERGY_RATING_MAP).fillna(3)
@@ -296,12 +395,60 @@ def build_features(db: Optional[Session] = None) -> pd.DataFrame:
             df["area_value_index"] = 0.5  # Fallback if no data
             logger.warning("No area_value data in DB — using default 0.5")
 
+        # ── Land Registry real rent features ────────────────────────────
+        lr_result = load_land_registry_features()
+        if isinstance(lr_result, tuple):
+            lr_df, sector_medians = lr_result
+            if not lr_df.empty:
+                # Full postcode join
+                df = df.merge(lr_df, on="postcode", how="left")
+
+                # Sector-level fallback for unmatched postcodes
+                unmatched = df["implied_weekly_rent"].isna()
+                if unmatched.any() and not sector_medians.empty:
+                    df_un = df[unmatched].copy()
+                    df_un = df_un.merge(
+                        sector_medians, on="postcode_sector", how="left",
+                        suffixes=("", "_sector")
+                    )
+                    for col in ["implied_weekly_rent", "median_sale_price", "sale_count"]:
+                        df.loc[unmatched, col] = df_un[f"{col}_sector"].values
+
+                # Final fallback: dataset medians
+                dataset_median_rent = lr_df["implied_weekly_rent"].median()
+                dataset_median_price = lr_df["median_sale_price"].median()
+                df["implied_weekly_rent"] = df["implied_weekly_rent"].fillna(dataset_median_rent)
+                df["median_sale_price"] = df["median_sale_price"].fillna(dataset_median_price)
+                df["sale_count"] = df["sale_count"].fillna(1)
+
+                matched_pct = (1 - unmatched.mean()) * 100
+                logger.info(
+                    "Land Registry features joined: %.1f%% direct postcode match, "
+                    "%.1f%% sector fallback, median implied rent=£%.0f/wk",
+                    matched_pct,
+                    100 - matched_pct,
+                    df["implied_weekly_rent"].median(),
+                )
+            else:
+                df["implied_weekly_rent"] = np.nan
+                df["median_sale_price"] = np.nan
+                df["sale_count"] = 1
+        else:
+            df["implied_weekly_rent"] = np.nan
+            df["median_sale_price"] = np.nan
+            df["sale_count"] = 1
+
+        # ── IPHRP South East rental growth trend ─────────────────────────
+        iphrp_growth = load_iphrp_growth()
+        df["iphrp_growth_pct"] = iphrp_growth  # scalar — same value for all rows
+        logger.info("IPHRP growth feature added: %.1f%%", iphrp_growth)
+
         # ── Handle nulls ────────────────────────────────────────────────
         # Critical features: drop rows missing floor area
         df = df.dropna(subset=["floor_area_m2"])
 
         # Impute optional with median
-        for col in ["num_rooms", "distance_to_town_km", "distance_to_uni_km"]:
+        for col in ["num_rooms", "distance_to_town_km", "distance_to_uni_km", "distance_to_station_km"]:
             median_val = df[col].median()
             df[col] = df[col].fillna(median_val)
 
@@ -318,9 +465,15 @@ def build_features(db: Optional[Session] = None) -> pd.DataFrame:
             "lng",
             "distance_to_town_km",
             "distance_to_uni_km",
+            "distance_to_station_km",
             "is_hmo",
             "safety_score",
             "area_value_index",
+            # ── New: Land Registry real data features ──────────────────────
+            "implied_weekly_rent",   # postcode-level real rent anchor (MODE C target)
+            "median_sale_price",     # absolute neighbourhood value (£)
+            "sale_count",            # market liquidity (how many sales we have data for)
+            "iphrp_growth_pct",      # South East rental growth trend (%)
         ]
         # Add one-hot property type columns
         ptype_cols = [c for c in df.columns if c.startswith("ptype_")]

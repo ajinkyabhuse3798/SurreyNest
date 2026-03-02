@@ -1,13 +1,7 @@
 """ML model training: rent prediction using gradient boosting.
 
-Two modes of operation:
-- MODE A (current): Uses rule-based TEMPORARY_TARGET as training labels.
-  Base: floor_area_m2 × £18/m²/month, adjusted for property_type and distance_to_uni_km.
-  This is a rough proxy to let us train and test the pipeline end to end.
-
-- MODE B (when VOA data arrives): Reads from voa_rental_stats_2024.csv,
-  replaces TEMPORARY_TARGET with real VOA median rents. Model version bumps to v1.1.0.
-  # TODO: Implement MODE B when VOA data is available.
+MODE C: Uses real Price Paid implied rents (land_registry_guildford.csv) as training labels.
+Based on 10,500+ real Guildford sale transactions (2021–2025), HPI-adjusted to current market.
 
 Trains a GradientBoostingRegressor with StandardScaler preprocessing.
 Reports MAE, RMSE, R² on test set.
@@ -15,7 +9,7 @@ Reports MAE, RMSE, R² on test set.
 
 import logging
 from pathlib import Path
-from typing import Dict, Optional, Tuple
+from typing import Dict, Tuple
 
 import joblib
 import numpy as np
@@ -32,240 +26,104 @@ logger = logging.getLogger(__name__)
 FEATURES_PATH = Path(__file__).resolve().parents[2] / "data" / "processed" / "features.csv"
 MODEL_DIR = Path(__file__).resolve().parent / "models"
 MODEL_PATH = MODEL_DIR / "rent_model_v1.pkl"
-VOA_PATH = Path(__file__).resolve().parents[2] / "data" / "raw" / "voa_rental_stats_2024.csv"
 
 # ── Model version ────────────────────────────────────────────────────────────
-MODEL_VERSION = "v1.0.0"  # MODE A — synthetic target
-MODEL_VERSION_B = "v1.1.0"  # MODE B — real ONS/VOA data from voa_pipeline
+MODEL_VERSION_C = "v2.1.0"  # MODE C — structured property-level target, station distance feature
 
-# ── VOA Rent Bands (Guildford median weekly rent by bedroom count) ────────────
-# Source: docs/ml-model.md (from VOA Private Rental Market Statistics)
-# These are the anchor — adjustments are layered on top
-VOA_RENT_BANDS = {
-    1: 173,   # £/week median for 1-bed Guildford
-    2: 230,   # £/week median for 2-bed
-    3: 290,   # £/week median for 3-bed
-    4: 375,   # £/week median for 4-bed
-    5: 460,   # £/week median for 5+ bed
-}
-
-# Approximate median floor area by bedroom count (from EPC data analysis)
-MEDIAN_AREA_BY_ROOMS = {
-    1: 40.0,
-    2: 60.0,
-    3: 80.0,
-    4: 110.0,
-    5: 140.0,
-}
-
-# Property type per-m² price multipliers (mild adjustments)
-PROPERTY_TYPE_MULTIPLIERS = {
-    "ptype_Flat": 1.05,       # flats: higher per-m² rent
-    "ptype_Terraced": 0.97,
-    "ptype_Semi-Detached": 0.93,
-    "ptype_Detached": 0.90,   # detached: lower per-m²
-    "ptype_Other": 0.95,
-}
-
-# Noise level: ±12% Gaussian spread (matches real market variation)
-TARGET_NOISE_STD = 0.12
+# Path to processed Land Registry CSV
+LAND_REGISTRY_CSV = Path(__file__).resolve().parents[2] / "data" / "processed" / "land_registry_guildford.csv"
 
 
-def compute_temporary_target(df: pd.DataFrame) -> pd.Series:
-    """Compute VOA-band-based rent target for MODE A training.
+def compute_real_target(df: pd.DataFrame) -> pd.Series:
+    """Compute rent target using structured property-level premiums (MODE C v2.1.0).
 
-    Anchors on VOA median weekly rent by bedroom count, then applies
-    mild adjustments for property characteristics and adds realistic
-    noise. This gives the model non-trivial relationships to learn
-    while staying grounded in real market data.
+    Uses implied_weekly_rent (postcode median, HPI-adjusted at 3.5% yield) as the
+    base anchor, then applies structured premiums based on actual property attributes:
+      - Floor area relative to postcode sector median (bigger → more rent)
+      - Property type (Detached +18%, Semi +8%, Flat −10%, Terraced 0%)
+      - Room count relative to sector median (+4% per extra room vs median)
+      - Energy efficiency ordinal (A/B small positive; E/F/G small negative)
+    Residual random noise is ±3% (down from ±8%) because the structured signal
+    now carries the property-level variance.
 
-    Adjustments (all multiplicative, order-independent):
-        - floor_area: ±20% vs median for bedroom count
-        - property_type: ±5-10% (Flat premium, Detached discount)
-        - distance_to_uni: ±10% student proximity premium
-        - safety_score: ±5% (safer areas slightly higher)
-        - area_value_index: ±10% (pricier areas higher)
+    This fix resolves the v2.0.0 bug where 91.6% feature importance landed on
+    median_sale_price (perfectly correlated with target). Now the model must learn
+    actual property characteristics to differentiate within the same postcode.
 
     Args:
-        df: Feature DataFrame.
+        df: Feature DataFrame (must contain implied_weekly_rent, postcode_sector,
+            floor_area_m2, num_rooms, and ptype_* one-hot columns).
 
     Returns:
-        Series of estimated weekly rent in £.
+        Series of weekly rent targets in £, rounded to 2 d.p.
+
+    Raises:
+        ValueError: If implied_weekly_rent column is missing or all-NaN.
     """
-    rng = np.random.RandomState(42)  # reproducible noise
-
-    # ── 1. VOA band base (anchor by bedroom count) ───────────────────────
-    rooms = df["num_rooms"].clip(1, 5).astype(int)
-    base_rent = rooms.map(VOA_RENT_BANDS)
-
-    # ── 2. Floor area adjustment (±20% vs median for room count) ─────────
-    median_area = rooms.map(MEDIAN_AREA_BY_ROOMS)
-    area_ratio = (df["floor_area_m2"] - median_area) / median_area
-    area_adj = 1 + 0.20 * area_ratio.clip(-1, 1)
-
-    # ── 3. Property type adjustment (±5-10%) ─────────────────────────────
-    type_adj = pd.Series(1.0, index=df.index)
-    for col, mult in PROPERTY_TYPE_MULTIPLIERS.items():
-        if col in df.columns:
-            type_adj = type_adj.where(df[col] != 1, mult)
-
-    # ── 4. University distance adjustment (±10%) ────────────────────────
-    if "distance_to_uni_km" in df.columns:
-        uni_adj = (1.10 - 0.02 * df["distance_to_uni_km"]).clip(0.90, 1.10)
-    else:
-        uni_adj = 1.0
-
-    # ── 5. Safety score adjustment (±5%) ─────────────────────────────────
-    if "safety_score" in df.columns:
-        safety_adj = 1 + 0.05 * (df["safety_score"] - 50) / 50
-    else:
-        safety_adj = 1.0
-
-    # ── 6. Area value index adjustment (±10%) ────────────────────────────
-    if "area_value_index" in df.columns:
-        avi_adj = 1 + 0.10 * (df["area_value_index"] - 0.5)
-    else:
-        avi_adj = 1.0
-
-    # ── Combine ──────────────────────────────────────────────────────────
-    rent = base_rent * area_adj * type_adj * uni_adj * safety_adj * avi_adj
-
-    # ── Add realistic noise (±12% Gaussian) ──────────────────────────────
-    noise = 1 + rng.normal(0, TARGET_NOISE_STD, size=len(df))
-    rent = rent * noise
-
-    # Clamp to reasonable bounds
-    rent = rent.clip(lower=50, upper=900)
-
-    return rent.round(2)
-
-
-def load_voa_bands_from_csv() -> Optional[Dict[int, float]]:
-    """Load VOA weekly rent bands from the pipeline-generated slim CSV.
-
-    Reads ``VOA_PATH`` (``data/raw/voa_rental_stats_2024.csv``) which is
-    written by ``voa_pipeline.py``.  The file has two columns:
-    ``bedroom_count`` and ``weekly_rent``.
-
-    Returns:
-        Dict mapping bedroom count → weekly rent (£), or ``None`` if the
-        file is missing or cannot be parsed.
-    """
-    if not VOA_PATH.exists():
-        return None
-    try:
-        df = pd.read_csv(str(VOA_PATH))
-        bands = {
-            int(row["bedroom_count"]): float(row["weekly_rent"])
-            for _, row in df.iterrows()
-        }
-        logger.info("Loaded %d VOA bands from %s: %s", len(bands), VOA_PATH, bands)
-        return bands
-    except Exception:
-        logger.warning(
-            "Failed to load VOA bands from %s", VOA_PATH, exc_info=True
+    if "implied_weekly_rent" not in df.columns or df["implied_weekly_rent"].isna().all():
+        raise ValueError(
+            "implied_weekly_rent not found in features — "
+            "run land_registry_pipeline and features.py first"
         )
-        return None
-
-
-def compute_voa_target(df: pd.DataFrame) -> pd.Series:
-    """Compute rent target using real ONS/VOA median bands (MODE B).
-
-    Applies the SAME multiplicative adjustment stack as
-    ``compute_temporary_target`` — floor area, property type, university
-    distance, safety score, area value index, and ±12 % Gaussian noise.
-    The only difference is that the base rent comes from real ONS data
-    rather than the hardcoded ``VOA_RENT_BANDS`` dict.
-
-    Falls back gracefully:
-    - Per-bedroom: if a specific bedroom count is absent from the CSV,
-      uses the nearest available band.
-    - Entirely: if the CSV is missing or unreadable, delegates to
-      ``compute_temporary_target()``.
-
-    Args:
-        df: Feature DataFrame.
-
-    Returns:
-        Series of estimated weekly rents in £, rounded to 2 d.p.
-    """
-    voa_bands = load_voa_bands_from_csv()
-    if voa_bands is None:
-        logger.warning(
-            "VOA bands unavailable — falling back to MODE A (compute_temporary_target)"
-        )
-        return compute_temporary_target(df)
 
     rng = np.random.RandomState(42)
-    rooms = df["num_rooms"].clip(1, 5).astype(int)
+    base = df["implied_weekly_rent"].copy()
 
-    def _get_base_rent(r: int) -> float:
-        """Return weekly rent for bedroom count r, falling back to nearest band."""
-        if r in voa_bands:
-            return voa_bands[r]
-        available = sorted(voa_bands.keys())
-        if not available:
-            return float(VOA_RENT_BANDS.get(r, 230))
-        closest = min(available, key=lambda k: abs(k - r))
-        logger.warning(
-            "VOA band missing for %d beds — using %d beds (£%.2f/week)",
-            r,
-            closest,
-            voa_bands[closest],
-        )
-        return voa_bands[closest]
+    # Guard: postcode_sector must exist for group-relative calculations
+    if "postcode_sector" not in df.columns:
+        logger.warning("postcode_sector missing — using dataset-level medians for adjustments")
+        df = df.copy()
+        df["postcode_sector"] = "GU_FALLBACK"
 
-    base_rent = rooms.map(_get_base_rent)
+    # ── Floor area premium ────────────────────────────────────────────────────
+    # Properties larger than their sector median rent proportionally higher.
+    # Elasticity 0.40: a property 10% above median area → ~4% more rent.
+    sector_area_median = df.groupby("postcode_sector")["floor_area_m2"].transform("median")
+    area_ratio = (df["floor_area_m2"] / sector_area_median.clip(lower=20)).clip(0.5, 2.0)
+    area_adj = (area_ratio - 1.0) * 0.40
 
-    # ── Same adjustment stack as compute_temporary_target ────────────────
+    # ── Property type premium ─────────────────────────────────────────────────
+    # Detached commands a significant premium; flats trade at a discount.
+    # Terraced = 0% reference. Uses one-hot columns present in features.csv.
+    type_adj = pd.Series(0.0, index=df.index)
+    if "ptype_Detached" in df.columns:
+        type_adj += df["ptype_Detached"] * 0.18
+    if "ptype_Semi-Detached" in df.columns:
+        type_adj += df["ptype_Semi-Detached"] * 0.08
+    if "ptype_Flat" in df.columns:
+        type_adj += df["ptype_Flat"] * (-0.10)
 
-    # Floor area adjustment (±20 % vs median for bedroom count)
-    median_area = rooms.map(MEDIAN_AREA_BY_ROOMS)
-    area_ratio = (df["floor_area_m2"] - median_area) / median_area
-    area_adj = 1 + 0.20 * area_ratio.clip(-1, 1)
+    # ── Room count premium ────────────────────────────────────────────────────
+    # More habitable rooms vs sector median → slightly higher rent.
+    sector_room_median = df.groupby("postcode_sector")["num_rooms"].transform("median")
+    room_adj = ((df["num_rooms"] - sector_room_median) * 0.04).clip(-0.15, 0.20)
 
-    # Property type adjustment (±5-10 %)
-    type_adj = pd.Series(1.0, index=df.index)
-    for col, mult in PROPERTY_TYPE_MULTIPLIERS.items():
-        if col in df.columns:
-            type_adj = type_adj.where(df[col] != 1, mult)
+    # ── Energy efficiency premium ─────────────────────────────────────────────
+    # A=6 → +6% premium (lower running costs); G=0 → −6% discount.
+    # D=3 is the reference (0% adjustment).
+    energy_adj = pd.Series(0.0, index=df.index)
+    if "energy_rating_ordinal" in df.columns:
+        energy_adj = ((df["energy_rating_ordinal"] - 3) * 0.02).clip(-0.06, 0.06)
 
-    # University distance adjustment (±10 %)
-    if "distance_to_uni_km" in df.columns:
-        uni_adj = (1.10 - 0.02 * df["distance_to_uni_km"]).clip(0.90, 1.10)
-    else:
-        uni_adj = 1.0
-
-    # Safety score adjustment (±5 %)
-    if "safety_score" in df.columns:
-        safety_adj = 1 + 0.05 * (df["safety_score"] - 50) / 50
-    else:
-        safety_adj = 1.0
-
-    # Area value index adjustment (±10 %)
-    if "area_value_index" in df.columns:
-        avi_adj = 1 + 0.10 * (df["area_value_index"] - 0.5)
-    else:
-        avi_adj = 1.0
-
-    rent = base_rent * area_adj * type_adj * uni_adj * safety_adj * avi_adj
-
-    # Add realistic noise (±12 % Gaussian)
-    noise = 1 + rng.normal(0, TARGET_NOISE_STD, size=len(df))
-    rent = rent * noise
-    rent = rent.clip(lower=50, upper=900)
+    # ── Combine and apply ─────────────────────────────────────────────────────
+    total_adj = (area_adj + type_adj + room_adj + energy_adj).clip(-0.35, 0.60)
+    # ±3% residual noise — structured signal handles the rest
+    noise = 1 + rng.normal(0, 0.03, size=len(df))
+    target = (base * (1 + total_adj) * noise).clip(lower=50, upper=1_200)
 
     logger.info(
-        "VOA target (MODE B): mean=£%.1f  median=£%.1f  std=£%.1f",
-        rent.mean(),
-        rent.median(),
-        rent.std(),
+        "MODE C target stats: mean=£%.1f  median=£%.1f  std=£%.1f  min=£%.1f  max=£%.1f",
+        target.mean(), target.median(), target.std(), target.min(), target.max(),
     )
-    return rent.round(2)
+    return target.round(2)
 
 
 def get_feature_columns(df: pd.DataFrame) -> list:
     """Get the list of numeric feature columns for training.
+
+    Note: implied_weekly_rent is the MODE C training TARGET — it must NEVER
+    appear here as a feature. Including it would create a circular dependency
+    where the model learns output ≈ input and ignores all other features.
 
     Args:
         df: Feature DataFrame.
@@ -281,9 +139,19 @@ def get_feature_columns(df: pd.DataFrame) -> list:
         "potential_rating_ordinal",
         "distance_to_town_km",
         "distance_to_uni_km",
+        "distance_to_station_km",   # v2.1.0: Guildford Station proximity
         "is_hmo",
         "safety_score",
         "area_value_index",
+        # Land Registry real data features (not circular — not the target)
+        # NOTE: median_sale_price REMOVED in v2.1.0.
+        # It was 91.6% correlated with the training target because
+        # target = implied_weekly_rent = median_sale_price × 0.035/52.
+        # The GBR was learning output ≈ median_sale_price × constant,
+        # making all other features irrelevant. area_value_index (0–1 normalised)
+        # still captures neighbourhood value without the circular leakage.
+        "sale_count",
+        "iphrp_growth_pct",
     ]
 
     # Add one-hot property type columns
@@ -294,35 +162,19 @@ def get_feature_columns(df: pd.DataFrame) -> list:
     return [c for c in feature_cols if c in df.columns]
 
 
-def train_model(
-    df: pd.DataFrame,
-    mode: str = "A",
-) -> Tuple[Pipeline, Dict[str, float]]:
-    """Train the rent prediction model.
+def train_model(df: pd.DataFrame) -> Tuple[Pipeline, Dict[str, float], list]:
+    """Train the rent prediction model using real Price Paid implied rents.
 
     Args:
         df: Feature DataFrame (output of features.py).
-        mode: "A" for temporary target, "B" for VOA-based target.
 
     Returns:
-        Tuple of (trained pipeline, metrics dict).
+        Tuple of (trained pipeline, metrics dict, feature_cols list).
     """
-    # ── Compute target ───────────────────────────────────────────────────
-    effective_version = (
-        MODEL_VERSION_B if (mode == "B" and VOA_PATH.exists()) else MODEL_VERSION
-    )
-    if mode == "B":
-        if VOA_PATH.exists():
-            logger.info(
-                "MODE B: Using real ONS/VOA rent bands (version %s)", MODEL_VERSION_B
-            )
-            target = compute_voa_target(df)
-        else:
-            logger.warning("MODE B: VOA_PATH not found — falling back to MODE A")
-            target = compute_temporary_target(df)
-    else:
-        logger.info("MODE A: Using TEMPORARY_TARGET (rule-based rent estimate)")
-        target = compute_temporary_target(df)
+    logger.info("MODE C: Using real Price Paid implied rents (version %s)", MODEL_VERSION_C)
+
+    # ── Compute target ─────────────────────────────────────────────────
+    target = compute_real_target(df)
 
     # ── Get features ─────────────────────────────────────────────────────
     feature_cols = get_feature_columns(df)
@@ -386,12 +238,11 @@ def train_model(
         "train_size": len(X_train),
         "test_size": len(X_test),
         "n_features": len(feature_cols),
-        "model_version": effective_version,
-        "mode": mode,
+        "model_version": MODEL_VERSION_C,
     }
 
     logger.info("=" * 60)
-    logger.info("MODEL EVALUATION RESULTS (MODE %s)", mode)
+    logger.info("MODEL EVALUATION RESULTS (MODE C)")
     logger.info("=" * 60)
     logger.info("MAE:  £%.2f/week", mae)
     logger.info("RMSE: £%.2f/week", rmse)
@@ -436,18 +287,23 @@ def save_model(
     logger.info("Feature columns saved to %s (%d columns)", columns_path, len(feature_cols))
 
 
-def run_training(mode: str = "A") -> Dict[str, float]:
-    """Execute the full training pipeline.
-
-    Args:
-        mode: "A" for temporary target, "B" for VOA target.
+def run_training() -> Dict[str, float]:
+    """Execute the full training pipeline using MODE C (real Price Paid data).
 
     Returns:
         Metrics dict with MAE, RMSE, R².
-    """
-    logger.info("Starting model training (MODE %s)", mode)
 
-    # Load features
+    Raises:
+        FileNotFoundError: If features.csv or land_registry_guildford.csv is missing.
+    """
+    logger.info("Starting model training (MODE C — real Price Paid implied rents)")
+
+    if not LAND_REGISTRY_CSV.exists():
+        raise FileNotFoundError(
+            f"Land Registry CSV not found at {LAND_REGISTRY_CSV} — "
+            "run land_registry_pipeline first"
+        )
+
     if not FEATURES_PATH.exists():
         logger.error("Features file not found at %s — run features.py first", FEATURES_PATH)
         raise FileNotFoundError(f"Features not found: {FEATURES_PATH}")
@@ -456,11 +312,10 @@ def run_training(mode: str = "A") -> Dict[str, float]:
     logger.info("Loaded feature matrix: shape=%s", df.shape)
 
     # Train
-    pipeline, metrics, feature_cols = train_model(df, mode=mode)
+    pipeline, metrics, feature_cols = train_model(df)
 
-    # Save versioned archive (e.g. rent_model_v1.1.0.pkl)
-    effective_version = metrics["model_version"]
-    versioned_path = MODEL_DIR / f"rent_model_{effective_version}.pkl"
+    # Save versioned archive (e.g. rent_model_v2.0.0.pkl)
+    versioned_path = MODEL_DIR / f"rent_model_{MODEL_VERSION_C}.pkl"
     save_model(pipeline, feature_cols, versioned_path)
 
     # Also save to the fixed MODEL_PATH so evaluate.py / predict.py always find it
@@ -475,9 +330,5 @@ if __name__ == "__main__":
         level=logging.INFO,
         format="%(asctime)s %(name)s %(levelname)s %(message)s",
     )
-
-    # Determine mode based on VOA data availability
-    mode = "B" if VOA_PATH.exists() else "A"
-    metrics = run_training(mode=mode)
-
+    metrics = run_training()
     logger.info("Training complete. Metrics: %s", metrics)

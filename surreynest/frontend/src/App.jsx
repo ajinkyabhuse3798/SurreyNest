@@ -10,7 +10,7 @@
  */
 import React, { Suspense, Component } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import { AuthProvider } from './hooks/useAuth'
+import { AuthProvider, RequireAuth } from './hooks/useAuth'
 import { SearchProvider } from './hooks/useSearch'
 import { CompareProvider } from './hooks/useCompare'
 import Home from './pages/Home'
@@ -106,7 +106,7 @@ export default function App() {
                                             <Route path="/login" element={<Login />} />
                                             <Route path="/register" element={<Register />} />
                                             <Route path="/rights" element={<RightsGuide />} />
-                                            <Route path="/admin" element={<AdminDashboard />} />
+                                            <Route path="/admin" element={<RequireAuth adminOnly><AdminDashboard /></RequireAuth>} />
                                             <Route path="*" element={<NotFound />} />
                                         </Routes>
                                     </div>

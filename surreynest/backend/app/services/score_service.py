@@ -14,8 +14,10 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.models.crime_data import CrimeData
+from app.models.hmo_record import HmoRecord
 from app.models.property import Property
 from app.models.rent_prediction import RentPrediction
+from app.models.area_value import AreaValue
 
 logger = logging.getLogger(__name__)
 
@@ -247,15 +249,63 @@ def get_rent_prediction(uprn: str, db: Session) -> Optional[Dict]:
     try:
         from app.ml.predict import predict_rent
 
+        # ── Look up Area Value (implied rent & sale price from Price Paid) ──
+        area_val = db.query(AreaValue).filter(
+            AreaValue.postcode == prop.postcode
+        ).first()
+
+        implied_weekly_rent = area_val.implied_weekly_rent if area_val and area_val.implied_weekly_rent else None
+        median_sale_price   = area_val.median_sale_price   if area_val and area_val.median_sale_price   else None
+        sale_count          = area_val.sale_count          if area_val and area_val.sale_count          else 1
+
+        # If no direct postcode match, fall back to sector median
+        if implied_weekly_rent is None:
+            from sqlalchemy import text
+            postcode_parts = str(prop.postcode or "").strip().split()
+            if len(postcode_parts) >= 2:
+                sector = f"{postcode_parts[0]} {postcode_parts[1][0]}"
+                sector_rows = db.query(AreaValue).filter(
+                    AreaValue.postcode.like(f"{postcode_parts[0]} {postcode_parts[1][0]}%")
+                ).all()
+                if sector_rows:
+                    rents = [r.implied_weekly_rent for r in sector_rows if r.implied_weekly_rent]
+                    prices = [r.median_sale_price for r in sector_rows if r.median_sale_price]
+                    implied_weekly_rent = sum(rents) / len(rents) if rents else None
+                    median_sale_price   = sum(prices) / len(prices) if prices else None
+
+        # ── Safety score for this postcode sector ───────────────────────
+        postcode_parts = str(prop.postcode or "").strip().split()
+        safety_score = 50.0
+        if len(postcode_parts) >= 2:
+            sector = f"{postcode_parts[0]} {postcode_parts[1][0]}"
+            safety_info = get_safety_score(sector, db)
+            if safety_info and safety_info.get("safety_score") is not None:
+                safety_score = safety_info["safety_score"]
+
+        # ── HMO flag ────────────────────────────────────────────────────
+        is_hmo = int(db.query(HmoRecord).filter(
+            HmoRecord.postcode == prop.postcode
+        ).count() > 0)
+
+        # ── IPHRP growth (constant for all Guildford) ───────────────────
+        iphrp_growth_pct = 6.005659  # Latest South East annual % (from EDA)
+
         features = {
-            "floor_area_m2": prop.floor_area_m2,
-            "num_rooms": prop.num_rooms,
-            "energy_rating": prop.energy_rating,
-            "potential_rating": prop.potential_rating,
-            "property_type": prop.property_type,
-            "lat": prop.lat,
-            "lng": prop.lng,
-            "postcode": prop.postcode,
+            "floor_area_m2":       prop.floor_area_m2,
+            "num_rooms":           prop.num_rooms,
+            "energy_rating":       prop.energy_rating,
+            "potential_rating":    prop.potential_rating,
+            "property_type":       prop.property_type,
+            "lat":                 prop.lat,
+            "lng":                 prop.lng,
+            "postcode":            prop.postcode,
+            "is_hmo":              is_hmo,
+            "safety_score":        safety_score,
+            "area_value_index":    float(area_val.area_value_index) if area_val else 0.5,
+            "implied_weekly_rent": implied_weekly_rent,
+            "median_sale_price":   median_sale_price,
+            "sale_count":          sale_count,
+            "iphrp_growth_pct":    iphrp_growth_pct,
         }
 
         result = predict_rent(features)

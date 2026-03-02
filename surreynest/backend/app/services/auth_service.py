@@ -73,13 +73,18 @@ def create_access_token(user_id: uuid.UUID, role: str) -> str:
 
 
 def get_current_user(
+    request: Request = None,
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db),
 ) -> User:
     """FastAPI dependency: decode JWT and return the authenticated user.
 
+    Reads the JWT from the httpOnly cookie first (browser requests),
+    then falls back to the Authorization Bearer header (API clients/tests).
+
     Args:
-        token: JWT bearer token from Authorization header.
+        request: The incoming request (for cookie access).
+        token: JWT bearer token from Authorization header (optional fallback).
         db: SQLAlchemy session.
 
     Returns:
@@ -94,9 +99,19 @@ def get_current_user(
         headers={"WWW-Authenticate": "Bearer"},
     )
 
+    # Prefer httpOnly cookie over Authorization header
+    jwt_token = None
+    if request and request.cookies.get("access_token"):
+        jwt_token = request.cookies["access_token"]
+    elif token:
+        jwt_token = token
+
+    if not jwt_token:
+        raise credentials_exception
+
     try:
         payload = jwt.decode(
-            token, settings.secret_key, algorithms=[settings.algorithm]
+            jwt_token, settings.secret_key, algorithms=[settings.algorithm]
         )
         user_id: Optional[str] = payload.get("sub")
         role: Optional[str] = payload.get("role")

@@ -8,12 +8,11 @@ import re
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from slowapi import Limiter
-from slowapi.util import get_remote_address
 from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database import get_db
+from app.rate_limit import limiter  # shared singleton — no circular import
 from app.models.property import Property
 from app.schemas.property import (
     PropertyDetail,
@@ -26,8 +25,14 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# Rate limiter (uses the app-level limiter from main.py)
-limiter = Limiter(key_func=get_remote_address)
+
+def _escape_like(value: str) -> str:
+    """Escape SQL LIKE special characters (%, _) in user input.
+
+    Without this, searching for '%' or '_' matches every row,
+    and crafted input like '%%%%' causes unnecessary full-table scans.
+    """
+    return value.replace("%", "\\%").replace("_", "\\_")
 
 # UK postcode regex — allows optional space between outward and inward parts
 POSTCODE_RE = re.compile(
@@ -56,11 +61,14 @@ async def suggest_properties(
     if len(query) < 2:
         return []
 
+    # Escape SQL LIKE wildcards in user input to prevent injection
+    safe_query = _escape_like(query)
+
     results = (
         db.query(Property.uprn, Property.address, Property.postcode)
         .filter(
-            (Property.address.ilike(f"%{query}%"))
-            | (Property.postcode.ilike(f"%{query}%"))
+            (Property.address.ilike(f"%{safe_query}%"))
+            | (Property.postcode.ilike(f"%{safe_query}%"))
         )
         .order_by(Property.address.asc())
         .limit(limit)

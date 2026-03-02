@@ -1,10 +1,11 @@
-"""Auth routes: register, login, get profile, delete account.
+"""Auth routes: register, login, logout, get profile, delete account.
 
 Thin route layer — delegates to auth_service for hashing and JWT creation.
+JWT is set as an httpOnly cookie (not localStorage) to prevent XSS theft.
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
@@ -111,7 +112,42 @@ async def login(
     token = create_access_token(user.id, user.role)
     logger.info("User logged in: %s", user.email)
 
-    return Token(access_token=token)
+    # Set JWT as httpOnly cookie (XSS-safe) AND return in body for backward compat
+    from app.config import settings
+    response = Response()
+    response.set_cookie(
+        key="access_token",
+        value=token,
+        httponly=True,                    # JavaScript cannot read this
+        secure=settings.environment == "production",  # HTTPS only in prod
+        samesite="lax",                   # CSRF protection
+        max_age=settings.access_token_expire_days * 86400,
+        path="/",
+    )
+    # Return JSON body too so frontend can decode user info from the token
+    import json
+    response.status_code = 200
+    response.headers["content-type"] = "application/json"
+    response.body = json.dumps({"access_token": token, "token_type": "bearer"}).encode()
+    return response
+
+
+@router.post(
+    "/auth/logout",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Logout — clear auth cookie",
+)
+async def logout() -> Response:
+    """Clear the httpOnly JWT cookie."""
+    response = Response(status_code=status.HTTP_204_NO_CONTENT)
+    response.delete_cookie(
+        key="access_token",
+        path="/",
+        httponly=True,
+        samesite="lax",
+    )
+    logger.info("User logged out (cookie cleared)")
+    return response
 
 
 # ── Profile endpoints ────────────────────────────────────────────────────────

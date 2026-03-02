@@ -7,8 +7,8 @@
 
 ## Current Phase: Phase 6 — New Data Sources
 
-**Last updated:** 2026-02-28
-**Session summary:** Completed Phase 5 — Scheduler. Registered 4 APScheduler cron jobs (crime nightly, HMO weekly, EPC monthly, land registry monthly). Added admin pipeline status + manual trigger endpoints. Updated CLAUDE.md and README.md.
+**Last updated:** 2026-03-02
+**Session summary:** Added 3 new datasets (Land Registry Price Paid, HPI, IPHRP). Created comprehensive EDA script. Rewrote land_registry_pipeline for multi-year + HPI time-adjustment. Fixed EPC pipeline (tenure normalisation, outlier removal). Removed HMO licence holder name for UK GDPR. Built Check Listing feature.
 
 ---
 
@@ -21,7 +21,7 @@
 | Phase 3: FastAPI Backend | ✅ Done | All routers, services, schemas, tests passing |
 | Phase 4: React Frontend | ✅ Done | Stitch design integration complete |
 | Phase 5: Scheduler | ✅ Done | APScheduler cron jobs + admin endpoints |
-| Phase 6: New Data Sources | ⬜ Not started | Flood + VOA pipelines |
+| Phase 6: New Data Sources | 🔄 In progress | Land Registry + HPI + IPHRP + Flood done, EPC cleaned |
 | Phase 7: Testing | ⬜ Not started | Frontend tests, E2E |
 | Phase 8: Deployment | ⬜ Not started | Railway + Vercel |
 
@@ -223,22 +223,43 @@ Build only after Phase 3 backend endpoints are verified in `/docs`.
 
 ---
 
-## ⬜ Phase 6 — New Data Sources
+## 🔄 Phase 6 — New Data Sources
 
-New pipelines and new models. Requires new Alembic migration for new tables.
+New pipelines and data integrations.
+
+### Land Registry Price Paid (Multi-Year + HPI)
+- [x] `eda_all_datasets.py` — comprehensive EDA across all 7 datasets
+- [x] `land_registry_pipeline.py` — rewritten: globs pp-*.csv files, filters GU1-5+GU7, removes outliers (£30k-£3M), HPI time-adjusts to current market, computes implied weekly rent at 4% yield, aggregates 2,515 postcodes
+- [x] HPI integration: Guildford-specific monthly index (Jan 1995 – Dec 2025), mean adjustment factor 1.016
+- [x] IPHRP: South East rental index loaded (informational, not used in model features)
+- [x] Processed data: `data/processed/land_registry_guildford.csv` (2,515 rows)
+- [x] DB upsert: 2,515 area_value entries updated with real sale-price-derived values
+
+### EPC Pipeline Fixes
+- [x] Tenure normalisation: `rented (private)` → `rental (private)`, `rented (social)` → `rental (social)`
+- [x] Outlier removal: `floor_area_m2 < 10` (3 rows) and `num_rooms > 15` (6 rows)
+
+### Privacy / GDPR
+- [x] Removed HMO licence holder name from frontend display and backend API
+
+### Check Listing Feature
+- [x] `POST /api/listings/check` — paste SpareRoom/Rightmove URL → extract postcode → show analysis
+- [x] Frontend page: `CheckListing.jsx` with URL input and results dashboard
 
 ### Flood Risk (Environment Agency)
-- [ ] New model: `app/models/flood_risk.py` → `flood_risk` table
-- [ ] New migration: add `flood_risk` table
-- [ ] `app/data_pipelines/flood_pipeline.py` — EA API, GU postcodes → flood_risk table
-- [ ] Add `flood_risk` to PropertyDetail response
+- [x] New model: `app/models/flood_risk.py` → `flood_risk` table
+- [x] Migration: `e2f3a4b5c6d7_add_flood_risk.py`
+- [x] `app/data_pipelines/flood_pipeline.py` — EA API, GU postcodes → flood_risk table
 
-### VOA Rent Bands (improves ML model)
-- [ ] New model: `app/models/rent_band.py` → `rent_bands` table
-- [ ] New migration: add `rent_bands` table
-- [ ] `app/data_pipelines/voa_pipeline.py` — ONS CSV → rent_bands table
-- [ ] Update `app/ml/train.py` to use rent_bands table instead of hardcoded dict
-- [ ] Retrain model after loading VOA data → evaluate if R² improves
+### Data Folder Structure
+```
+backend/data/raw/
+├── land_registry/     ← pp-2021.csv to pp-2025.csv (5 files, ~800MB total)
+├── hpi/               ← UK-HPI-full-file-2024-12.csv + 2025-12.csv
+├── iphrp/             ← iphrpreferencetable...xlsx
+├── certificates.csv   ← EPC data
+└── voa_rental_stats_2024.csv
+```
 
 ---
 
@@ -278,6 +299,10 @@ See `docs/deployment.md` for full instructions.
 | Date | Issue | Status |
 |------|-------|--------|
 | 2026-02-24 | EPC pipeline not populating lat/lng — search returns 0 results (ST_DWithin requires coords) | ✅ Fixed — geocoding_pipeline.py backfills, epc_pipeline.py calls geocoding at end |
+| 2026-03-02 | ML model circular dependency: `implied_weekly_rent` is BOTH a training feature AND the training target in MODE C. Model learns to echo back the feature; all other features become irrelevant. Changing datasets has no effect on predictions. | ❌ NOT FIXED — model must be retrained with `implied_weekly_rent` removed from features (use it as target only) |
+| 2026-03-02 | `area_value_index` is never passed to `predict_rent()` in `score_service.py`. Every prediction uses the neutral default (0.5) regardless of property location. | ❌ NOT FIXED — add `area_value_index` to features dict in `score_service.py` get_rent_prediction() |
+| 2026-03-02 | 4% yield formula systematically underestimates GU1 rents. Actual Guildford yields near town centre (GU1) are 3–3.5% because prices rose faster than rents. Model inherits this underestimate as its training signal. | ❌ NOT FIXED — fix yield rate to 3.5% OR switch training target to VOA actual rent bands instead of yield-derived |
+| 2026-03-02 | Stale prediction cache: `rent_predictions` table caches old wrong values. Even after retraining, properties already in cache serve the old prediction unless `ml_model_version` in `.env` is bumped. | ❌ NOT FIXED — bump ML_MODEL_VERSION in .env after every retrain |
 
 ---
 
@@ -286,22 +311,32 @@ See `docs/deployment.md` for full instructions.
 *Always fill this in before ending a session:*
 
 ```
-Session 3 — 2026-02-28
+Session 5 — 2026-03-02
 Last thing done:
-  - Completed Phase 5 (Scheduler)
-  - Created scheduler.py with 4 CronTrigger jobs
-  - Created pipelines.py admin router (GET status + POST trigger)
-  - Modified main.py to wire register_jobs() and mount router
-  - Also completed Stitch design integration for frontend (Phase 4)
+  - Diagnosed ML model producing wrong (too low) rent predictions for GU1 properties
+  - Found 3 critical bugs in train.py / score_service.py (documented in Blockers above)
+  - Updated progress.md and CLAUDE.md with all bugs and prevention rules
 
-Next step for next session:
-  1. Phase 7 — Testing: add frontend Vitest tests + E2E flow
-  2. Phase 8 — Deployment: Railway backend + Vercel frontend
-  3. Phase 6 — New Data Sources: flood risk + VOA rent bands (nice-to-have)
+CRITICAL: ML model is broken. Do NOT mark Phase 2 as complete until all 3 bugs are fixed.
+
+Next step for next session (in this exact order):
+  1. Fix score_service.py: add `area_value_index` to features dict in get_rent_prediction()
+  2. Fix train.py MODE C: remove `implied_weekly_rent` from training feature columns
+     (use as target only — not both feature AND target)
+  3. Fix yield rate in land_registry_pipeline.py: change 4% to 3.5% for GU1 accuracy
+  4. Retrain model: docker exec surreynest-backend python -m app.ml.train (will auto-detect MODE C)
+  5. Bump ML_MODEL_VERSION in backend/.env (e.g. v2.0.0) to invalidate stale prediction cache
+  6. Verify: check 9a Epsom Road GU1 prediction is in £350-500/week range
+  7. Phase 7 — Testing
+  8. Phase 8 — Deployment
 
 Gotchas to remember:
-  - APScheduler is 3.x (3.10.4), NOT 4.x — CronTrigger not AsyncTrigger
-  - Pipeline jobs run in ThreadPoolExecutor (max_workers=1) to avoid blocking
-  - Admin endpoints require JWT with role='admin'
-  - Pipelines already write to pipeline_runs table via run_pipeline_with_tracking
+  - Land Registry PP files have NO headers (use COLUMN_NAMES list)
+  - HPI has Guildford-specific rows (RegionName=Guildford)
+  - IPHRP is regional (South East), not Guildford-specific
+  - Price Paid file for 2025 is named "pp-2025 (1).csv" (space + parens)
+  - EPC tenure: normalised now, rented → rental
+  - HMO licence_holder removed from API response and frontend
+  - implied_weekly_rent MUST NOT be a training feature when it IS the training target (circular)
+  - Always bump ML_MODEL_VERSION in .env after every retrain to flush stale cache
 ```

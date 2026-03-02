@@ -129,9 +129,15 @@ def clean_epc_data(raw_path: Optional[Path] = None) -> pd.DataFrame:
     df = df[df["UPRN"].str.len() > 0]
     logger.info("After UPRN filter: %d rows", len(df))
 
-    # ── Clean tenure (keep all types — no longer filter to rental only) ──
-    df["TENURE"] = df["TENURE"].fillna("").str.lower()
-    logger.info("Tenure cleaned: %d rows (all tenure types kept)", len(df))
+    # ── Clean + normalise tenure ────────────────────────────────────────
+    df["TENURE"] = df["TENURE"].fillna("").str.lower().str.strip()
+    # Normalise duplicate labels: "rented (private)" → "rental (private)"
+    TENURE_NORMALISATION = {
+        "rented (private)": "rental (private)",
+        "rented (social)": "rental (social)",
+    }
+    df["TENURE"] = df["TENURE"].replace(TENURE_NORMALISATION)
+    logger.info("Tenure cleaned + normalised: %d rows (all tenure types kept)", len(df))
 
     # ── Filter: post-2018 lodgement date ─────────────────────────────────
     df["LODGEMENT_DATE"] = pd.to_datetime(df["LODGEMENT_DATE"], errors="coerce")
@@ -182,6 +188,12 @@ def clean_epc_data(raw_path: Optional[Path] = None) -> pd.DataFrame:
         df["NUMBER_HABITABLE_ROOMS"], errors="coerce"
     )
 
+    # ── Remove floor area outliers (< 10 m² = data errors) ───────────────
+    FLOOR_AREA_MIN = 10
+    tiny_count = (df["TOTAL_FLOOR_AREA"] < FLOOR_AREA_MIN).sum()
+    df = df[df["TOTAL_FLOOR_AREA"].isna() | (df["TOTAL_FLOOR_AREA"] >= FLOOR_AREA_MIN)]
+    logger.info("Removed %d rows with floor area < %d m²", tiny_count, FLOOR_AREA_MIN)
+
     # ── Cap floor area at 300 m² (outlier correction) ────────────────────
     FLOOR_AREA_CAP = 300
     capped_count = (df["TOTAL_FLOOR_AREA"] > FLOOR_AREA_CAP).sum()
@@ -189,6 +201,12 @@ def clean_epc_data(raw_path: Optional[Path] = None) -> pd.DataFrame:
     logger.info(
         "Capped floor area at %d m²: %d rows affected", FLOOR_AREA_CAP, capped_count
     )
+
+    # ── Remove room count outliers (> 15 = likely commercial) ────────────
+    ROOMS_MAX = 15
+    big_rooms_count = (df["NUMBER_HABITABLE_ROOMS"] > ROOMS_MAX).sum()
+    df = df[df["NUMBER_HABITABLE_ROOMS"].isna() | (df["NUMBER_HABITABLE_ROOMS"] <= ROOMS_MAX)]
+    logger.info("Removed %d rows with rooms > %d (likely commercial)", big_rooms_count, ROOMS_MAX)
 
     # ── Deduplicate on UPRN (keep most recent by lodgement date) ─────────
     df = df.sort_values("LODGEMENT_DATE", ascending=False)

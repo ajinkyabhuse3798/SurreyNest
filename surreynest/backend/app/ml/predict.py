@@ -28,20 +28,29 @@ _feature_columns: List[str] = []
 # ── Guildford reference points ────────────────────────────────────────────────
 GUILDFORD_TOWN_CENTRE = (51.2362, -0.5704)
 UNIVERSITY_OF_SURREY = (51.2430, -0.5890)
+GUILDFORD_STATION = (51.2372, -0.5617)       # London Road station forecourt
 
 # ── Energy rating ordinal encoding ────────────────────────────────────────────
 ENERGY_ORDINAL = {"G": 0, "F": 1, "E": 2, "D": 3, "C": 4, "B": 5, "A": 6}
 
-# ── Sensible defaults for optional features ───────────────────────────────────
+# ── Sensible defaults for optional features ─────────────────────────────────────────────
+# Land Registry defaults: Guildford-wide medians from our EDA
 FEATURE_DEFAULTS = {
     "num_rooms": 3,
-    "energy_rating_ordinal": 3,   # D
-    "potential_rating_ordinal": 4, # C
+    "energy_rating_ordinal": 3,        # D
+    "potential_rating_ordinal": 4,     # C
     "distance_to_town_km": 3.0,
     "distance_to_uni_km": 3.0,
+    "distance_to_station_km": 2.5,     # Guildford median from EDA (v2.1.0)
     "is_hmo": 0,
     "safety_score": 50.0,
     "area_value_index": 0.5,
+    # ── Land Registry / HPI / IPHRP defaults (Guildford medians) ──────────
+    # NOTE: implied_weekly_rent and median_sale_price removed in v2.1.0.
+    # median_sale_price caused 91.6% feature importance (circular with target).
+    # implied_weekly_rent is the training target basis, not an inference feature.
+    "sale_count": 4.0,                 # Guildford median postcodes from EDA
+    "iphrp_growth_pct": 6.0,           # South East IPHRP latest annual %
 }
 
 # ── Validation ranges for input warnings ──────────────────────────────────────
@@ -52,6 +61,7 @@ VALIDATION_RANGES = {
     "area_value_index": (0.0, 1.0),
     "distance_to_town_km": (0.0, 50.0),
     "distance_to_uni_km": (0.0, 50.0),
+    "distance_to_station_km": (0.0, 50.0),
 }
 
 
@@ -191,9 +201,11 @@ def predict_rent(property_features: Dict) -> Optional[Dict]:
         if lat is not None and lng is not None:
             distance_to_town = geodesic((lat, lng), GUILDFORD_TOWN_CENTRE).km
             distance_to_uni = geodesic((lat, lng), UNIVERSITY_OF_SURREY).km
+            distance_to_station = geodesic((lat, lng), GUILDFORD_STATION).km
         else:
             distance_to_town = FEATURE_DEFAULTS["distance_to_town_km"]
             distance_to_uni = FEATURE_DEFAULTS["distance_to_uni_km"]
+            distance_to_station = FEATURE_DEFAULTS["distance_to_station_km"]
 
         energy_rating = property_features.get("energy_rating", "D")
         potential_rating = property_features.get("potential_rating", "C")
@@ -211,9 +223,20 @@ def predict_rent(property_features: Dict) -> Optional[Dict]:
             "potential_rating_ordinal": potential_ordinal,
             "distance_to_town_km": distance_to_town,
             "distance_to_uni_km": distance_to_uni,
+            "distance_to_station_km": distance_to_station,  # v2.1.0
             "is_hmo": int(property_features.get("is_hmo", FEATURE_DEFAULTS["is_hmo"])),
             "safety_score": float(property_features.get("safety_score", FEATURE_DEFAULTS["safety_score"])),
             "area_value_index": float(property_features.get("area_value_index", FEATURE_DEFAULTS["area_value_index"])),
+            # ── Land Registry / HPI / IPHRP features ───────────────────────
+            # NOTE: implied_weekly_rent and median_sale_price removed in v2.1.0.
+            # median_sale_price was causing 91.6% feature importance (circular).
+            # implied_weekly_rent is the training target basis, not an inference feature.
+            "sale_count": float(
+                property_features.get("sale_count") or FEATURE_DEFAULTS["sale_count"]
+            ),
+            "iphrp_growth_pct": float(
+                property_features.get("iphrp_growth_pct", FEATURE_DEFAULTS["iphrp_growth_pct"])
+            ),
         }
 
         # Dynamic one-hot encoding: set the right ptype column to 1
@@ -244,7 +267,7 @@ def predict_rent(property_features: Dict) -> Optional[Dict]:
 
         logger.debug(
             "Predicted rent for %s: £%.2f/week (floor_area=%.0f, type=%s, "
-            "is_hmo=%d, safety=%.0f, avi=%.2f)",
+            "is_hmo=%d, safety=%.0f, avi=%.2f, station=%.1fkm)",
             property_features.get("postcode", "unknown"),
             predicted_rent,
             floor_area,
@@ -252,6 +275,7 @@ def predict_rent(property_features: Dict) -> Optional[Dict]:
             computed["is_hmo"],
             computed["safety_score"],
             computed["area_value_index"],
+            computed["distance_to_station_km"],
         )
 
         return {"predicted_weekly_rent": predicted_rent}

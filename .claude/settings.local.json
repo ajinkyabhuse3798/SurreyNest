@@ -11,7 +11,16 @@
       "Bash(head:*)",
       "Bash(curl -s http://localhost:5173)",
       "Bash(curl:*)",
-      "Bash(echo API docs served \\(HTML\\):*)"
+      "Bash(echo API docs served \\(HTML\\):*)",
+      "Bash(docker context:*)",
+      "Bash(DOCKER_HOST=unix:///Users/ajinkyabhuse/.docker/run/docker.sock docker ps:*)",
+      "Bash(echo:*)",
+      "Bash(pgrep:*)",
+      "Bash(osascript:*)",
+      "Bash(open:*)",
+      "Bash(python3:*)",
+      "Bash(docker-compose up:*)",
+      "Bash(cd:*)"
     ]
   }
 }
