@@ -87,7 +87,7 @@ surreynest/
 │   │   ├── main.py            ← ✅ FastAPI entry point (complete)
 │   │   ├── config.py          ← ✅ Env var loading (complete)
 │   │   ├── database.py        ← ✅ SQLAlchemy engine + session (complete)
-│   │   ├── models/            ← ✅ All 8 ORM models complete (see below)
+│   │   ├── models/            ← ✅ All 11 ORM models complete (see below)
 │   │   ├── schemas/           ← ✅ All Pydantic schemas complete
 │   │   ├── routers/           ← ✅ All route handlers complete (incl. listings)
 │   │   ├── services/          ← ✅ All business logic complete
@@ -112,12 +112,12 @@ surreynest/
 └── frontend/
     ├── src/
     │   ├── pages/             ← ✅ All pages complete (incl. CheckListing)
-    │   ├── components/        ← ✅ All components complete
-    │   ├── hooks/             ← ✅ useAuth complete
-    │   ├── services/          ← ✅ api.js complete
+    │   ├── components/        ← ✅ All components complete (incl. GuildfordHeatmap, RentRadarChart)
+    │   ├── hooks/             ← ✅ useAuth, useCompare complete
+    │   ├── services/          ← ✅ api.js, heatmapApi.js complete
     │   └── utils/
     ├── vite.config.js         ← ✅ Complete
-    └── package.json           ← ✅ All dependencies listed
+    └── package.json           ← ✅ All dependencies listed (incl. recharts)
 ```
 
 ---
@@ -131,7 +131,7 @@ surreynest/
 - `backend/alembic/versions/62efbusz7xg4_initial_schema.py` — Full initial migration
 
 ### Complete SQLAlchemy Models (all in `backend/app/models/`)
-All 8 models are complete with correct column names — **use these exact names everywhere**:
+All 11 models are complete with correct column names — **use these exact names everywhere**:
 
 | File | Table | Key columns |
 |------|-------|-------------|
@@ -143,6 +143,9 @@ All 8 models are complete with correct column names — **use these exact names 
 | `postcode_cache.py` | `postcode_cache` | `postcode` (PK), `lat`, `lng`, `ward`, `district`, `is_valid` |
 | `rent_prediction.py` | `rent_predictions` | `uprn` (PK/FK), `predicted_weekly_rent`, `confidence_low`, `confidence_high`, `model_version`, `computed_at` |
 | `pipeline_run.py` | `pipeline_runs` | `id`, `pipeline_name`, `started_at`, `finished_at`, `status`, `rows_processed`, `error_message` |
+| `area_value.py` | `area_values` | `postcode` (PK), `median_sale_price`, `area_value_index`, `implied_weekly_rent`, `sale_count`, `updated_at` |
+| `rent_history.py` | `rent_history` | `postcode_sector` + `year` (composite PK), `median_sale_price`, `implied_weekly_rent`, `transaction_count` |
+| `pipeline_config.py` | `pipeline_config` | `key` (PK), `value`, `description`, `updated_at` |
 
 **Critical column names — never get these wrong:**
 ```python
@@ -191,6 +194,53 @@ These rules are applied during ingestion. **Do not change them** without explici
 ### EDA Script (`eda_all_datasets.py`)
 - Run: `python -m app.data_pipelines.eda_all_datasets`
 - Audits all 7 datasets, flags anomalies with ⚠️, checks cross-dataset consistency
+
+---
+
+## API Endpoints — Complete List
+
+| Method | Path | Description | Router |
+|--------|------|-------------|--------|
+| POST | `/api/auth/register` | Register new user | auth.py |
+| POST | `/api/auth/login` | Login, return JWT | auth.py |
+| GET | `/api/auth/me` | Current user | auth.py |
+| DELETE | `/api/auth/me` | Delete account | auth.py |
+| GET | `/api/properties?postcode=&radius=` | Search properties | properties.py |
+| GET | `/api/properties/{uprn}` | Property detail | properties.py |
+| GET | `/api/properties/suggest?q=` | Autocomplete | properties.py |
+| GET | `/api/hmo/check?uprn=` | HMO status | hmo.py |
+| GET | `/api/scores/safety?postcode=` | Safety score | scores.py |
+| GET | `/api/scores/rent-fairness?uprn=&weekly_rent=` | Fairness score | scores.py |
+| GET | `/api/reviews/{uprn}` | Property reviews | reviews.py |
+| POST | `/api/reviews/{uprn}` | Submit review | reviews.py |
+| POST | `/api/listings/check` | Check listing URL | listings.py |
+| GET | `/api/heatmap/sectors` | All sector data for heatmap | heatmap.py |
+| GET | `/api/rent-trends/{sector}` | Historical rent + forecast | rent_trends.py |
+| GET | `/api/leaderboard/streets?district=&limit=` | Ranked streets by composite score | leaderboard.py |
+| GET | `/api/admin/pipelines/status` | Pipeline status | pipelines.py |
+| POST | `/api/admin/pipelines/{name}/trigger` | Trigger pipeline | pipelines.py |
+| GET | `/api/safety/intelligence?postcode=` | Full crime analytics for a sector | safety.py |
+| GET | `/api/safety/rankings` | Top 5 safest + top 5 hotspot areas | safety.py |
+
+---
+
+## Frontend Components — Key Files
+
+| Component | Used On | Notes |
+|-----------|---------|-------|
+| `GuildfordHeatmap.jsx` | Home page | Leaflet map, 3 layers (rent/safety/HMO), 17 sectors |
+| `RentRadarChart.jsx` | PropertyDetail | Recharts AreaChart, 5yr history + 2yr forecast |
+| `SearchAutocomplete.jsx` | Home, Search | Input with debounced suggest API |
+| `MapView.jsx` | SearchResults | react-leaflet with CircleMarkers |
+| `ProtectedRoute.jsx` | App routing | Auth guard — redirects to login if not authenticated |
+| `ScoreGauge.jsx` | PropertyDetail | SVG gauge for safety/fairness |
+| `CrimeBreakdown.jsx` | PropertyDetail | Category breakdown bar chart |
+| `EpcBand.jsx` | PropertyDetail | EPC rating visual band |
+| `MarketPulse.jsx` | Home page | Seasonal availability indicator, static data, animated timeline |
+| `StreetSmarts.jsx` | /best-streets (page) | Leaderboard with ranked cards, district toggle, score breakdowns |
+| `SafetyIntelligence.jsx` | (reusable component) | Crime donut, monthly chart, trend, comparison, student insights |
+| `SafetyDetail.jsx` | /safety/:postcode (page) | Full-page safety analytics — 9 sections, data-driven, plain English |
+| `safetyApi.js` | (service) | API client for `/api/safety/intelligence` and `/api/safety/rankings` |
 
 ---
 
@@ -256,36 +306,43 @@ If `.env` ML_MODEL_VERSION is not bumped after retraining, old wrong predictions
 
 ---
 
-## ML Model — Feature Names (exact, match the DB columns)
+## ML Model — Feature Names (v3.1.0, exact column names)
 
 The ML model in `docs/ml-model.md` uses these features. Column names must match exactly:
 
 ```python
 # From properties table:
 'floor_area_m2'           # property.floor_area_m2
-'num_rooms'               # property.num_rooms
-'energy_rating_encoded'   # derived from property.energy_rating (G=0...A=6)
+'num_rooms'               # EPC habitable rooms (NOT bedrooms!) — includes
+                          # bedrooms + living rooms + kitchens if > 13m²
+
+# Derived features (computed at train/predict time):
+'estimated_bedrooms'      # v3.1.0: Flats: max(0, num_rooms-1), Houses: max(1, num_rooms-2)
+'rooms_per_m2'            # v3.0.0: num_rooms / floor_area_m2 (space efficiency)
+
+# From properties table:
+'energy_rating_ordinal'   # derived from property.energy_rating (G=0...A=6)
+'potential_rating_ordinal' # derived from property.potential_rating
 
 # From properties table (one-hot encoded):
-'property_type'           # property.property_type
-'built_form'              # property.built_form
-
-# From hmo_records table:
-'is_hmo'                  # bool: any active HMO record for this UPRN/postcode
+'ptype_Flat', 'ptype_Detached', 'ptype_Semi-Detached', 'ptype_Terraced'
 
 # Computed (no DB column — calculated in features.py):
 'distance_to_town_km'     # Haversine to GU1 3AY (51.2362, -0.5704)
 'distance_to_uni_km'      # Haversine to Surrey Uni (51.2417, -0.5888)
+'distance_to_station_km'  # Haversine to Guildford Station
 
 # From crime_data table (aggregated):
 'safety_score'            # score_service.compute_safety_score(postcode_sector)
-                          # Fill with dataset median when crime data is sparse
 
 # From processed Land Registry CSV:
-'area_value_index'        # Median sale price per postcode, normalised 0-1
-                          # Fill with 0.5 (median) when data missing
-'median_sale_price'       # Absolute neighbourhood value (£) — OK as feature
-'sale_count'              # Market liquidity signal — OK as feature
+'sale_count'              # Market liquidity signal
+
+# ⛔ REMOVED from features in v3.0.0+ (data leakage / zero info):
+# 'area_value_index'      — quasi-circular with target (40.7% importance in v2.1.0)
+# 'is_hmo'                — 0% importance, inaccurate postcode-level matching
+# 'iphrp_growth_pct'      — constant across all rows = zero information
+# 'median_sale_price'     — 91.6% correlation with target (removed in v2.1.0)
 
 # ⛔ NOT a training feature — training target only:
 # 'implied_weekly_rent'   # NEVER put this in get_feature_columns()
@@ -335,6 +392,28 @@ See `docs/conventions.md` for complete details. Key rules:
 - `docs:` documentation only
 - `test:` test additions
 
+### Frontend Charts (Recharts)
+- **NEVER** use separate `data` props on child `<Area>` or `<Line>` components inside a parent `<AreaChart>`/`<LineChart>`
+- **DO** use a single unified dataset on the parent, with separate `dataKey` props on each child
+- To show historical + forecast as separate lines: use `historicalRent` and `forecastRent` as keys, set `undefined` for non-applicable years
+- Always add `connectNulls={false}` to prevent unwanted line connections across undefined gaps
+
+### Leaflet Maps
+- Map height: use Tailwind responsive classes `h-[320px] md:h-[480px]`, NOT `style={{ height: '480px' }}`
+- Always check for null postcodes before calling `_extract_sector()` on the backend
+- Popups work with tap on mobile — no special handling needed
+- Mobile responsive: smaller pills `px-3 py-1.5 text-xs` → `md:px-4 md:py-2 md:text-sm`
+
+### Backend Rate Limiting
+- Use the SHARED `Limiter()` instance from `app/rate_limiter.py`
+- NEVER create a new `Limiter()` in individual router files — state won't be shared
+- Import: `from app.rate_limiter import limiter`
+
+### Security
+- Always sanitise `%` and `_` in SQL LIKE/ILIKE queries to prevent wildcard injection
+- Always `.lower().strip()` emails on registration AND login
+- Never expose raw error messages to users — use generic fallbacks in ErrorBoundary
+
 ---
 
 ## Environment Variables
@@ -354,8 +433,11 @@ RATE_LIMIT_REVIEWS=5              # Already in .env.example
 ## Running the Project Locally
 
 ```bash
-# Start database and backend
+# Start database (MUST be running for any backend endpoint to work)
 docker-compose up -d
+
+# Verify container is running
+docker ps | grep surreynest-db
 
 # Run DB migrations (first time, or after new migration)
 docker exec surreynest-backend alembic upgrade head
@@ -408,6 +490,8 @@ All decisions logged in `docs/decisions.md` (ADR-001 through ADR-012). Summary:
 - Mobile app (PWA via React)
 - Redis caching layer
 - Elasticsearch
+- Auto-scheduling `rent_history` population (currently manual via script)
+- Choropleth map with real GeoJSON sector boundaries (currently uses CircleMarkers)
 
 ---
 
@@ -451,6 +535,46 @@ After finishing work:
 - [ ] Run `black . && ruff check .` — no formatting/lint errors
 - [ ] Update `docs/progress.md` — mark completed items, add session notes
 - [ ] Commit with conventional commit message
+
+---
+
+## Design System (Stitch)
+
+**Always adhere to these guidelines for any UI development:**
+- **Primary Color:** `#4F46E5` (indigo-600)
+- **Accents:** `emerald-500` (positive/rental), `amber-500` (warning), `rose-500` (negative)
+- **Typography:** `Manrope` (primary font for a premium feel)
+- **Backgrounds:** `#f8f9fc` (soft blue-gray) for app backgrounds, white for cards
+- **Cards & Elements:** `rounded-2xl` or `rounded-xl`, borders: `border-slate-100` to `border-slate-200`
+- **Shadows:** Soft, premium shadows (e.g., `shadow-[0_4px_20px_-2px_rgba(80,72,229,0.08)]`)
+- **Effects:** Glassmorphism (`bg-white/90 backdrop-blur-lg`) for sticky headers and floating bottom bars
+- **Icons:** Lucide React icons
+- **Layout:** Mobile-first, but robust desktop scaling (e.g., max-w-7xl containers, split-view for search, multi-column grids for features)
+
+### Property Detail Page
+- **Layout:** 2-column `grid lg:grid-cols-[1fr_380px]` — left = data sections (Safety, Cost, RentRadar, Details, HMO, Flood Risk), right = sticky sidebar (Location, Reviews, Rights)
+- **Section cards:** White `rounded-2xl` cards with `shadow-[0_2px_12px_-2px_rgba(0,0,0,0.06)]`, section headers have indigo-50 icon badges (8×8 `rounded-lg`)
+- **Stat cards:** 4 in a row (hero), `shadow-[0_2px_12px_-2px_rgba(80,72,229,0.08)]` + `border-slate-100`
+- **Rights cards:** Left indigo border accent `border-l-4 border-indigo-400`
+- **Verdict cards:** emerald-50/amber-50/red-50 with matching border
+- **Safety section:** Brief only — ScoreGauge + verdict + CTA link to `/safety/:postcode`. **All detailed analytics live on the dedicated SafetyDetail page, NOT on PropertyDetail.**
+- **Mobile:** Single-column stacked, all sections in order, stat cards flow-wrapped
+
+### Safety Detail Page (`/safety/:postcode`)
+- **Hero:** `bg-gradient-to-br from-indigo-600 via-indigo-700 to-violet-700`, white text, ScoreGauge inside `bg-white/10 backdrop-blur-sm`, 5-star amber overlay
+- **Sections:** Same white `rounded-2xl` cards with indigo-50 icon badge headers (matches PropertyDetail pattern)
+- **Data source:** police.uk, updated monthly. All analytics are per postcode sector, not per property.
+- **Components used:** CrimeDonut (SVG), MonthlyChart (pixel-height bars), GuildfordComparison (5-star), AreaRankings (safest+hotspots), TrainStations, StudentSafety, HolidayAlert, SafetyTips
+- **Language:** Plain English only — no percentiles, no indices, no jargon. Target audience: non-technical students.
+
+### StreetSmarts Leaderboard
+- **Background:** `#f8f9fc`, hero has indigo dot pattern (`opacity-[0.15]`)
+- **Top-3 Podium:** 3-column grid, center (#1) card is `lg:scale-105` with `shadow-[0_8px_30px_-4px_rgba(245,158,11,0.25)]` amber glow
+- **Rank badges:** gold = `from-yellow-400 to-amber-500`, silver = `from-gray-300 to-gray-400`, bronze = `from-amber-600 to-amber-700`
+- **Leaderboard grid:** `lg:grid-cols-2` for ranks 4+, white `rounded-2xl` cards with indigo hover glow
+- **Pillars:** 3 only — Safety (emerald), Value (blue), Proximity (violet) — **HMO excluded**
+- **Score bars:** Gradient fills with `framer-motion` animation, `h-2 rounded-full`
+- **Quick stat pills:** `rounded-full` with colored borders (blue/slate/violet)
 
 ---
 

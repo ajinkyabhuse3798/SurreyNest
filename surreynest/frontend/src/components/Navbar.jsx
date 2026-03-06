@@ -11,6 +11,7 @@ import { useAuth } from '../hooks/useAuth'
 
 const NAV_LINKS = [
     { to: '/search', label: 'Search' },
+    { to: '/best-streets', label: 'Best Streets' },
     { to: '/check-listing', label: 'Check Listing' },
     { to: '/compare', label: 'Compare' },
     { to: '/rights', label: 'Rights Guide' },

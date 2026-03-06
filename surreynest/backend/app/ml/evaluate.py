@@ -27,8 +27,10 @@ from sklearn.model_selection import cross_validate, train_test_split
 from app.ml.train import (
     FEATURES_PATH,
     MODEL_PATH,
-    MODEL_VERSION_C,
+    MODEL_VERSION,
+    OUTLIER_CAP_WEEKLY,
     compute_real_target,
+    estimate_bedrooms,
     get_feature_columns,
 )
 
@@ -231,13 +233,15 @@ def run_sanity_checks(pipeline, feature_cols: List[str]) -> List[Dict]:
         defaults = {
             "floor_area_m2": 60.0,
             "num_rooms": 3,
+            "estimated_bedrooms": 2,  # v3.1.0: flats: rooms-1
+            "rooms_per_m2": 0.05,  # 3 rooms / 60m²
             "energy_rating_ordinal": 4,  # C
             "potential_rating_ordinal": 5,  # B
             "distance_to_town_km": 2.0,
             "distance_to_uni_km": 2.0,
-            "is_hmo": 0,
+            "distance_to_station_km": 2.5,
             "safety_score": 50.0,
-            "area_value_index": 0.5,
+            "sale_count": 4.0,
             "ptype_Detached": 0,
             "ptype_Flat": 0,
             "ptype_Semi-Detached": 0,
@@ -246,36 +250,52 @@ def run_sanity_checks(pipeline, feature_cols: List[str]) -> List[Dict]:
         defaults.update(overrides)
         return np.array([[defaults.get(c, 0) for c in feature_cols]])
 
-    # ── Check 1: Small studio flat ───────────────────────────────────────
-    # VOA: 1-bed = £173/week, 25m² is below median (40m²) → area_adj ~0.925
-    # × flat premium 1.05 → ~£168. With noise: £100–220 range
-    studio = _make_features(floor_area_m2=25.0, num_rooms=1, ptype_Flat=1)
-    studio_pred = pipeline.predict(studio)[0]
+    def _predict_rent(features: np.ndarray) -> float:
+        """Predict rent with log-inverse transform for v3.2.0+ models."""
+        raw = pipeline.predict(features)[0]
+        return float(np.expm1(raw))  # Inverse log-transform
+
+    # ── Check 1: 34.5m² studio flat (matches user's £1,200/mo market ref) ──
+    # Real market: £1,200/mo = £277/wk. Data shows studios median £299/wk.
+    studio = _make_features(
+        floor_area_m2=34.5, num_rooms=1, estimated_bedrooms=0,
+        rooms_per_m2=round(1/34.5, 4), ptype_Flat=1
+    )
+    studio_pred = _predict_rent(studio)
     results.append({
-        "name": "25m² studio flat",
+        "name": "34.5m² studio flat (1 hab room)",
         "prediction": round(studio_pred, 2),
-        "expected": "£100–220/week",
-        "passed": 100 <= studio_pred <= 220,
+        "expected": "£150–350/week (£650–1,520/mo)",
+        "passed": 150 <= studio_pred <= 350,
     })
 
-    # ── Check 2: Large detached house ────────────────────────────────────
-    # VOA: 5-bed = £460/week, 120m² below median (140m²) → area_adj ~0.97
-    # × detached discount 0.90 → ~£402. With noise: £300–550 range
-    detached = _make_features(floor_area_m2=120.0, num_rooms=5, ptype_Detached=1)
-    detached_pred = pipeline.predict(detached)[0]
+    # ── Check 2: 120m² detached house (5 hab rooms = 3 bedrooms) ──────
+    # Data shows 3-bed houses median £319/wk, with 120m² area premium.
+    detached = _make_features(
+        floor_area_m2=120.0, num_rooms=5, estimated_bedrooms=3,
+        rooms_per_m2=round(5/120, 4), ptype_Detached=1
+    )
+    detached_pred = _predict_rent(detached)
     results.append({
-        "name": "120m² detached house",
+        "name": "120m² detached house (5 hab rooms)",
         "prediction": round(detached_pred, 2),
-        "expected": "£300–550/week",
-        "passed": 300 <= detached_pred <= 550,
+        "expected": "£350–700/week",
+        "passed": 350 <= detached_pred <= 700,
     })
 
     # ── Check 3: Type ordering (80m², 3-bed, all else equal) ─────────────
-    flat_pred = pipeline.predict(_make_features(floor_area_m2=80.0, num_rooms=3, ptype_Flat=1))[0]
-    semi_pred = pipeline.predict(
-        _make_features(floor_area_m2=80.0, num_rooms=3, **{"ptype_Semi-Detached": 1})
-    )[0]
-    detached_80 = pipeline.predict(_make_features(floor_area_m2=80.0, num_rooms=3, ptype_Detached=1))[0]
+    flat_pred = _predict_rent(_make_features(
+        floor_area_m2=80.0, num_rooms=3, estimated_bedrooms=2,
+        rooms_per_m2=round(3/80, 4), ptype_Flat=1
+    ))
+    semi_pred = _predict_rent(_make_features(
+        floor_area_m2=80.0, num_rooms=3, estimated_bedrooms=1,
+        rooms_per_m2=round(3/80, 4), **{"ptype_Semi-Detached": 1}
+    ))
+    detached_80 = _predict_rent(_make_features(
+        floor_area_m2=80.0, num_rooms=3, estimated_bedrooms=1,
+        rooms_per_m2=round(3/80, 4), ptype_Detached=1
+    ))
 
     # Flat multiplier (1.05) > Semi (0.93) > Detached (0.90)
     results.append({
@@ -289,7 +309,11 @@ def run_sanity_checks(pipeline, feature_cols: List[str]) -> List[Dict]:
     areas = [30, 60, 90, 120]
     area_preds = []
     for area in areas:
-        pred = pipeline.predict(_make_features(floor_area_m2=float(area), num_rooms=3, ptype_Flat=1))[0]
+        est_beds = max(0, 3 - 1)  # 3 hab rooms flat = 2 bedrooms
+        pred = _predict_rent(_make_features(
+            floor_area_m2=float(area), num_rooms=3, estimated_bedrooms=est_beds,
+            rooms_per_m2=round(3/max(area,10), 4), ptype_Flat=1
+        ))
         area_preds.append(pred)
 
     is_monotonic = all(a < b for a, b in zip(area_preds, area_preds[1:]))
@@ -387,7 +411,7 @@ def generate_report(
     """
     lines = [
         "# Model Evaluation Report",
-        f"\n**Model:** rent_model {MODEL_VERSION_C}",
+        f"\n**Model:** rent_model {MODEL_VERSION}",
         f"**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M')}",
         "",
         "---",
@@ -496,7 +520,11 @@ def run_evaluation() -> None:
     df = pd.read_csv(str(FEATURES_PATH))
     logger.info("Loaded feature matrix: shape=%s", df.shape)
 
-    # ── Compute target (MODE C — real Price Paid implied rents) ─────────
+    # ── Add derived features (same as train_model) ─────────────────────
+    df["rooms_per_m2"] = (df["num_rooms"] / df["floor_area_m2"].clip(lower=10)).round(4)
+    df["estimated_bedrooms"] = estimate_bedrooms(df)
+
+    # ── Compute target (MODE E — Land Registry implied rents) ────────────
     target = compute_real_target(df)
     feature_cols = get_feature_columns(df)
     X = df[feature_cols].copy()
@@ -505,6 +533,15 @@ def run_evaluation() -> None:
     # Drop NaN
     valid = X.notna().all(axis=1) & y.notna()
     X, y = X[valid], y[valid]
+
+    # ── Cap outliers (same as train.py) ──────────────────────────────────
+    cap_mask = y <= OUTLIER_CAP_WEEKLY
+    n_removed = (~cap_mask).sum()
+    X, y = X[cap_mask], y[cap_mask]
+    logger.info(
+        "Outlier cap: removed %d properties > £%.0f/wk, %d remain",
+        n_removed, OUTLIER_CAP_WEEKLY, len(y),
+    )
     logger.info("Valid samples: %d, features: %d", len(X), len(feature_cols))
 
     # ── Train/test split (same as train.py) ──────────────────────────────
@@ -520,12 +557,15 @@ def run_evaluation() -> None:
     pipeline = joblib.load(str(MODEL_PATH))
     logger.info("Loaded model from %s", MODEL_PATH)
 
-    # ── 1. Standard metrics ──────────────────────────────────────────────
-    y_pred = pipeline.predict(X_test)
+    # ── 1. Standard metrics (on original scale) ──────────────────────────
+    # Model predicts in log-space, so inverse-transform for metrics
+    y_log = np.log1p(y_test)
+    y_pred_log = pipeline.predict(X_test)
+    y_pred = np.expm1(y_pred_log)  # Inverse log-transform
     metrics = compute_metrics(y_test.values, y_pred)
 
     logger.info("=" * 40)
-    logger.info("STANDARD METRICS")
+    logger.info("STANDARD METRICS (original £/wk scale)")
     logger.info("  MAE:  £%.2f/week", metrics["mae"])
     logger.info("  RMSE: £%.2f/week", metrics["rmse"])
     logger.info("  R²:   %.4f", metrics["r2"])
@@ -534,18 +574,22 @@ def run_evaluation() -> None:
 
     # ── 2. Cross-validation ──────────────────────────────────────────────
     # Use a fresh (untrained) pipeline for CV
-    from sklearn.ensemble import GradientBoostingRegressor
     from sklearn.pipeline import Pipeline as SKPipeline
     from sklearn.preprocessing import StandardScaler
+    from xgboost import XGBRegressor
 
+    # CV on log-space target (matching train.py)
+    y_log_full = np.log1p(y)
     fresh_pipeline = SKPipeline([
         ("scaler", StandardScaler()),
-        ("model", GradientBoostingRegressor(
-            n_estimators=200, max_depth=5, learning_rate=0.1,
-            subsample=0.8, random_state=42,
+        ("model", XGBRegressor(
+            n_estimators=500, max_depth=6, learning_rate=0.05,
+            subsample=0.8, colsample_bytree=0.8,
+            reg_alpha=0.1, reg_lambda=1.0, min_child_weight=5,
+            random_state=42, n_jobs=-1, verbosity=0,
         )),
     ])
-    cv_results = run_cross_validation(fresh_pipeline, X, y, cv=5)
+    cv_results = run_cross_validation(fresh_pipeline, X, y_log_full, cv=5)
 
     logger.info("CROSS-VALIDATION (5-fold)")
     for metric, value in cv_results.items():

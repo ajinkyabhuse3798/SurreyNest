@@ -45,7 +45,7 @@ class Settings:
     ).split(",")
 
     # ── ML Model ───────────────────────────────────────────────────────────
-    ml_model_version: str = os.getenv("ML_MODEL_VERSION", "v1.0.0")
+    ml_model_version: str = os.getenv("ML_MODEL_VERSION", "v3.2.0")
     ml_model_path: str = os.getenv("ML_MODEL_PATH", "app/ml/models")
 
     # ── Rate Limiting ──────────────────────────────────────────────────────

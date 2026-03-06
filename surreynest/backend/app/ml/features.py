@@ -57,6 +57,44 @@ CATEGORY_WEIGHTS = {
 }
 
 
+def _save_config_to_db(db: Session, key: str, value: float,
+                       description: str = "", source: str = "pipeline") -> None:
+    """Upsert a config value into the pipeline_config table.
+
+    Uses INSERT ... ON CONFLICT DO UPDATE so repeated pipeline runs
+    always overwrite with the latest value.
+
+    Args:
+        db: SQLAlchemy session.
+        key: Config key, e.g. "iphrp_growth_pct".
+        value: Numeric value to store.
+        description: Human-readable explanation.
+        source: Which pipeline wrote this.
+    """
+    from datetime import datetime, timezone
+    from sqlalchemy.dialects.postgresql import insert as pg_insert
+    from app.models.pipeline_config import PipelineConfig
+
+    stmt = pg_insert(PipelineConfig.__table__).values(
+        key=key,
+        value=value,
+        description=description,
+        updated_at=datetime.now(timezone.utc),
+        source=source,
+    ).on_conflict_do_update(
+        index_elements=["key"],
+        set_={
+            "value": value,
+            "description": description,
+            "updated_at": datetime.now(timezone.utc),
+            "source": source,
+        },
+    )
+    db.execute(stmt)
+    db.commit()
+    logger.info("pipeline_config: %s = %.6f (source=%s)", key, value, source)
+
+
 def _extract_postcode_sector(postcode: str) -> str:
     """Extract postcode sector from full postcode.
 
@@ -199,7 +237,7 @@ def load_land_registry_features() -> pd.DataFrame:
     """Load Price Paid derived features from processed CSV.
 
     Returns a DataFrame with per-postcode columns:
-      - implied_weekly_rent  (median, HPI-adjusted, 4% yield)
+      - implied_weekly_rent  (median, HPI-adjusted, 3.5% yield)
       - median_sale_price
       - sale_count           (market liquidity signal)
 
@@ -442,6 +480,11 @@ def build_features(db: Optional[Session] = None) -> pd.DataFrame:
         iphrp_growth = load_iphrp_growth()
         df["iphrp_growth_pct"] = iphrp_growth  # scalar — same value for all rows
         logger.info("IPHRP growth feature added: %.1f%%", iphrp_growth)
+
+        # Persist to pipeline_config so score_service reads it live
+        _save_config_to_db(db, "iphrp_growth_pct", iphrp_growth,
+                           description="South East IPHRP annual rental growth % (ONS)",
+                           source="features_pipeline")
 
         # ── Handle nulls ────────────────────────────────────────────────
         # Critical features: drop rows missing floor area

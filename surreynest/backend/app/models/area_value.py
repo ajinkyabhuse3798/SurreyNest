@@ -30,7 +30,7 @@ class AreaValue(Base):
     )
     median_sale_price: Mapped[float] = mapped_column(Float, nullable=True)
     area_value_index: Mapped[float] = mapped_column(Float, nullable=False)
-    implied_weekly_rent: Mapped[float] = mapped_column(Float, nullable=True)   # 4% yield, HPI-adj
+    implied_weekly_rent: Mapped[float] = mapped_column(Float, nullable=True)   # 3.5% yield, HPI-adj
     sale_count: Mapped[int] = mapped_column(Float, nullable=True)               # no. of transactions
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,

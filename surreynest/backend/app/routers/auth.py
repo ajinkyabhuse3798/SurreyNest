@@ -50,6 +50,9 @@ async def register(
     Raises:
         HTTPException: 400 if email already registered.
     """
+    # Normalise email — login already does .lower(), registration must match
+    user_data.email = user_data.email.strip().lower()
+
     # Check for existing user
     existing = db.query(User).filter(User.email == user_data.email).first()
     if existing:

@@ -27,6 +27,8 @@ const Register = React.lazy(() => import('./pages/Register'))
 const RightsGuide = React.lazy(() => import('./pages/RightsGuide'))
 const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard'))
 const CheckListing = React.lazy(() => import('./pages/CheckListing'))
+const StreetSmarts = React.lazy(() => import('./pages/StreetSmarts'))
+const SafetyDetail = React.lazy(() => import('./pages/SafetyDetail'))
 
 // ── Route-level loading spinner ──────────────────────────────────────────────
 function RouteLoader() {
@@ -65,7 +67,7 @@ class ErrorBoundary extends Component {
                             Something went wrong
                         </h2>
                         <p className="text-sm text-gray-500 mb-6">
-                            {this.state.error?.message || 'An unexpected error occurred.'}
+                            We hit an unexpected issue. Please try refreshing the page.
                         </p>
                         <button
                             onClick={() => {
@@ -103,6 +105,8 @@ export default function App() {
                                             <Route path="/compare" element={<CompareProperties />} />
                                             <Route path="/about" element={<About />} />
                                             <Route path="/check-listing" element={<CheckListing />} />
+                                            <Route path="/best-streets" element={<StreetSmarts />} />
+                                            <Route path="/safety/:postcode" element={<SafetyDetail />} />
                                             <Route path="/login" element={<Login />} />
                                             <Route path="/register" element={<Register />} />
                                             <Route path="/rights" element={<RightsGuide />} />

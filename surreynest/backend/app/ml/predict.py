@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 # ── Module-level caches ───────────────────────────────────────────────────────
 _model = None
 _feature_columns: List[str] = []
+_log_target: bool = False  # v3.2.0: whether model was trained on log1p(target)
 
 # ── Guildford reference points ────────────────────────────────────────────────
 GUILDFORD_TOWN_CENTRE = (51.2362, -0.5704)
@@ -33,32 +34,27 @@ GUILDFORD_STATION = (51.2372, -0.5617)       # London Road station forecourt
 # ── Energy rating ordinal encoding ────────────────────────────────────────────
 ENERGY_ORDINAL = {"G": 0, "F": 1, "E": 2, "D": 3, "C": 4, "B": 5, "A": 6}
 
-# ── Sensible defaults for optional features ─────────────────────────────────────────────
-# Land Registry defaults: Guildford-wide medians from our EDA
+# ── Sensible defaults for optional features ───────────────────────────────
 FEATURE_DEFAULTS = {
     "num_rooms": 3,
+    "estimated_bedrooms": 2,           # v3.1.0: derived from habitable rooms
+    "rooms_per_m2": 0.05,              # 3 rooms / 60m² typical
     "energy_rating_ordinal": 3,        # D
     "potential_rating_ordinal": 4,     # C
     "distance_to_town_km": 3.0,
     "distance_to_uni_km": 3.0,
-    "distance_to_station_km": 2.5,     # Guildford median from EDA (v2.1.0)
-    "is_hmo": 0,
+    "distance_to_station_km": 2.5,     # Guildford median from EDA
     "safety_score": 50.0,
-    "area_value_index": 0.5,
-    # ── Land Registry / HPI / IPHRP defaults (Guildford medians) ──────────
-    # NOTE: implied_weekly_rent and median_sale_price removed in v2.1.0.
-    # median_sale_price caused 91.6% feature importance (circular with target).
-    # implied_weekly_rent is the training target basis, not an inference feature.
     "sale_count": 4.0,                 # Guildford median postcodes from EDA
-    "iphrp_growth_pct": 6.0,           # South East IPHRP latest annual %
 }
 
-# ── Validation ranges for input warnings ──────────────────────────────────────
+# ── Validation ranges for input warnings ──────────────────────────────────
 VALIDATION_RANGES = {
     "floor_area_m2": (5.0, 500.0),
     "num_rooms": (1, 20),
+    "estimated_bedrooms": (0, 15),      # v3.1.0: studios have 0 bedrooms
+    "rooms_per_m2": (0.005, 0.5),
     "safety_score": (0.0, 100.0),
-    "area_value_index": (0.0, 1.0),
     "distance_to_town_km": (0.0, 50.0),
     "distance_to_uni_km": (0.0, 50.0),
     "distance_to_station_km": (0.0, 50.0),
@@ -74,7 +70,7 @@ def load_model() -> None:
     Raises:
         FileNotFoundError: If the model pkl or feature_columns.json doesn't exist.
     """
-    global _model, _feature_columns
+    global _model, _feature_columns, _log_target
 
     model_dir = Path(settings.ml_model_path)
 
@@ -96,6 +92,19 @@ def load_model() -> None:
         raise FileNotFoundError(
             f"Model file not found. Tried: {[str(p) for p in candidates]}"
         )
+
+    # ── Load model metadata (v3.2.0: log_target flag) ─────────────────────
+    meta_path = model_dir / "model_metadata.json"
+    if meta_path.exists():
+        meta = json.loads(meta_path.read_text())
+        _log_target = meta.get("log_target", False)
+        logger.info(
+            "Model metadata: version=%s, log_target=%s, outlier_cap=%s",
+            meta.get("model_version"), _log_target, meta.get("outlier_cap"),
+        )
+    else:
+        _log_target = False
+        logger.info("No model_metadata.json — assuming raw target (log_target=False)")
 
     # ── Load feature columns ──────────────────────────────────────────────
     columns_path = model_dir / "feature_columns.json"
@@ -216,26 +225,31 @@ def predict_rent(property_features: Dict) -> Optional[Dict]:
         num_rooms = property_features.get("num_rooms", FEATURE_DEFAULTS["num_rooms"])
 
         # ── Build feature dict with all computed values ───────────────────
+        rooms_val = float(num_rooms) if num_rooms is not None else float(FEATURE_DEFAULTS["num_rooms"])
+        floor_val = float(floor_area)
+        rooms_per_m2 = round(rooms_val / max(floor_val, 10.0), 4)
+
+        # v3.1.0: Estimate bedrooms from habitable rooms + property type
+        # EPC num_rooms = habitable rooms (bedrooms + living + large kitchen)
+        is_flat = 1 if property_type == "Flat" else 0
+        if is_flat:
+            est_bedrooms = max(0, int(rooms_val) - 1)   # studio = 0 beds
+        else:
+            est_bedrooms = max(1, int(rooms_val) - 2)   # houses: subtract living + kitchen
+
         computed = {
-            "floor_area_m2": float(floor_area),
-            "num_rooms": float(num_rooms) if num_rooms is not None else float(FEATURE_DEFAULTS["num_rooms"]),
+            "floor_area_m2": floor_val,
+            "num_rooms": rooms_val,
+            "estimated_bedrooms": float(est_bedrooms),  # v3.1.0
+            "rooms_per_m2": rooms_per_m2,
             "energy_rating_ordinal": energy_ordinal,
             "potential_rating_ordinal": potential_ordinal,
             "distance_to_town_km": distance_to_town,
             "distance_to_uni_km": distance_to_uni,
-            "distance_to_station_km": distance_to_station,  # v2.1.0
-            "is_hmo": int(property_features.get("is_hmo", FEATURE_DEFAULTS["is_hmo"])),
+            "distance_to_station_km": distance_to_station,
             "safety_score": float(property_features.get("safety_score", FEATURE_DEFAULTS["safety_score"])),
-            "area_value_index": float(property_features.get("area_value_index", FEATURE_DEFAULTS["area_value_index"])),
-            # ── Land Registry / HPI / IPHRP features ───────────────────────
-            # NOTE: implied_weekly_rent and median_sale_price removed in v2.1.0.
-            # median_sale_price was causing 91.6% feature importance (circular).
-            # implied_weekly_rent is the training target basis, not an inference feature.
             "sale_count": float(
                 property_features.get("sale_count") or FEATURE_DEFAULTS["sale_count"]
-            ),
-            "iphrp_growth_pct": float(
-                property_features.get("iphrp_growth_pct", FEATURE_DEFAULTS["iphrp_growth_pct"])
             ),
         }
 
@@ -263,18 +277,21 @@ def predict_rent(property_features: Dict) -> Optional[Dict]:
 
         # ── Predict ──────────────────────────────────────────────────────
         prediction = _model.predict(features)[0]
-        predicted_rent = round(float(prediction), 2)
+
+        # v3.2.0: inverse log-transform if model was trained on log1p(target)
+        if _log_target:
+            predicted_rent = round(float(np.expm1(prediction)), 2)
+        else:
+            predicted_rent = round(float(prediction), 2)
 
         logger.debug(
             "Predicted rent for %s: £%.2f/week (floor_area=%.0f, type=%s, "
-            "is_hmo=%d, safety=%.0f, avi=%.2f, station=%.1fkm)",
+            "safety=%.0f, station=%.1fkm)",
             property_features.get("postcode", "unknown"),
             predicted_rent,
             floor_area,
             property_type,
-            computed["is_hmo"],
             computed["safety_score"],
-            computed["area_value_index"],
             computed["distance_to_station_km"],
         )
 

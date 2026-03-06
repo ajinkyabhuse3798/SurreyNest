@@ -1,65 +1,53 @@
 /**
- * Footer — site-wide footer with links and credits.
+ * Footer — Minimal Stitch-inspired design with link grid.
  */
 import { Link } from 'react-router-dom'
+import { GraduationCap } from 'lucide-react'
+
+const LINKS = [
+    { to: '/', label: 'Home' },
+    { to: '/search', label: 'Search' },
+    { to: '/best-streets', label: 'Best Streets' },
+    { to: '/check-listing', label: 'Check Listing' },
+    { to: '/rights', label: 'Rights Guide' },
+    { to: '/about', label: 'About' },
+]
 
 export default function Footer() {
     return (
-        <footer className="border-t border-gray-100 bg-gray-50">
-            <div className="max-w-5xl mx-auto px-4 py-8 md:py-10">
-                <div className="grid gap-6 md:grid-cols-3">
-                    {/* Brand */}
-                    <div>
-                        <Link to="/" className="text-lg font-semibold">
-                            <span className="text-[#0A0A0A]">Surrey</span>
-                            <span className="text-indigo-600">Nest</span>
+        <footer className="bg-slate-50 border-t border-slate-200">
+            <div className="max-w-lg lg:max-w-5xl mx-auto px-6 py-8">
+                {/* Logo */}
+                <Link to="/" className="text-lg font-bold">
+                    <span className="text-slate-900">Surrey</span>
+                    <span className="text-indigo-600">Nest</span>
+                </Link>
+
+                <p className="text-xs text-slate-400 mt-2 flex items-center gap-1 font-medium">
+                    <GraduationCap size={12} />
+                    Built for University of Surrey students
+                </p>
+
+                {/* Link grid */}
+                <div className="grid grid-cols-3 gap-y-2 gap-x-4 mt-5">
+                    {LINKS.map(({ to, label }) => (
+                        <Link
+                            key={to}
+                            to={to}
+                            className="text-sm text-slate-500 hover:text-slate-900 transition-colors font-medium"
+                        >
+                            {label}
                         </Link>
-                        <p className="text-xs text-gray-400 mt-2 leading-relaxed max-w-xs">
-                            Helping Guildford students make informed housing decisions with
-                            transparent data on rent fairness, safety and HMO licensing.
-                        </p>
-                    </div>
-
-                    {/* Quick links */}
-                    <div>
-                        <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
-                            Quick Links
-                        </h4>
-                        <ul className="space-y-2 text-sm text-gray-500">
-                            <li>
-                                <Link to="/search" className="hover:text-gray-900 transition-colors">
-                                    Search Properties
-                                </Link>
-                            </li>
-                            <li>
-                                <Link to="/rights" className="hover:text-gray-900 transition-colors">
-                                    Tenant Rights Guide
-                                </Link>
-                            </li>
-                            <li>
-                                <Link to="/about" className="hover:text-gray-900 transition-colors">
-                                    About
-                                </Link>
-                            </li>
-                        </ul>
-                    </div>
-
-                    {/* Data sources */}
-                    <div>
-                        <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
-                            Data Sources
-                        </h4>
-                        <ul className="space-y-2 text-sm text-gray-400">
-                            <li>EPC — Energy Performance Certificates</li>
-                            <li>police.uk — Crime Statistics</li>
-                            <li>VOA — Rental Market Statistics</li>
-                        </ul>
-                    </div>
+                    ))}
                 </div>
 
-                <div className="border-t border-gray-200 mt-6 pt-4 text-center">
-                    <p className="text-xs text-gray-400">
-                        © {new Date().getFullYear()} SurreyNest · University of Surrey MSc Project
+                {/* Bottom */}
+                <div className="border-t border-slate-200 mt-6 pt-4 flex flex-col sm:flex-row justify-between items-center gap-2">
+                    <p className="text-[11px] text-slate-400">
+                        © {new Date().getFullYear()} SurreyNest
+                    </p>
+                    <p className="text-[11px] text-slate-400">
+                        Data: EPC · Land Registry · police.uk
                     </p>
                 </div>
             </div>

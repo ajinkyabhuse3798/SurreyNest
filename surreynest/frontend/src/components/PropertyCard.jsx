@@ -1,26 +1,31 @@
 /**
- * PropertyCard — summary card for search results.
+ * PropertyCard — Stitch-inspired premium card for search results.
  * Supports hover highlighting for bidirectional card↔map interaction.
  * Optional compare checkbox for side-by-side comparison workflow.
- *
- * @param {{
- *   property: object,
- *   isHighlighted?: boolean,
- *   onMouseEnter?: () => void,
- *   onMouseLeave?: () => void,
- *   showCompare?: boolean,
- *   isCompared?: boolean,
- *   onToggleCompare?: (uprn: string) => void,
- * }} props
  */
 import { Link } from 'react-router-dom'
+import { MapPin, Bed, Maximize2, Zap, ChevronRight, CheckCircle2 } from 'lucide-react'
 import ScoreBadge from './ScoreBadge'
 import HMOBadge from './HMOBadge'
 
 function formatDistance(m) {
     if (!m && m !== 0) return null
-    if (m < 1000) return `${Math.round(m)}m away`
-    return `${(m / 1000).toFixed(1)}km away`
+    if (m < 1000) return `${Math.round(m)}m`
+    return `${(m / 1000).toFixed(1)}km`
+}
+
+function scoreColor(score) {
+    if (!score && score !== 0) return 'bg-slate-100 text-slate-400'
+    if (score >= 70) return 'bg-emerald-50 text-emerald-700 border-emerald-100'
+    if (score >= 40) return 'bg-amber-50 text-amber-700 border-amber-100'
+    return 'bg-rose-50 text-rose-700 border-rose-100'
+}
+
+function scoreDot(score) {
+    if (!score && score !== 0) return 'bg-slate-300'
+    if (score >= 70) return 'bg-emerald-500'
+    if (score >= 40) return 'bg-amber-500'
+    return 'bg-rose-500'
 }
 
 export default function PropertyCard({
@@ -49,17 +54,13 @@ export default function PropertyCard({
 
     const distLabel = formatDistance(distance_m)
 
-    const tenureLabel = tenure?.includes('rental') || tenure?.includes('rented')
-        ? 'Rental'
-        : tenure?.includes('owner')
-            ? 'Owner'
-            : null
+    const isRental = tenure?.includes('rental') || tenure?.includes('rented')
 
     return (
         <div
-            className={`relative border rounded-xl p-4 transition-all duration-200 ${isHighlighted
-                ? 'border-indigo-400 ring-2 ring-indigo-100 shadow-md'
-                : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
+            className={`relative bg-white rounded-2xl border transition-all duration-200 overflow-hidden group ${isHighlighted
+                    ? 'border-indigo-400 ring-2 ring-indigo-100 shadow-[0_4px_20px_-2px_rgba(80,72,229,0.15)]'
+                    : 'border-slate-100 hover:border-slate-200 shadow-[0_2px_12px_-3px_rgba(0,0,0,0.06)] hover:shadow-[0_4px_20px_-2px_rgba(80,72,229,0.1)]'
                 }`}
             onMouseEnter={onMouseEnter}
             onMouseLeave={onMouseLeave}
@@ -72,9 +73,9 @@ export default function PropertyCard({
                         e.stopPropagation()
                         onToggleCompare?.(uprn)
                     }}
-                    className={`absolute top-3 right-3 z-10 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${isCompared
-                        ? 'bg-indigo-600 border-indigo-600 text-white'
-                        : 'border-gray-300 hover:border-indigo-400 bg-white'
+                    className={`absolute top-3 right-3 z-10 w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${isCompared
+                            ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm'
+                            : 'border-slate-300 hover:border-indigo-400 bg-white/80 backdrop-blur-sm'
                         }`}
                     title={isCompared ? 'Remove from compare' : 'Add to compare'}
                 >
@@ -86,56 +87,80 @@ export default function PropertyCard({
                 </button>
             )}
 
-            <Link to={`/property/${uprn}`} className="block">
-                {/* Header row */}
-                <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 pr-6">
-                        <p className="text-sm font-medium text-[#0A0A0A] leading-tight truncate">
-                            {address}
-                        </p>
-                        <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1.5">
-                            {postcode} · {property_type || 'Property'}
-                            {tenureLabel && (
-                                <span className={`inline-flex items-center text-[10px] font-medium rounded px-1.5 py-0.5 leading-none ${tenureLabel === 'Rental'
-                                        ? 'bg-emerald-50 text-emerald-700'
-                                        : 'bg-gray-100 text-gray-500'
-                                    }`}>
-                                    {tenureLabel}
-                                </span>
-                            )}
-                        </p>
-                    </div>
-                    {distLabel && !showCompare && (
-                        <span className="flex-shrink-0 text-[10px] font-medium text-indigo-600 bg-indigo-50 rounded-full px-2 py-0.5">
+            <Link to={`/property/${uprn}`} className="block p-4 lg:p-5">
+                {/* Top: Distance + Availability badges */}
+                <div className="flex items-center gap-2 mb-2">
+                    {distLabel && (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-600 bg-indigo-50 rounded-full px-2.5 py-0.5 border border-indigo-100">
+                            <MapPin size={10} />
                             {distLabel}
+                        </span>
+                    )}
+                    {isRental && (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 rounded-full px-2.5 py-0.5 border border-emerald-100">
+                            <CheckCircle2 size={10} />
+                            Rental
                         </span>
                     )}
                 </div>
 
-                {/* Score row */}
-                <div className="border-t border-gray-100 mt-3 pt-3 flex flex-wrap gap-3">
-                    <ScoreBadge score={fairness_score} label="Fair Rent" />
-                    <ScoreBadge score={safety_score} label="Safety" />
+                {/* Address */}
+                <h3 className="text-[15px] font-bold text-slate-900 leading-snug mb-0.5 pr-6">
+                    {address}
+                </h3>
+                <p className="text-xs text-slate-500 font-medium mb-3">
+                    {postcode} · {property_type || 'Property'}
+                </p>
+
+                {/* Divider */}
+                <div className="h-px bg-slate-100 mb-3" />
+
+                {/* Score pills */}
+                <div className="flex flex-wrap gap-2 mb-3">
+                    {/* Fair Rent */}
+                    <div className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border ${scoreColor(fairness_score)}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${scoreDot(fairness_score)}`} />
+                        Fair Rent: {fairness_score ?? '—'}
+                    </div>
+                    {/* Safety */}
+                    <div className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border ${scoreColor(safety_score)}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${scoreDot(safety_score)}`} />
+                        Safety: {safety_score ?? '—'}
+                    </div>
+                    {/* HMO */}
                     <HMOBadge status={hmo_status || 'not_found'} />
                 </div>
 
-                {/* Footer */}
-                <div className="border-t border-gray-100 mt-3 pt-3 flex items-center justify-between">
-                    <span className="text-xs text-gray-500">
-                        {num_rooms ? `${num_rooms} bed` : '—'} ·{' '}
-                        {floor_area_m2 ? `${floor_area_m2}m²` : '—'} ·{' '}
-                        EPC: {energy_rating || '—'}
+                {/* Divider */}
+                <div className="h-px bg-slate-100 mb-3" />
+
+                {/* Footer: specs + View CTA */}
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3 text-xs text-slate-500 font-medium">
+                        {num_rooms && (
+                            <span className="flex items-center gap-1">
+                                <Bed size={12} className="text-slate-400" />
+                                {num_rooms} bed
+                            </span>
+                        )}
+                        {floor_area_m2 && (
+                            <span className="flex items-center gap-1">
+                                <Maximize2 size={12} className="text-slate-400" />
+                                {floor_area_m2}m²
+                            </span>
+                        )}
+                        {energy_rating && (
+                            <span className="flex items-center gap-1">
+                                <Zap size={12} className="text-slate-400" />
+                                EPC {energy_rating}
+                            </span>
+                        )}
+                    </div>
+                    <span className="text-xs font-bold text-indigo-600 flex items-center gap-0.5 group-hover:gap-1.5 transition-all">
+                        View details <ChevronRight size={13} />
                     </span>
-                    <span className="text-xs font-medium text-indigo-600">View →</span>
                 </div>
             </Link>
-
-            {/* Distance badge below when compare is shown */}
-            {distLabel && showCompare && (
-                <span className="absolute bottom-3 right-3 text-[10px] font-medium text-indigo-600 bg-indigo-50 rounded-full px-2 py-0.5">
-                    {distLabel}
-                </span>
-            )}
         </div>
     )
 }

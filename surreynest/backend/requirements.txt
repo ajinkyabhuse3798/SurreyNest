@@ -24,6 +24,7 @@ python-jose[cryptography]==3.3.0  # JWT tokens
 pandas==2.2.2
 numpy==1.26.4
 scikit-learn==1.4.2
+xgboost>=2.0.0
 joblib==1.4.2                 # Model serialisation
 geopy==2.4.1                  # Haversine distance calculations
 xlrd==2.0.1                   # Read legacy .xls files (HMO register)

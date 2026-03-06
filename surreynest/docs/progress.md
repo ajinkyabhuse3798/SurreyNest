@@ -5,10 +5,13 @@
 
 ---
 
-## Current Phase: Phase 6 — New Data Sources
+## Current Phase: Phase 6 — New Data Sources + Features
 
-**Last updated:** 2026-03-02
-**Session summary:** Added 3 new datasets (Land Registry Price Paid, HPI, IPHRP). Created comprehensive EDA script. Rewrote land_registry_pipeline for multi-year + HPI time-adjustment. Fixed EPC pipeline (tenure normalisation, outlier removal). Removed HMO licence holder name for UK GDPR. Built Check Listing feature.
+**Last updated:** 2026-03-04
+**Session summary (Session 9):** ML model audit & v3.0.0 redesign. Found critical quasi-circular data leakage via area_value_index (40.7% importance), config version mismatch (v1.0.0 vs v2.1.0 breaking cache), predictions ~2× too high (studio £287 vs VOA £173). Fixed: VOA rent bands as target anchor (not sale-price-derived implied rents), removed leaked features (area_value_index, iphrp_growth_pct, is_hmo), added rooms_per_m2, fixed yield docstrings, cleaned dead lookups in score_service. Result: all 4 sanity checks pass (studio £113✅, detached £604✅), outliers 7.5%→0.3%, feature importance now sensible (num_rooms 81.5%, floor_area 13.7%).
+
+**Session summary (Session 8):** Redesigned Property Detail page (core feature) using Google Stitch. Generated mobile (780×7654px) and desktop (2560×4526px) Stitch designs. Rewrote PropertyDetail.jsx with premium aesthetic: bg-[#f8f9fc] background, white rounded-2xl card sections with soft shadows, indigo-50 icon badges in section headers. Desktop uses 2-column layout (lg:grid-cols-[1fr_380px]) with sticky right sidebar for Location/Reviews/Rights. Mobile uses single-column stacked layout. All functionality preserved (parallel data fetch, compare, reviews, HMO detail, RentRadar). Also redesigned StreetSmarts leaderboard: added top-3 podium (gold/silver/bronze gradient cards), 2-column desktop grid for ranks 4+, removed HMO from ranking pillars (now Safety/Value/Proximity only), premium animated score bars. Updated CLAUDE.md with design system notes for both pages.
+**Previous session (Session 7):** Redesigned Home page and Search Results page using Google Stitch. Implemented premium Y-Combinator-backed aesthetic. Home page features mobile-first 7-section layout with frosted-glass navbar. Search Results features responsive split-view (desktop: scrollable list + interactive map; mobile: List/Map pill toggle) with redesigned PropertyCards (color-coded score pills, distance/availability badges, glassmorphism compare bar). Updated CLAUDE.md with Stitch design system guidelines.
 
 ---
 
@@ -17,11 +20,11 @@
 | Phase | Status | Notes |
 |-------|--------|-------|
 | Phase 1: Data Pipelines | ✅ Done | EPC + HMO + crime data in PostgreSQL |
-| Phase 2: ML Model | ✅ Done | rent_model_v1.pkl trained and saved |
+| Phase 2: ML Model | ✅ Done | rent_model v3.2.0 (XGBoost + log-transform, R²=0.87, MAE=£41/wk) |
 | Phase 3: FastAPI Backend | ✅ Done | All routers, services, schemas, tests passing |
 | Phase 4: React Frontend | ✅ Done | Stitch design integration complete |
 | Phase 5: Scheduler | ✅ Done | APScheduler cron jobs + admin endpoints |
-| Phase 6: New Data Sources | 🔄 In progress | Land Registry + HPI + IPHRP + Flood done, EPC cleaned |
+| Phase 6: New Data Sources | 🔄 In progress | Land Registry + HPI + IPHRP + Flood done, EPC cleaned, NeighbourhoodPulse, RentRadar, MarketPulse, StreetSmarts |
 | Phase 7: Testing | ⬜ Not started | Frontend tests, E2E |
 | Phase 8: Deployment | ⬜ Not started | Railway + Vercel |
 
@@ -41,10 +44,14 @@ Status key: ⬜ Not started | 🔄 In progress | ✅ Done | ❌ Blocked
 - `geocoding_service.py` — cache-first Postcodes.io lookup (single + batch via `geocode_batch()`)
 
 ### Verified row counts
-- properties table: _______ rows (expected 8,000–15,000)
-- hmo_records table: _______ rows (expected 400–700)
-- crime_data table: _______ rows (expected ~50,000+)
-- postcode_cache table: _______ rows (expected ~12,000+)
+- properties table: 18,235 rows
+- hmo_records table: 583 rows
+- crime_data table: 161 rows
+- postcode_cache table: 2,451 rows
+- area_values table: 2,515 rows
+- rent_history table: 90 rows (18 sectors × 5 years)
+- pipeline_config table: 1 row (IPHRP growth)
+- pipeline_runs table: 22 rows
 
 ---
 
@@ -206,7 +213,7 @@ Build only after Phase 3 backend endpoints are verified in `/docs`.
 - [x] `SafetyScorePanel.jsx` — crime breakdown by category
 - [x] `Navbar.jsx` — auth-aware links
 
-**Phase 4 done when:** ~~Can search postcode → see map + list → click property → see all scores → submit review~~ ✅ All components built, `npm run build` passes, dev server renders all pages.
+**Phase 4 done when:** ✅ All components built, `npm run build` passes, dev server renders all pages. Redesigned Home and Search Results pages with premium Stitch aesthetic (mobile + desktop responsive).
 
 ---
 
@@ -250,6 +257,61 @@ New pipelines and data integrations.
 - [x] New model: `app/models/flood_risk.py` → `flood_risk` table
 - [x] Migration: `e2f3a4b5c6d7_add_flood_risk.py`
 - [x] `app/data_pipelines/flood_pipeline.py` — EA API, GU postcodes → flood_risk table
+
+### Security & Bug Fixes (Session 6 — 2026-03-03)
+- [x] Admin auth guard — added `ProtectedRoute` component so `/admin` redirects to login for non-admins
+- [x] SQL wildcard injection — sanitised `%` and `_` in property suggest autocomplete
+- [x] Email normalisation — `.lower().strip()` on registration to prevent login failures
+- [x] Rate limiter state — single shared `Limiter()` instance across all routers via `app/rate_limiter.py`
+- [x] IPHRP constant — `_get_latest_iphrp_growth()` reads from `pipeline_config` table (not hardcoded)
+- [x] Unused `text` import removed from `score_service.py`
+- [x] ErrorBoundary — user-friendly generic message instead of raw error strings
+- [x] `.gitignore` — added `venv/` and `backend/venv/`
+
+### NeighbourhoodPulse — Interactive Heatmap (Session 6)
+- [x] `app/routers/heatmap.py` — `GET /api/heatmap/sectors` aggregates 18,234 properties into 17 sectors (safety, rent, HMO)
+- [x] `GuildfordHeatmap.jsx` — Leaflet map with 3 toggleable layers, animated circles, popups, legend
+- [x] `heatmapApi.js` — API wrapper
+- [x] Home page integration — placed between Hero and Features sections
+- [x] Mobile responsive — 320px height on mobile, smaller pills/legend
+- [x] 10-minute in-memory cache on backend
+
+### RentRadar — Rent Trend Chart (Session 6)
+- [x] `app/models/rent_history.py` — new table, composite PK `(postcode_sector, year)`
+- [x] Migration: `c3d8e5f7a2b1_create_rent_history.py`
+- [x] Populated from 5 raw Price Paid CSVs: 90 rows (18 sectors × 5 years, 2021–2025)
+- [x] `app/routers/rent_trends.py` — `GET /api/rent-trends/{sector}` returns historical + 2-year forecast
+- [x] `RentRadarChart.jsx` — Recharts AreaChart with gradient fill, dashed forecast line, tooltips, trend badge
+- [x] PropertyDetail integration — placed after "What will it cost?", before "Property details"
+- [x] Bug fix: forecast line misalignment (separate `data` props → unified dataset with `historicalRent`/`forecastRent` keys)
+
+### MarketPulse — Seasonal Availability Indicator (Session 6)
+- [x] `MarketPulse.jsx` — static component using `new Date().getMonth()` for Guildford rental cycle
+- [x] 12-month animated bar chart timeline with pulsing current-month dot
+- [x] Status badge: Peak/High/Early/Last Chance/Low depending on month
+- [x] Student-specific advice text per season
+- [x] Home page integration — placed between NeighbourhoodPulse and Features sections
+
+### StreetSmarts — Best Streets Leaderboard (Session 6)
+- [x] `app/routers/leaderboard.py` — `GET /api/leaderboard/streets?district=&limit=` aggregates streets, 4-pillar composite scoring
+- [x] Composite score: Safety (crime_data) + Value (implied_weekly_rent) + Proximity (haversine to uni) + HMO (licensed count)
+- [x] Min-max normalised 0–100, equally weighted
+- [x] 10-minute in-memory cache, noise filtering (GUILDFORD, SURREY excluded)
+- [x] `src/pages/StreetSmarts.jsx` — ranked cards with trophy badges, expandable score breakdowns, animated bars
+- [x] District toggle (GU1/GU2), navbar link added
+- [x] Route `/best-streets` in App.jsx
+
+### Safety Intelligence — Dedicated Analytics Page (Session 10)
+- [x] Backend: `safety_intelligence.py` service (7 analysis modules: breakdown, trend, comparison, rankings, holiday risk, student index, tips)
+- [x] Backend: `safety.py` router — `GET /api/safety/intelligence?postcode=` + `GET /api/safety/rankings`
+- [x] Frontend: `safetyApi.js` API client
+- [x] Frontend: `SafetyIntelligence.jsx` reusable component (donut, monthly chart, trend, comparison, student insights)
+- [x] Frontend: `SafetyDetail.jsx` full-page route at `/safety/:postcode` (9 sections: hero, donut, trend, comparison, rankings, trains, student, holiday, tips)
+- [x] PropertyDetail simplified: ScoreGauge + verdict + "Explore full safety report" CTA link (no more inline analytics)
+- [x] Plain-English design: every metric explained for non-technical users (star ratings, analogies, no jargon)
+- [x] Data verified 3× against raw PostgreSQL for GU2 7, GU1 3, GU2 9
+- [x] CLAUDE.md updated: new endpoints, components, design system notes
+- [x] progress.md updated
 
 ### Data Folder Structure
 ```
@@ -311,24 +373,36 @@ See `docs/deployment.md` for full instructions.
 *Always fill this in before ending a session:*
 
 ```
-Session 5 — 2026-03-02
+Session 6 — 2026-03-03
 Last thing done:
-  - Diagnosed ML model producing wrong (too low) rent predictions for GU1 properties
-  - Found 3 critical bugs in train.py / score_service.py (documented in Blockers above)
-  - Updated progress.md and CLAUDE.md with all bugs and prevention rules
+  - Fixed admin auth guard (ProtectedRoute component)
+  - Fixed 4 high-severity bugs: SQL injection, email normalisation, rate limiter, IPHRP constant
+  - Fixed 3 low-severity: unused import, ErrorBoundary leak, .gitignore venv
+  - Built NeighbourhoodPulse heatmap on Home page (17 sectors, 3 layers)
+  - Built RentRadar rent trend chart on PropertyDetail (5yr history + 2yr forecast)
+  - Made heatmap mobile-responsive (smaller pills, dynamic height)
+  - Built MarketPulse seasonal availability indicator on Home page (static, no backend)
+  - Built StreetSmarts leaderboard (/best-streets) with 4-pillar composite scoring
 
-CRITICAL: ML model is broken. Do NOT mark Phase 2 as complete until all 3 bugs are fixed.
+STILL NOT FIXED: ML model bugs (see Blockers). Do NOT mark Phase 2 as fully complete.
+
+New DB tables this session:
+  - rent_history: 90 rows (populated from raw PP CSVs, not auto-pipeline yet)
+  - pipeline_config: 1 row (iphrp_growth_pct)
+
+New routers registered in main.py:
+  - heatmap.router → /api/heatmap/sectors
+  - rent_trends.router → /api/rent-trends/{sector}
+  - leaderboard.router → /api/leaderboard/streets
+
+New frontend dependencies:
+  - recharts (chart library for RentRadar)
 
 Next step for next session (in this exact order):
-  1. Fix score_service.py: add `area_value_index` to features dict in get_rent_prediction()
-  2. Fix train.py MODE C: remove `implied_weekly_rent` from training feature columns
-     (use as target only — not both feature AND target)
-  3. Fix yield rate in land_registry_pipeline.py: change 4% to 3.5% for GU1 accuracy
-  4. Retrain model: docker exec surreynest-backend python -m app.ml.train (will auto-detect MODE C)
-  5. Bump ML_MODEL_VERSION in backend/.env (e.g. v2.0.0) to invalidate stale prediction cache
-  6. Verify: check 9a Epsom Road GU1 prediction is in £350-500/week range
-  7. Phase 7 — Testing
-  8. Phase 8 — Deployment
+  1. Fix ML model bugs (all 4 in Blockers above)
+  2. Retrain model + bump ML_MODEL_VERSION
+  3. Phase 7 — Testing
+  4. Phase 8 — Deployment
 
 Gotchas to remember:
   - Land Registry PP files have NO headers (use COLUMN_NAMES list)
@@ -339,4 +413,9 @@ Gotchas to remember:
   - HMO licence_holder removed from API response and frontend
   - implied_weekly_rent MUST NOT be a training feature when it IS the training target (circular)
   - Always bump ML_MODEL_VERSION in .env after every retrain to flush stale cache
+  - Recharts: DO NOT use separate `data` props on child Area components — use one dataset with separate dataKeys
+  - Docker/PostgreSQL must be running for ANY backend endpoint to work (heatmap, search, etc.)
+  - rent_history table needs manual re-population when new PP CSVs arrive (not in auto-scheduler yet)
+  - heatmap.py _extract_sector() needs null guard — some HMO records have null postcodes
+  - Leaflet map height: use Tailwind h-[320px] md:h-[480px], NOT inline style={{ height }}
 ```

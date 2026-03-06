@@ -15,11 +15,42 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.models.crime_data import CrimeData
 from app.models.hmo_record import HmoRecord
+from app.models.pipeline_config import PipelineConfig
 from app.models.property import Property
 from app.models.rent_prediction import RentPrediction
 from app.models.area_value import AreaValue
 
 logger = logging.getLogger(__name__)
+
+# Default fallback — only used if the pipeline_config table has no row yet
+_IPHRP_FALLBACK = 6.0
+
+
+def _get_latest_iphrp_growth(db: Session) -> float:
+    """Read the latest IPHRP growth % from the pipeline_config table.
+
+    The features pipeline writes this value every time it runs,
+    so it always reflects the latest ONS data without needing a
+    backend restart.
+
+    Args:
+        db: Active SQLAlchemy session (reuses the request's session).
+
+    Returns:
+        Latest South East IPHRP annual % (e.g. 6.005659).
+        Falls back to 6.0 if the row doesn't exist yet.
+    """
+    try:
+        row = db.query(PipelineConfig).filter(
+            PipelineConfig.key == "iphrp_growth_pct"
+        ).first()
+        if row is not None:
+            return float(row.value)
+    except Exception as e:
+        logger.warning("Could not read IPHRP from pipeline_config: %s", e)
+
+    logger.warning("Using fallback IPHRP growth: %.1f%%", _IPHRP_FALLBACK)
+    return _IPHRP_FALLBACK
 
 # ── Crime category weights (same as features.py) ─────────────────────────────
 CATEGORY_WEIGHTS: Dict[str, float] = {
@@ -249,29 +280,13 @@ def get_rent_prediction(uprn: str, db: Session) -> Optional[Dict]:
     try:
         from app.ml.predict import predict_rent
 
-        # ── Look up Area Value (implied rent & sale price from Price Paid) ──
+        # ── Look up Area Value index ────────────────────────────────────
         area_val = db.query(AreaValue).filter(
             AreaValue.postcode == prop.postcode
         ).first()
 
-        implied_weekly_rent = area_val.implied_weekly_rent if area_val and area_val.implied_weekly_rent else None
-        median_sale_price   = area_val.median_sale_price   if area_val and area_val.median_sale_price   else None
-        sale_count          = area_val.sale_count          if area_val and area_val.sale_count          else 1
-
-        # If no direct postcode match, fall back to sector median
-        if implied_weekly_rent is None:
-            from sqlalchemy import text
-            postcode_parts = str(prop.postcode or "").strip().split()
-            if len(postcode_parts) >= 2:
-                sector = f"{postcode_parts[0]} {postcode_parts[1][0]}"
-                sector_rows = db.query(AreaValue).filter(
-                    AreaValue.postcode.like(f"{postcode_parts[0]} {postcode_parts[1][0]}%")
-                ).all()
-                if sector_rows:
-                    rents = [r.implied_weekly_rent for r in sector_rows if r.implied_weekly_rent]
-                    prices = [r.median_sale_price for r in sector_rows if r.median_sale_price]
-                    implied_weekly_rent = sum(rents) / len(rents) if rents else None
-                    median_sale_price   = sum(prices) / len(prices) if prices else None
+        area_value_index = float(area_val.area_value_index) if area_val else 0.5
+        sale_count = int(area_val.sale_count) if area_val and area_val.sale_count else 1
 
         # ── Safety score for this postcode sector ───────────────────────
         postcode_parts = str(prop.postcode or "").strip().split()
@@ -287,8 +302,8 @@ def get_rent_prediction(uprn: str, db: Session) -> Optional[Dict]:
             HmoRecord.postcode == prop.postcode
         ).count() > 0)
 
-        # ── IPHRP growth (constant for all Guildford) ───────────────────
-        iphrp_growth_pct = 6.005659  # Latest South East annual % (from EDA)
+        # ── IPHRP growth (read from latest pipeline data, not hardcoded) ────
+        iphrp_growth_pct = _get_latest_iphrp_growth(db)
 
         features = {
             "floor_area_m2":       prop.floor_area_m2,
@@ -301,9 +316,7 @@ def get_rent_prediction(uprn: str, db: Session) -> Optional[Dict]:
             "postcode":            prop.postcode,
             "is_hmo":              is_hmo,
             "safety_score":        safety_score,
-            "area_value_index":    float(area_val.area_value_index) if area_val else 0.5,
-            "implied_weekly_rent": implied_weekly_rent,
-            "median_sale_price":   median_sale_price,
+            "area_value_index":    area_value_index,
             "sale_count":          sale_count,
             "iphrp_growth_pct":    iphrp_growth_pct,
         }
