@@ -15,6 +15,7 @@ from sqlalchemy import func, text
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
+
 from app.database import SessionLocal
 from app.data_pipelines.utils import (
     RateLimiter,
@@ -22,6 +23,7 @@ from app.data_pipelines.utils import (
     run_pipeline_with_tracking,
 )
 from app.models.crime_data import CrimeData
+from app.models.pipeline_config import PipelineConfig
 from app.models.postcode_cache import PostcodeCache
 from app.models.property import Property
 
@@ -306,7 +308,7 @@ def aggregate_crimes(
 
 def compute_safety_scores(
     aggregated: pd.DataFrame,
-) -> Dict[str, float]:
+) -> Tuple[Dict[str, float], float]:
     """Compute safety scores per postcode sector.
 
     Formula from api-reference.md:
@@ -319,10 +321,13 @@ def compute_safety_scores(
         aggregated: DataFrame with postcode_sector, category, month, count columns.
 
     Returns:
-        Dict mapping postcode sector → safety score (0–100).
+        Tuple of (scores dict, normaliser value).
+        Scores dict maps postcode sector → safety score (0–100).
+        Normaliser is the 95th-percentile weighted sum, persisted for use
+        by score_service at request time.
     """
     if aggregated.empty:
-        return {}
+        return {}, 1.0
 
     # Compute weighted sum per sector
     aggregated["weight"] = aggregated["category"].map(CATEGORY_WEIGHTS).fillna(1.0)
@@ -340,7 +345,7 @@ def compute_safety_scores(
         score = max(0, min(100, 100 - (weighted_sum / normaliser * 100)))
         scores[sector] = round(score, 1)
 
-    return scores
+    return scores, float(normaliser)
 
 
 def upsert_crime_data(aggregated: pd.DataFrame, db: Session) -> int:
@@ -455,8 +460,31 @@ def run_crime_pipeline(db: Optional[Session] = None) -> int:
         logger.info("Aggregated %d crime data rows", len(aggregated))
 
         # Compute safety scores
-        scores = compute_safety_scores(aggregated)
-        logger.info("Computed safety scores for %d sectors", len(scores))
+        scores, normaliser = compute_safety_scores(aggregated)
+        logger.info("Computed safety scores for %d sectors (normaliser=%.2f)", len(scores), normaliser)
+
+        # Persist the 95th-percentile normaliser to pipeline_config so
+        # score_service can read it at request time instead of re-scanning.
+        config_stmt = insert(PipelineConfig).values(
+            key="safety_normaliser_p95",
+            value=normaliser,
+            description="95th-percentile weighted crime sum across all sectors. "
+                        "Used by score_service.get_safety_score() to normalise "
+                        "per-sector scores without a full-table scan.",
+            updated_at=datetime.now(timezone.utc),
+            source="crime_pipeline",
+        )
+        config_stmt = config_stmt.on_conflict_do_update(
+            index_elements=["key"],
+            set_={
+                "value": config_stmt.excluded.value,
+                "updated_at": config_stmt.excluded.updated_at,
+                "source": config_stmt.excluded.source,
+            },
+        )
+        db.execute(config_stmt)
+        db.commit()
+        logger.info("Persisted safety_normaliser_p95=%.2f to pipeline_config", normaliser)
 
         # Log sample scores
         for sector in sorted(scores.keys()):

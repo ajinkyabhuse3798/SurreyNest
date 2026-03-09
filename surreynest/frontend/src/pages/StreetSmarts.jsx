@@ -39,16 +39,16 @@ function scoreColour(score) {
 }
 
 function rankBadgeStyle(rank) {
-    if (rank === 1) return 'bg-gradient-to-br from-yellow-400 to-amber-500 text-white shadow-lg shadow-amber-200/60'
-    if (rank === 2) return 'bg-gradient-to-br from-gray-300 to-gray-400 text-white shadow-md shadow-gray-200/60'
-    if (rank === 3) return 'bg-gradient-to-br from-amber-600 to-amber-700 text-white shadow-md shadow-amber-300/40'
-    return 'bg-slate-100 text-slate-600'
+    if (rank === 1) return 'bg-gradient-to-br from-yellow-300 via-amber-400 to-orange-500 text-white shadow-lg shadow-amber-300/50 border border-amber-200/50'
+    if (rank === 2) return 'bg-gradient-to-br from-slate-200 via-slate-300 to-slate-400 text-slate-800 shadow-lg shadow-slate-300/40 border border-white/50'
+    if (rank === 3) return 'bg-gradient-to-br from-amber-600 via-amber-700 to-orange-800 text-white shadow-lg shadow-amber-700/40 border border-amber-500/50'
+    return 'bg-slate-100 text-slate-600 font-bold'
 }
 
 function podiumCardStyle(rank) {
-    if (rank === 1) return 'border-amber-200 shadow-[0_8px_30px_-4px_rgba(245,158,11,0.25)] ring-2 ring-amber-100'
-    if (rank === 2) return 'border-slate-200 shadow-[0_4px_20px_-4px_rgba(100,116,139,0.15)]'
-    if (rank === 3) return 'border-amber-100 shadow-[0_4px_20px_-4px_rgba(180,137,59,0.15)]'
+    if (rank === 1) return 'border-amber-200/60 bg-gradient-to-b from-amber-50/50 to-white shadow-[0_8px_30px_-4px_rgba(245,158,11,0.25)] ring-4 ring-amber-100/50 relative'
+    if (rank === 2) return 'border-slate-200/80 bg-gradient-to-b from-slate-50/50 to-white shadow-[0_4px_20px_-4px_rgba(100,116,139,0.15)] relative'
+    if (rank === 3) return 'border-amber-200/40 bg-gradient-to-b from-orange-50/30 to-white shadow-[0_4px_20px_-4px_rgba(180,137,59,0.15)] relative'
     return ''
 }
 
@@ -173,7 +173,7 @@ function StreetCard({ street, index }) {
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: '-30px' }}
-            className="bg-white rounded-2xl border border-slate-100 shadow-[0_2px_12px_-2px_rgba(0,0,0,0.06)] hover:shadow-[0_4px_20px_-2px_rgba(80,72,229,0.1)] hover:border-indigo-100 transition-all duration-300 overflow-hidden"
+            className="bg-white/80 backdrop-blur-md rounded-2xl border border-slate-200/50 shadow-[0_2px_12px_-3px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_30px_-4px_rgba(80,72,229,0.12)] hover:border-indigo-200 transition-all duration-300 overflow-hidden"
         >
             {/* Header */}
             <div className="px-4 py-3.5 sm:px-5 sm:py-4 flex items-center gap-3">

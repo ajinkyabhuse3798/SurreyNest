@@ -26,9 +26,13 @@ class UserCreate(BaseModel):
     @field_validator("password")
     @classmethod
     def password_min_length(cls, v: str) -> str:
-        """Enforce minimum password length of 8 characters."""
+        """Enforce password strength: min 8 chars, at least 1 letter + 1 digit."""
         if len(v) < 8:
             raise ValueError("Password must be at least 8 characters")
+        if not any(c.isalpha() for c in v):
+            raise ValueError("Password must contain at least one letter")
+        if not any(c.isdigit() for c in v):
+            raise ValueError("Password must contain at least one number")
         return v
 
 

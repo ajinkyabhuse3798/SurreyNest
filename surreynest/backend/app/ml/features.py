@@ -22,6 +22,7 @@ from geopy.distance import geodesic
 from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
+from app.data_pipelines.epc_pipeline import AGE_BAND_ORDINAL
 from app.models.crime_data import CrimeData
 from app.models.hmo_record import HmoRecord
 from app.models.postcode_cache import PostcodeCache
@@ -155,6 +156,16 @@ def load_epc_data(db: Session) -> pd.DataFrame:
                 "potential_rating": p.potential_rating,
                 "lat": p.lat,
                 "lng": p.lng,
+                # v3.3.0 new ML features
+                "construction_age_band": p.construction_age_band,
+                "mains_gas_flag": p.mains_gas_flag,
+                "floor_level": p.floor_level,
+                "annual_energy_cost": p.annual_energy_cost,
+                # v4.0.0 scraped market features
+                "actual_market_rent_weekly": p.actual_market_rent_weekly,
+                "price_drop_pct": p.price_drop_pct,
+                # v4.1.0 real bedrooms
+                "actual_bedrooms": p.actual_bedrooms,
             }
         )
 
@@ -486,14 +497,57 @@ def build_features(db: Optional[Session] = None) -> pd.DataFrame:
                            description="South East IPHRP annual rental growth % (ONS)",
                            source="features_pipeline")
 
+        # ── v3.3.0 derived features ──────────────────────────────────────
+        # 1. Construction age band → ordinal (newer = higher)
+        df["age_band_ordinal"] = (
+            df["construction_age_band"]
+            .fillna("")
+            .str.lower()
+            .str.strip()
+            .map(AGE_BAND_ORDINAL)
+        )
+        median_age = df["age_band_ordinal"].median()
+        df["age_band_ordinal"] = df["age_band_ordinal"].fillna(
+            median_age if pd.notna(median_age) else 6  # default: 1983-1990
+        )
+
+        # 2. Mains gas flag (binary, already 1/0 from pipeline)
+        df["has_mains_gas"] = df["mains_gas_flag"].fillna(1).astype(int)  # default: has gas
+
+        # 3. Floor level ordinal (already integer from pipeline)
+        df["floor_level_ordinal"] = df["floor_level"].fillna(0).astype(int)
+
+        # 4. Annual energy cost (£/yr from EPC assessment)
+        energy_cost_median = df["annual_energy_cost"].median()
+        df["annual_energy_cost"] = df["annual_energy_cost"].fillna(
+            energy_cost_median if pd.notna(energy_cost_median) else 1500.0
+        )
+
+        # 5. Energy improvement gap (potential - current): higher = worse condition
+        df["energy_improvement_gap"] = (
+            df["potential_rating_ordinal"] - df["energy_rating_ordinal"]
+        ).clip(-3, 6)
+
+        logger.info(
+            "v3.3.0 features: age_band median=%.0f, mains_gas=%.1f%%, "
+            "energy_cost median=£%.0f, improvement_gap median=%.1f",
+            df["age_band_ordinal"].median(),
+            df["has_mains_gas"].mean() * 100,
+            df["annual_energy_cost"].median(),
+            df["energy_improvement_gap"].median(),
+        )
+
         # ── Handle nulls ────────────────────────────────────────────────
         # Critical features: drop rows missing floor area
         df = df.dropna(subset=["floor_area_m2"])
 
-        # Impute optional with median
+        # Impute optional with median or sensible defaults
         for col in ["num_rooms", "distance_to_town_km", "distance_to_uni_km", "distance_to_station_km"]:
             median_val = df[col].median()
             df[col] = df[col].fillna(median_val)
+            
+        # For actual_bedrooms, default to 2 if missing
+        df["actual_bedrooms"] = df["actual_bedrooms"].fillna(2).astype(int)
 
         # ── Select final feature columns ────────────────────────────────
         feature_cols = [
@@ -512,11 +566,21 @@ def build_features(db: Optional[Session] = None) -> pd.DataFrame:
             "is_hmo",
             "safety_score",
             "area_value_index",
+            "actual_bedrooms",       # v4.1.0: Real/Classifier-predicted bedrooms
             # ── New: Land Registry real data features ──────────────────────
             "implied_weekly_rent",   # postcode-level real rent anchor (MODE C target)
             "median_sale_price",     # absolute neighbourhood value (£)
             "sale_count",            # market liquidity (how many sales we have data for)
             "iphrp_growth_pct",      # South East rental growth trend (%)
+            # ── v3.3.0: EPC-derived ML features ───────────────────────────
+            "age_band_ordinal",          # construction era (0=pre-1900, 11=2012+)
+            "has_mains_gas",             # 1=gas, 0=no gas
+            "floor_level_ordinal",       # -1=basement, 0=ground, 1=first...
+            "annual_energy_cost",        # £/year running cost from EPC
+            "energy_improvement_gap",    # potential - current EPC ordinal
+            # ── v4.0.0: Scraped real rents and price drops ─────────────────
+            "actual_market_rent_weekly", # ground-truth market targets
+            "price_drop_pct",            # % price drops on listings
         ]
         # Add one-hot property type columns
         ptype_cols = [c for c in df.columns if c.startswith("ptype_")]

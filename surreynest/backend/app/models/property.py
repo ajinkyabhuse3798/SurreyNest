@@ -62,6 +62,21 @@ class Property(Base):
     potential_rating: Mapped[Optional[str]] = mapped_column(String(1), nullable=True)
     epc_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     tenure: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    # v3.3.0 ML features — populated by EPC pipeline from raw certificates.csv
+    construction_age_band: Mapped[Optional[str]] = mapped_column(
+        String(50), nullable=True
+    )
+    mains_gas_flag: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    floor_level: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    annual_energy_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    
+    # v4.0.0 Scraped features — populated by scraped_rent_pipeline.py
+    actual_market_rent_weekly: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    price_drop_pct: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+
+    # v4.1.0: Real bedrooms ground truth
+    actual_bedrooms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,

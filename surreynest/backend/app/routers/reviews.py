@@ -9,8 +9,7 @@ import math
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from slowapi import Limiter
-from slowapi.util import get_remote_address
+from app.rate_limit import limiter  # shared singleton — one instance for the whole app
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -25,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-limiter = Limiter(key_func=get_remote_address)
+
 
 
 @router.get(
@@ -173,7 +172,9 @@ async def delete_review(
     response_model=ReviewListResponse,
     summary="Get unmoderated reviews (admin only)",
 )
+@limiter.limit("30/minute")
 async def get_moderation_queue(
+    request: Request,
     page: int = Query(default=1, ge=1),
     per_page: int = Query(default=20, ge=1, le=50),
     current_user: User = Depends(require_admin),
@@ -207,7 +208,9 @@ async def get_moderation_queue(
     response_model=ReviewResponse,
     summary="Approve a review (admin only)",
 )
+@limiter.limit("30/minute")
 async def approve_review(
+    request: Request,
     review_id: uuid.UUID,
     current_user: User = Depends(require_admin),
     db: Session = Depends(get_db),
@@ -236,7 +239,9 @@ async def approve_review(
     status_code=status.HTTP_200_OK,
     summary="Reject a review (admin only)",
 )
+@limiter.limit("30/minute")
 async def reject_review(
+    request: Request,
     review_id: uuid.UUID,
     current_user: User = Depends(require_admin),
     db: Session = Depends(get_db),

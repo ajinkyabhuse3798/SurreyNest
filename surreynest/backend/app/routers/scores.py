@@ -5,6 +5,7 @@ Thin route layer — delegates to score_service for all computation.
 
 import logging
 
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
@@ -67,13 +68,14 @@ async def get_safety_score(
 async def get_rent_fairness(
     uprn: str = Query(..., description="Property UPRN"),
     weekly_rent: float = Query(..., gt=0, description="Weekly rent in £"),
+    bedrooms: Optional[int] = Query(None, description="Override the AI bedroom estimate"),
     db: Session = Depends(get_db),
 ) -> RentFairnessResponse:
     """Compare asking rent against model prediction for a property.
 
     Returns a 0-100 fairness score with detailed comparison.
     """
-    prediction = score_service.get_rent_prediction(uprn, db)
+    prediction = score_service.get_rent_prediction(uprn, db, bedrooms_override=bedrooms)
 
     if not prediction:
         raise HTTPException(

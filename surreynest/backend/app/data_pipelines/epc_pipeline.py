@@ -62,7 +62,53 @@ KEEP_COLUMNS = [
     "POTENTIAL_ENERGY_RATING",
     "LODGEMENT_DATE",
     "TENURE",
+    # ── v3.3.0: new ML features ──────────────────────────────────────────
+    "CONSTRUCTION_AGE_BAND",
+    "MAINS_GAS_FLAG",
+    "FLOOR_LEVEL",
+    "HEATING_COST_CURRENT",
+    "HOT_WATER_COST_CURRENT",
+    "LIGHTING_COST_CURRENT",
 ]
+
+# ── Construction age band → ordinal encoding ─────────────────────────────────
+# Newer buildings command higher rents (modern kitchens, insulation, en-suites).
+# Mapping covers all ONS EPC age bands.
+AGE_BAND_ORDINAL = {
+    "england and wales: before 1900": 0,
+    "before 1900": 0,
+    "england and wales: 1900-1929": 1,
+    "1900-1929": 1,
+    "england and wales: 1930-1949": 2,
+    "1930-1949": 2,
+    "england and wales: 1950-1966": 3,
+    "1950-1966": 3,
+    "england and wales: 1967-1975": 4,
+    "1967-1975": 4,
+    "england and wales: 1976-1982": 5,
+    "1976-1982": 5,
+    "england and wales: 1983-1990": 6,
+    "1983-1990": 6,
+    "england and wales: 1991-1995": 7,
+    "1991-1995": 7,
+    "england and wales: 1996-2002": 8,
+    "1996-2002": 8,
+    "england and wales: 2003-2006": 9,
+    "2003-2006": 9,
+    "england and wales: 2007-2011": 10,
+    "2007-2011": 10,
+    "england and wales: 2012 onwards": 11,
+    "2012 onwards": 11,
+}
+
+# ── Floor level text → ordinal ───────────────────────────────────────────────
+FLOOR_LEVEL_MAP = {
+    "ground": 0, "basement": -1, "0": 0,
+    "1": 1, "1st": 1, "2": 2, "2nd": 2,
+    "3": 3, "3rd": 3, "4": 4, "4th": 4,
+    "5": 5, "5th": 5, "6": 6, "7": 7,
+    "8": 8, "9": 9, "10": 10,
+}
 
 
 def _normalise_postcode(pc: str) -> str:
@@ -213,6 +259,44 @@ def clean_epc_data(raw_path: Optional[Path] = None) -> pd.DataFrame:
     df = df.drop_duplicates(subset=["UPRN"], keep="first")
     logger.info("After dedup on UPRN: %d rows", len(df))
 
+    # ── Clean new ML feature columns (v3.3.0) ────────────────────────────
+    # Construction age band → raw string (ordinal encoding done in features.py)
+    df["CONSTRUCTION_AGE_BAND"] = (
+        df["CONSTRUCTION_AGE_BAND"].fillna("").astype(str).str.strip().str.lower()
+    )
+
+    # Mains gas flag → integer 1/0
+    df["_mains_gas"] = (
+        df["MAINS_GAS_FLAG"].fillna("").astype(str).str.strip().str.upper()
+    )
+    df["_mains_gas_int"] = df["_mains_gas"].map({"Y": 1, "N": 0})
+
+    # Floor level → integer ordinal
+    df["_floor_level_raw"] = (
+        df["FLOOR_LEVEL"].fillna("").astype(str).str.strip().str.lower()
+    )
+    df["_floor_level_int"] = df["_floor_level_raw"].map(FLOOR_LEVEL_MAP)
+
+    # Annual energy cost = heating + hot water + lighting (£/year from EPC)
+    for cost_col in ["HEATING_COST_CURRENT", "HOT_WATER_COST_CURRENT", "LIGHTING_COST_CURRENT"]:
+        df[cost_col] = pd.to_numeric(df[cost_col], errors="coerce")
+    df["_annual_energy_cost"] = (
+        df["HEATING_COST_CURRENT"].fillna(0)
+        + df["HOT_WATER_COST_CURRENT"].fillna(0)
+        + df["LIGHTING_COST_CURRENT"].fillna(0)
+    )
+    # Only keep if at least heating cost was present (not all-zero)
+    df.loc[df["HEATING_COST_CURRENT"].isna(), "_annual_energy_cost"] = None
+
+    logger.info(
+        "New features: age_band coverage=%.1f%%, mains_gas coverage=%.1f%%, "
+        "floor_level coverage=%.1f%%, energy_cost coverage=%.1f%%",
+        df["CONSTRUCTION_AGE_BAND"].ne("").mean() * 100,
+        df["_mains_gas_int"].notna().mean() * 100,
+        df["_floor_level_int"].notna().mean() * 100,
+        df["_annual_energy_cost"].notna().mean() * 100,
+    )
+
     # ── Build final output DataFrame ─────────────────────────────────────
     result = pd.DataFrame(
         {
@@ -227,6 +311,11 @@ def clean_epc_data(raw_path: Optional[Path] = None) -> pd.DataFrame:
             "potential_rating": df["POTENTIAL_ENERGY_RATING"].fillna("").str.strip().str.upper(),
             "epc_date": df["LODGEMENT_DATE"].dt.date,
             "tenure": df["TENURE"].str[:100],
+            # ── v3.3.0 new columns ───────────────────────────────────────
+            "construction_age_band": df["CONSTRUCTION_AGE_BAND"].replace("", None),
+            "mains_gas_flag": df["_mains_gas_int"],
+            "floor_level": df["_floor_level_int"],
+            "annual_energy_cost": df["_annual_energy_cost"],
         }
     )
 
@@ -300,6 +389,11 @@ def upsert_to_db(df: pd.DataFrame, db: Session) -> int:
                 "potential_rating": stmt.excluded.potential_rating,
                 "epc_date": stmt.excluded.epc_date,
                 "tenure": stmt.excluded.tenure,
+                # v3.3.0 new columns
+                "construction_age_band": stmt.excluded.construction_age_band,
+                "mains_gas_flag": stmt.excluded.mains_gas_flag,
+                "floor_level": stmt.excluded.floor_level,
+                "annual_energy_cost": stmt.excluded.annual_energy_cost,
                 "updated_at": now,
             },
         )

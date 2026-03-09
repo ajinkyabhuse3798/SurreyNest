@@ -11,7 +11,6 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.services.geocoding_service import _normalise_postcode
 from app.services import safety_intelligence as si
 
 logger = logging.getLogger(__name__)
@@ -20,12 +19,20 @@ router = APIRouter()
 
 
 def _extract_sector(postcode: str) -> str:
-    """Extract postcode sector from full postcode."""
-    normalised = _normalise_postcode(postcode)
-    parts = normalised.strip().split()
+    """Extract postcode sector from full postcode.
+
+    Accepts both full postcodes ('GU2 7XH') and sectors ('GU2 7').
+    Uses simple whitespace normalisation — NOT _normalise_postcode(),
+    which corrupts short sector strings (B1 lesson: never route sector
+    strings through full-postcode normalisation).
+    """
+    import re
+    pc = str(postcode).strip().upper()
+    pc = re.sub(r"\s+", " ", pc)  # collapse multiple spaces to one
+    parts = pc.split()
     if len(parts) == 2 and len(parts[1]) >= 1:
         return parts[0] + " " + parts[1][0]
-    return normalised
+    return pc
 
 
 @router.get(

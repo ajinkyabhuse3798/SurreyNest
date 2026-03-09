@@ -165,9 +165,9 @@ function SearchModal({ onSelect, onClose, existingUprns }) {
     }, [query])
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4" onClick={onClose}>
             <div
-                className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col animate-[fadeIn_150ms_ease-out]"
+                className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-[0_8px_30px_-4px_rgba(0,0,0,0.2)] w-full max-w-md max-h-[80vh] flex flex-col animate-[fadeIn_150ms_ease-out] border border-white/50"
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
@@ -213,8 +213,8 @@ function SearchModal({ onSelect, onClose, existingUprns }) {
                                 onClick={() => !already && onSelect(p.uprn)}
                                 disabled={already}
                                 className={`w-full text-left p-3 rounded-lg mb-1 transition-colors ${already
-                                        ? 'bg-gray-50 opacity-50 cursor-not-allowed'
-                                        : 'hover:bg-indigo-50 cursor-pointer'
+                                    ? 'bg-gray-50 opacity-50 cursor-not-allowed'
+                                    : 'hover:bg-indigo-50 cursor-pointer'
                                     }`}
                             >
                                 <p className="text-sm font-medium text-gray-900 truncate">{p.address}</p>
@@ -477,15 +477,15 @@ export default function CompareProperties() {
                                             return (
                                                 <td
                                                     key={p.uprn}
-                                                    className={`py-3 px-4 text-sm transition-colors ${isBest
-                                                            ? 'bg-green-50 text-green-700 font-semibold rounded-lg'
-                                                            : isWorst
-                                                                ? 'bg-red-50/50 text-red-400'
-                                                                : 'text-gray-700'
+                                                    className={`py-3 px-4 text-[13px] transition-all relative ${isBest
+                                                        ? 'bg-emerald-50/80 text-emerald-800 font-bold border border-emerald-100 rounded-lg shadow-sm z-10'
+                                                        : isWorst
+                                                            ? 'bg-rose-50/40 text-rose-500 font-medium rounded-lg'
+                                                            : 'text-slate-700 font-medium'
                                                         }`}
                                                 >
                                                     {formatted}
-                                                    {isBest && <span className="ml-1 text-[10px]">✓</span>}
+                                                    {isBest && <span className="ml-1.5 text-[10px] bg-emerald-200 text-emerald-800 px-1 rounded">Best</span>}
                                                 </td>
                                             )
                                         })}

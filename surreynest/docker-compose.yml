@@ -14,8 +14,24 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./backend/init-test-db.sql:/docker-entrypoint-initdb.d/01-test-db.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U surreynest -d surreynest"]
+      test: [ "CMD-SHELL", "pg_isready -U surreynest -d surreynest" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Redis (shared cache for multi-worker deployment) ──────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: surreynest-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -31,19 +47,24 @@ services:
       - ./backend/.env
     environment:
       DATABASE_URL: postgresql://surreynest:surreynest_dev_password@postgres:5432/surreynest
+      REDIS_URL: redis://redis:6379/0
     ports:
       - "8000:8000"
     volumes:
-      - ./backend:/app          # Hot reload in development
-      - ./backend/data:/app/data  # Persist data files
+      - ./backend:/app # Hot reload in development
+      - ./backend/data:/app/data # Persist data files
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
 volumes:
   postgres_data:
     name: surreynest_postgres_data
+  redis_data:
+    name: surreynest_redis_data
 
 # ─── Notes ────────────────────────────────────────────────────────────────────
 # Start: docker-compose up -d

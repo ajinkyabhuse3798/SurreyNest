@@ -9,20 +9,22 @@ Ranks streets by a composite score derived from:
   - HMO availability (licensed HMO count)
 
 All four pillars are min-max normalised 0–100 and equally weighted.
-Results are cached in-memory for 10 minutes.
+Results are cached in Redis for 10 minutes (shared across workers).
 """
 
 import logging
 import math
-import time
-from typing import List, Optional
+from datetime import datetime, timezone
+from typing import List
 
 from fastapi import APIRouter, Depends, Query
-from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from app.cache import get_json, set_json
 from app.database import get_db
+from app.schemas.leaderboard import LeaderboardResponse, ScorePillar, StreetRank
+from app.services.score_service import get_safety_score
 
 logger = logging.getLogger(__name__)
 
@@ -42,53 +44,14 @@ NOISE_WORDS = {
     "FARNHAM", "ALDERSHOT", "HASLEMERE",
 }
 
-# Crime category weights (same as score_service.py)
-CRIME_WEIGHTS = {
-    "violent-crime": 3.0,
-    "robbery": 2.5,
-    "anti-social-behaviour": 2.0,
-    "burglary": 2.0,
-    "drugs": 1.5,
-    "public-order": 1.5,
-    "vehicle-crime": 1.0,
-    "theft-from-the-person": 1.0,
-}
+# Note: Crime category weights have been removed — safety scoring is now
+# delegated entirely to score_service.get_safety_score() for consistency.
 
 # Allowed districts
 ALLOWED_DISTRICTS = {"GU1", "GU2", "GU3", "GU4", "GU5", "GU7"}
 
-# ── Cache ────────────────────────────────────────────────────────────────────
-
-_cache = {}
+# Cache TTL
 CACHE_TTL = 600  # 10 minutes
-
-
-# ── Response schema ──────────────────────────────────────────────────────────
-
-class ScorePillar(BaseModel):
-    label: str
-    score: float
-    detail: str
-
-
-class StreetRank(BaseModel):
-    rank: int
-    street_name: str
-    district: str
-    composite_score: float
-    pillars: List[ScorePillar]
-    property_count: int
-    avg_weekly_rent: Optional[float] = None
-    avg_rooms: Optional[float] = None
-    distance_to_uni_km: float
-    postcode_sectors: List[str] = []
-
-
-class LeaderboardResponse(BaseModel):
-    district: str
-    streets: List[StreetRank]
-    total_streets: int
-    generated_at: str
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -120,13 +83,6 @@ def _min_max_normalise(values: List[float], invert: bool = False) -> List[float]
     return normalised
 
 
-def _compute_safety_score(crime_counts: dict) -> float:
-    """Weighted crime score for a sector — higher = MORE crime (bad)."""
-    return sum(
-        count * CRIME_WEIGHTS.get(cat, 1.0)
-        for cat, count in crime_counts.items()
-    )
-
 
 # ── Main aggregation ─────────────────────────────────────────────────────────
 
@@ -142,7 +98,7 @@ def _build_leaderboard(db: Session, district: str, limit: int) -> LeaderboardRes
             AVG(p.lat) AS avg_lat,
             AVG(p.lng) AS avg_lng,
             AVG(p.num_rooms) FILTER (WHERE p.num_rooms > 0) AS avg_rooms,
-            ARRAY_AGG(DISTINCT SUBSTRING(p.postcode FROM 1 FOR 4)) AS sectors,
+            ARRAY_AGG(DISTINCT SPLIT_PART(p.postcode, ' ', 1) || ' ' || SUBSTRING(SPLIT_PART(p.postcode, ' ', 2) FROM 1 FOR 1)) AS sectors,
             ARRAY_AGG(DISTINCT p.postcode) AS postcodes
         FROM properties p
         WHERE p.lat IS NOT NULL
@@ -169,28 +125,20 @@ def _build_leaderboard(db: Session, district: str, limit: int) -> LeaderboardRes
             district=district,
             streets=[],
             total_streets=0,
-            generated_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            generated_at=datetime.now(timezone.utc).isoformat(),
         )
 
-    # Step 2: Get crime data per sector
+    # Step 2: Pre-fetch safety scores for every unique sector via score_service
+    # (same 95th-percentile algorithm used on property detail pages — consistent app-wide)
     all_sectors = set()
     for r in rows:
         for s in (r[5] or []):
             all_sectors.add(s.strip())
 
-    crime_by_sector = {}
-    if all_sectors:
-        crime_query = text("""
-            SELECT postcode_sector, category, SUM(count) AS total
-            FROM crime_data
-            WHERE postcode_sector = ANY(:sectors)
-            GROUP BY postcode_sector, category
-        """)
-        crime_rows = db.execute(
-            crime_query, {"sectors": list(all_sectors)}
-        ).fetchall()
-        for cr in crime_rows:
-            crime_by_sector.setdefault(cr[0], {})[cr[1]] = cr[2]
+    safety_by_sector: dict = {}
+    for sector in all_sectors:
+        result = get_safety_score(sector, db)
+        safety_by_sector[sector] = result["safety_score"] if result and result.get("safety_score") is not None else None
 
     # Step 3: Get avg implied rent per postcode
     rent_by_postcode = {}
@@ -240,12 +188,14 @@ def _build_leaderboard(db: Session, district: str, limit: int) -> LeaderboardRes
         # Distance to uni
         dist_uni = _haversine_km(avg_lat, avg_lng, *SURREY_UNI)
 
-        # Safety: average weighted crime across the street's sectors
-        sector_crimes = []
-        for s in sectors:
-            if s in crime_by_sector:
-                sector_crimes.append(_compute_safety_score(crime_by_sector[s]))
-        raw_crime = sum(sector_crimes) / len(sector_crimes) if sector_crimes else 0
+        # Safety: average the 95th-percentile safety scores for the street's sectors
+        # Falls back to None if no crime data exists for any sector
+        sector_safety_scores = [
+            safety_by_sector[s]
+            for s in sectors
+            if s in safety_by_sector and safety_by_sector[s] is not None
+        ]
+        street_safety = round(sum(sector_safety_scores) / len(sector_safety_scores), 1) if sector_safety_scores else None
 
         # Avg rent
         rents = [rent_by_postcode[pc] for pc in postcodes if pc in rent_by_postcode]
@@ -262,19 +212,17 @@ def _build_leaderboard(db: Session, district: str, limit: int) -> LeaderboardRes
             "avg_rooms": round(avg_rooms, 1) if avg_rooms else None,
             "sectors": sectors,
             "dist_uni": round(dist_uni, 2),
-            "raw_crime": raw_crime,
+            "safety_score": street_safety,
             "avg_rent": round(avg_rent, 1) if avg_rent else None,
             "hmo_count": hmo_count,
         })
 
-    # Step 6: Min-max normalise each pillar
-    crime_vals = [s["raw_crime"] for s in streets_data]
+    # Step 6: Normalise Value, Proximity, HMO via min-max within the district.
+    # Safety is already normalised globally by score_service — no re-normalisation needed.
     rent_vals = [s["avg_rent"] or 999 for s in streets_data]
     dist_vals = [s["dist_uni"] for s in streets_data]
     hmo_vals = [float(s["hmo_count"]) for s in streets_data]
 
-    # Higher crime = worse → invert
-    norm_safety = _min_max_normalise(crime_vals, invert=True)
     # Higher rent = worse for students → invert
     norm_value = _min_max_normalise(rent_vals, invert=True)
     # Closer distance = better → invert
@@ -285,7 +233,9 @@ def _build_leaderboard(db: Session, district: str, limit: int) -> LeaderboardRes
     # Step 7: Compute composite and build response
     ranked = []
     for i, s in enumerate(streets_data):
-        safety = round(norm_safety[i], 1)
+        # Safety: direct from score_service (0–100 global 95th-pct scale)
+        # Fallback to 50.0 only when genuinely no crime data exists for the sector
+        safety = s["safety_score"] if s["safety_score"] is not None else 50.0
         value = round(norm_value[i], 1)
         prox = round(norm_prox[i], 1)
         hmo = round(norm_hmo[i], 1)
@@ -315,7 +265,7 @@ def _build_leaderboard(db: Session, district: str, limit: int) -> LeaderboardRes
                 ScorePillar(
                     label="Safety",
                     score=s["safety_score"],
-                    detail=f"Crime index: {s['raw_crime']:.0f}",
+                    detail=f"Sector: {', '.join(s['sectors'])}" if s["sectors"] else "No crime data",
                 ),
                 ScorePillar(
                     label="Value",
@@ -344,7 +294,7 @@ def _build_leaderboard(db: Session, district: str, limit: int) -> LeaderboardRes
         district=district,
         streets=streets,
         total_streets=len(ranked),
-        generated_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        generated_at=datetime.now(timezone.utc).isoformat(),
     )
 
 
@@ -369,14 +319,12 @@ async def get_street_leaderboard(
     if district not in ALLOWED_DISTRICTS:
         district = "GU2"
 
-    cache_key = f"{district}_{limit}"
-    now = time.time()
+    cache_key = f"leaderboard:{district}_{limit}"
 
-    if cache_key in _cache:
-        cached_data, cached_at = _cache[cache_key]
-        if now - cached_at < CACHE_TTL:
-            return cached_data
+    cached = get_json(cache_key)
+    if cached is not None:
+        return LeaderboardResponse(**cached)
 
     result = _build_leaderboard(db, district, limit)
-    _cache[cache_key] = (result, now)
+    set_json(cache_key, result.model_dump(), CACHE_TTL)
     return result

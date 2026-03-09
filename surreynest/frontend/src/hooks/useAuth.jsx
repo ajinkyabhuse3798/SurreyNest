@@ -1,34 +1,19 @@
 /**
  * Authentication hook and context provider.
- * Manages JWT token in localStorage, user state, and auth actions.
+ * Uses httpOnly cookies for JWT auth — no token in localStorage.
+ *
+ * On mount, calls GET /api/auth/me to restore session from cookie.
+ * Login sets the cookie server-side; frontend only stores user info in state.
  *
  * Usage:
  *   Wrap app in <AuthProvider> then call useAuth() in any component.
- *   { user, token, loading, login, register, logout }
+ *   { user, loading, login, register, logout }
  */
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
-import { jwtDecode } from 'jwt-decode'
+import { Navigate, useLocation } from 'react-router-dom'
 import api from '../services/api'
 
 const AuthContext = createContext(null)
-
-/**
- * Decode a JWT and return user info, or null if invalid/expired.
- * @param {string} token
- * @returns {{ id: string, role: string } | null}
- */
-function decodeToken(token) {
-    try {
-        const decoded = jwtDecode(token)
-        // Check expiry
-        if (decoded.exp * 1000 < Date.now()) {
-            return null
-        }
-        return { id: decoded.sub, role: decoded.role }
-    } catch {
-        return null
-    }
-}
 
 /**
  * AuthProvider — wraps the app and provides auth state + actions.
@@ -36,22 +21,23 @@ function decodeToken(token) {
  */
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null)
-    const [token, setToken] = useState(null)
     const [loading, setLoading] = useState(true)
 
-    // On mount, restore session from localStorage
+    // On mount, restore session from httpOnly cookie via /api/auth/me
     useEffect(() => {
-        const storedToken = localStorage.getItem('token')
-        if (storedToken) {
-            const decoded = decodeToken(storedToken)
-            if (decoded) {
-                setToken(storedToken)
-                setUser(decoded)
-            } else {
-                localStorage.removeItem('token')
-            }
-        }
-        setLoading(false)
+        let cancelled = false
+        api.get('/api/auth/me')
+            .then((res) => {
+                if (!cancelled) setUser(res.data)
+            })
+            .catch(() => {
+                // Not authenticated or cookie expired — that's fine
+                if (!cancelled) setUser(null)
+            })
+            .finally(() => {
+                if (!cancelled) setLoading(false)
+            })
+        return () => { cancelled = true }
     }, [])
 
     const login = useCallback(async (email, password) => {
@@ -63,10 +49,8 @@ export function AuthProvider({ children }) {
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         })
 
-        const newToken = res.data.access_token
-        localStorage.setItem('token', newToken)
-        setToken(newToken)
-        setUser(decodeToken(newToken))
+        // Server sets httpOnly cookie — we only store user info in React state
+        setUser(res.data.user)
         return res.data
     }, [])
 
@@ -75,20 +59,23 @@ export function AuthProvider({ children }) {
         return res.data
     }, [])
 
-    const logout = useCallback(() => {
-        localStorage.removeItem('token')
-        setToken(null)
+    const logout = useCallback(async () => {
+        try {
+            await api.post('/api/auth/logout')
+        } catch {
+            // If server is unreachable, still clear local state
+        }
         setUser(null)
     }, [])
 
-    const value = { user, token, loading, login, register, logout }
+    const value = { user, loading, login, register, logout }
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
 /**
  * Hook to access auth state and actions.
- * @returns {{ user: object|null, token: string|null, loading: boolean, login: Function, register: Function, logout: Function }}
+ * @returns {{ user: object|null, loading: boolean, login: Function, register: Function, logout: Function }}
  */
 export function useAuth() {
     const context = useContext(AuthContext)
@@ -101,10 +88,12 @@ export function useAuth() {
 /**
  * Route guard — redirects to /login if not authenticated.
  * Usage: <RequireAuth><AdminDashboard /></RequireAuth>
+ * Preserves the attempted URL in state so Login can redirect back.
  * @param {{ children: React.ReactNode, adminOnly?: boolean }} props
  */
 export function RequireAuth({ children, adminOnly = false }) {
     const { user, loading } = useAuth()
+    const location = useLocation()
 
     if (loading) {
         return (
@@ -115,8 +104,8 @@ export function RequireAuth({ children, adminOnly = false }) {
     }
 
     if (!user) {
-        window.location.href = '/login'
-        return null
+        // Declarative redirect — preserves React state, passes return URL
+        return <Navigate to="/login" state={{ from: location }} replace />
     }
 
     if (adminOnly && user.role !== 'admin') {

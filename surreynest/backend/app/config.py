@@ -32,6 +32,10 @@ class Settings:
         "DATABASE_URL",
         "postgresql://surreynest:surreynest_dev_password@localhost:5432/surreynest",
     )
+    test_database_url: str = os.getenv(
+        "TEST_DATABASE_URL",
+        "postgresql://surreynest:surreynest_dev_password@localhost:5432/surreynest_test",
+    )
 
     # ── Auth ────────────────────────────────────────────────────────────────
     secret_key: str = os.getenv("SECRET_KEY", "CHANGE_ME_IN_PRODUCTION")
@@ -45,12 +49,15 @@ class Settings:
     ).split(",")
 
     # ── ML Model ───────────────────────────────────────────────────────────
-    ml_model_version: str = os.getenv("ML_MODEL_VERSION", "v3.2.0")
+    ml_model_version: str = os.getenv("ML_MODEL_VERSION", "v4.0.0")
     ml_model_path: str = os.getenv("ML_MODEL_PATH", "app/ml/models")
 
     # ── Rate Limiting ──────────────────────────────────────────────────────
     rate_limit_search: int = int(os.getenv("RATE_LIMIT_SEARCH", "60"))
     rate_limit_reviews: int = int(os.getenv("RATE_LIMIT_REVIEWS", "5"))
+
+    # ── Redis (shared cache for multi-worker deployment) ──────────────────
+    redis_url: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
     def __init__(self) -> None:
         """Validate critical settings on startup."""

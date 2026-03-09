@@ -2,7 +2,7 @@
  * Root application component with routing, providers, and layout.
  *
  * - AuthProvider: JWT auth state
- * - SearchProvider: search params + results cache
+ * - CompareProvider: compare list state
  * - BrowserRouter: react-router-dom v6
  * - Lazy loading: all routes except Home and NotFound
  * - ErrorBoundary: catches render errors
@@ -11,7 +11,7 @@
 import React, { Suspense, Component } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider, RequireAuth } from './hooks/useAuth'
-import { SearchProvider } from './hooks/useSearch'
+
 import { CompareProvider } from './hooks/useCompare'
 import Home from './pages/Home'
 import NotFound from './pages/NotFound'
@@ -29,6 +29,7 @@ const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard'))
 const CheckListing = React.lazy(() => import('./pages/CheckListing'))
 const StreetSmarts = React.lazy(() => import('./pages/StreetSmarts'))
 const SafetyDetail = React.lazy(() => import('./pages/SafetyDetail'))
+const RentDetail = React.lazy(() => import('./pages/RentDetail'))
 
 // ── Route-level loading spinner ──────────────────────────────────────────────
 function RouteLoader() {
@@ -91,36 +92,35 @@ class ErrorBoundary extends Component {
 export default function App() {
     return (
         <AuthProvider>
-            <SearchProvider>
-                <CompareProvider>
-                    <BrowserRouter>
-                        <div className="flex flex-col min-h-screen">
-                            <ErrorBoundary>
-                                <Suspense fallback={<RouteLoader />}>
-                                    <div className="flex-1">
-                                        <Routes>
-                                            <Route path="/" element={<Home />} />
-                                            <Route path="/search" element={<SearchResults />} />
-                                            <Route path="/property/:uprn" element={<PropertyDetail />} />
-                                            <Route path="/compare" element={<CompareProperties />} />
-                                            <Route path="/about" element={<About />} />
-                                            <Route path="/check-listing" element={<CheckListing />} />
-                                            <Route path="/best-streets" element={<StreetSmarts />} />
-                                            <Route path="/safety/:postcode" element={<SafetyDetail />} />
-                                            <Route path="/login" element={<Login />} />
-                                            <Route path="/register" element={<Register />} />
-                                            <Route path="/rights" element={<RightsGuide />} />
-                                            <Route path="/admin" element={<RequireAuth adminOnly><AdminDashboard /></RequireAuth>} />
-                                            <Route path="*" element={<NotFound />} />
-                                        </Routes>
-                                    </div>
-                                </Suspense>
-                            </ErrorBoundary>
-                            <Footer />
-                        </div>
-                    </BrowserRouter>
-                </CompareProvider>
-            </SearchProvider>
+            <CompareProvider>
+                <BrowserRouter>
+                    <div className="flex flex-col min-h-screen">
+                        <ErrorBoundary>
+                            <Suspense fallback={<RouteLoader />}>
+                                <div className="flex-1">
+                                    <Routes>
+                                        <Route path="/" element={<Home />} />
+                                        <Route path="/search" element={<SearchResults />} />
+                                        <Route path="/property/:uprn" element={<PropertyDetail />} />
+                                        <Route path="/compare" element={<CompareProperties />} />
+                                        <Route path="/about" element={<About />} />
+                                        <Route path="/check-listing" element={<CheckListing />} />
+                                        <Route path="/best-streets" element={<StreetSmarts />} />
+                                        <Route path="/safety/:postcode" element={<SafetyDetail />} />
+                                        <Route path="/rent/:uprn" element={<RentDetail />} />
+                                        <Route path="/login" element={<Login />} />
+                                        <Route path="/register" element={<Register />} />
+                                        <Route path="/rights" element={<RightsGuide />} />
+                                        <Route path="/admin" element={<RequireAuth adminOnly><AdminDashboard /></RequireAuth>} />
+                                        <Route path="*" element={<NotFound />} />
+                                    </Routes>
+                                </div>
+                            </Suspense>
+                        </ErrorBoundary>
+                        <Footer />
+                    </div>
+                </BrowserRouter>
+            </CompareProvider>
         </AuthProvider>
     )
 }

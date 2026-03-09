@@ -86,10 +86,87 @@ def _safety_label(score: float) -> str:
     return "High Crime Area"
 
 
+# ── Cached normaliser for safety score ────────────────────────────────────────
+# The 95th-percentile normaliser is identical across all sectors and only changes
+# when the crime pipeline runs (monthly). We cache it in Redis so the value
+# is shared across all Uvicorn workers.
+
+_NORMALISER_TTL = 600  # 10 minutes
+_NORMALISER_CACHE_KEY = "safety:normaliser_p95"
+
+
+def _get_safety_normaliser(db: Session) -> float:
+    """Read the 95th-percentile normaliser, with Redis cache.
+
+    Priority:
+    1. Redis cache (shared across workers, 10-min TTL)
+    2. pipeline_config table (written by crime_pipeline)
+    3. Fallback: compute on-the-fly (first run only, before pipeline has run)
+
+    Args:
+        db: SQLAlchemy session.
+
+    Returns:
+        The normaliser value (positive float, never zero).
+    """
+    from app.cache import get_json, set_json
+
+    # 1. Redis cache
+    cached = get_json(_NORMALISER_CACHE_KEY)
+    if cached is not None:
+        return float(cached)
+
+    # 2. pipeline_config table
+    try:
+        row = db.query(PipelineConfig).filter(
+            PipelineConfig.key == "safety_normaliser_p95"
+        ).first()
+        if row is not None:
+            val = float(row.value)
+            if val > 0:
+                set_json(_NORMALISER_CACHE_KEY, val, _NORMALISER_TTL)
+                return val
+    except Exception as e:
+        logger.warning("Could not read safety_normaliser_p95: %s", e)
+
+    # 3. Fallback: compute once on-the-fly (only needed before first pipeline run)
+    logger.warning("safety_normaliser_p95 not in pipeline_config — computing on-the-fly")
+    all_crime = (
+        db.query(
+            CrimeData.postcode_sector,
+            CrimeData.category,
+            func.sum(CrimeData.count).label("total_count"),
+        )
+        .group_by(CrimeData.postcode_sector, CrimeData.category)
+        .all()
+    )
+    sector_weighted: Dict[str, float] = {}
+    for row in all_crime:
+        w = CATEGORY_WEIGHTS.get(row.category, DEFAULT_WEIGHT)
+        sector_weighted[row.postcode_sector] = (
+            sector_weighted.get(row.postcode_sector, 0.0) + row.total_count * w
+        )
+    if not sector_weighted:
+        return 1.0
+
+    weighted_values = sorted(sector_weighted.values())
+    idx_95 = int(len(weighted_values) * 0.95)
+    normaliser = weighted_values[min(idx_95, len(weighted_values) - 1)]
+    if normaliser == 0:
+        normaliser = 1.0
+
+    set_json(_NORMALISER_CACHE_KEY, normaliser, _NORMALISER_TTL)
+    return normaliser
+
+
 def get_safety_score(
     postcode_sector: str, db: Session
 ) -> Optional[Dict]:
     """Compute safety score for a postcode sector from crime data.
+
+    Performance: O(1) per call. Queries only the target sector's crimes,
+    not the entire crime_data table. The normaliser is read from a cached
+    pipeline_config value (written monthly by crime_pipeline).
 
     Args:
         postcode_sector: Postcode sector, e.g. "GU2 7".
@@ -98,7 +175,7 @@ def get_safety_score(
     Returns:
         Dict with safety_score and breakdown, or None if no data.
     """
-    # Get crime data for this sector
+    # Get crime data for this sector only
     rows = (
         db.query(
             CrimeData.category,
@@ -118,7 +195,7 @@ def get_safety_score(
             "breakdown": [],
         }
 
-    # Compute weighted sum
+    # Compute weighted sum for this sector
     weighted_sum = 0.0
     breakdown = []
     for row in rows:
@@ -129,48 +206,8 @@ def get_safety_score(
             "total_count": row.total_count,
         })
 
-    # Get normaliser from all sectors (95th percentile)
-    all_sectors = (
-        db.query(
-            CrimeData.postcode_sector,
-            func.sum(CrimeData.count).label("total"),
-        )
-        .group_by(CrimeData.postcode_sector)
-        .all()
-    )
-
-    if not all_sectors:
-        return {
-            "postcode_sector": postcode_sector,
-            "safety_score": None,
-            "label": "Data not available",
-            "available": False,
-            "breakdown": [],
-        }
-
-    # Compute weighted sums per sector
-    sector_weighted = {}
-    all_crime = (
-        db.query(
-            CrimeData.postcode_sector,
-            CrimeData.category,
-            func.sum(CrimeData.count).label("total_count"),
-        )
-        .group_by(CrimeData.postcode_sector, CrimeData.category)
-        .all()
-    )
-    for row in all_crime:
-        w = CATEGORY_WEIGHTS.get(row.category, DEFAULT_WEIGHT)
-        sector_weighted[row.postcode_sector] = (
-            sector_weighted.get(row.postcode_sector, 0.0) + row.total_count * w
-        )
-
-    weighted_values = sorted(sector_weighted.values())
-    idx_95 = int(len(weighted_values) * 0.95)
-    normaliser = weighted_values[min(idx_95, len(weighted_values) - 1)]
-
-    if normaliser == 0:
-        normaliser = 1.0
+    # Read cached normaliser (O(1) — no full-table scan)
+    normaliser = _get_safety_normaliser(db)
 
     safety_score = max(0.0, min(100.0, 100.0 - (weighted_sum / normaliser * 100.0)))
 
@@ -248,7 +285,7 @@ def compute_fairness_score(actual_rent: float, predicted_rent: float) -> Dict:
     }
 
 
-def get_rent_prediction(uprn: str, db: Session) -> Optional[Dict]:
+def get_rent_prediction(uprn: str, db: Session, bedrooms_override: Optional[int] = None) -> Optional[Dict]:
     """Get rent prediction for a property, using cache first.
 
     If not cached or stale, runs the ML model and caches the result.
@@ -265,7 +302,7 @@ def get_rent_prediction(uprn: str, db: Session) -> Optional[Dict]:
         RentPrediction.uprn == uprn
     ).first()
 
-    if cached is not None and cached.model_version == settings.ml_model_version:
+    if cached is not None and cached.model_version == settings.ml_model_version and bedrooms_override is None:
         return {
             "predicted_weekly_rent": cached.predicted_weekly_rent,
             "model_version": cached.model_version,
@@ -319,6 +356,15 @@ def get_rent_prediction(uprn: str, db: Session) -> Optional[Dict]:
             "area_value_index":    area_value_index,
             "sale_count":          sale_count,
             "iphrp_growth_pct":    iphrp_growth_pct,
+            # v3.3.0: new EPC-derived features
+            "construction_age_band":  prop.construction_age_band,
+            "mains_gas_flag":        prop.mains_gas_flag,
+            "floor_level":           prop.floor_level,
+            "annual_energy_cost":    prop.annual_energy_cost,
+            # v4.0.0: scraped features
+            "price_drop_pct":        prop.price_drop_pct,
+            # v4.1.0: Real/overridden bedrooms
+            "actual_bedrooms":       bedrooms_override if bedrooms_override is not None else prop.actual_bedrooms,
         }
 
         result = predict_rent(features)

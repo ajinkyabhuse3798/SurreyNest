@@ -2,12 +2,11 @@
 
 Returns aggregated postcode-sector-level data for the NeighbourhoodPulse
 interactive heatmap on the Home page. Combines safety scores, average
-rent predictions, and HMO density into a single response. Cached for
-10 minutes since the underlying data only changes weekly.
+rent predictions, and HMO density into a single response. Cached in
+Redis for 10 minutes since the underlying data only changes weekly.
 """
 
 import logging
-import time
 from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
@@ -16,6 +15,7 @@ from pydantic import BaseModel
 from sqlalchemy import func, case, literal_column
 from sqlalchemy.orm import Session
 
+from app.cache import get_json, set_json
 from app.database import get_db
 from app.models.crime_data import CrimeData
 from app.models.hmo_record import HmoRecord
@@ -71,10 +71,7 @@ CATEGORY_WEIGHTS: Dict[str, float] = {
 }
 
 
-# ── In-memory cache ─────────────────────────────────────────────────────────
-
-_cache: Optional[dict] = None
-_cache_time: float = 0
+# Cache TTL
 CACHE_TTL_SECONDS = 600  # 10 minutes
 
 
@@ -224,8 +221,8 @@ def _build_heatmap_data(db: Session) -> dict:
     )
 
     return {
-        "sectors": result_sectors,
-        "bounds": bounds,
+        "sectors": [s.model_dump() for s in result_sectors],
+        "bounds": bounds.model_dump(),
         "cached_at": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -240,19 +237,17 @@ def _build_heatmap_data(db: Session) -> dict:
 async def get_heatmap_sectors(db: Session = Depends(get_db)) -> HeatmapResponse:
     """Return aggregated rent, safety, and HMO data per postcode sector.
 
-    Cached for 10 minutes since underlying data only changes weekly.
+    Cached in Redis for 10 minutes since underlying data only changes weekly.
     Used by the NeighbourhoodPulse map on the Home page.
     """
-    global _cache, _cache_time
-
-    now = time.monotonic()
-    if _cache is not None and (now - _cache_time) < CACHE_TTL_SECONDS:
-        logger.debug("Heatmap cache hit (age %.0fs)", now - _cache_time)
-        return HeatmapResponse(**_cache)
+    cache_key = "heatmap:sectors"
+    cached = get_json(cache_key)
+    if cached is not None:
+        logger.debug("Heatmap cache hit (Redis)")
+        return HeatmapResponse(**cached)
 
     logger.info("Building heatmap data (cache miss or expired)")
     data = _build_heatmap_data(db)
-    _cache = data
-    _cache_time = now
+    set_json(cache_key, data, CACHE_TTL_SECONDS)
 
     return HeatmapResponse(**data)

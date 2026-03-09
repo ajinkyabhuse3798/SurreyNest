@@ -58,9 +58,9 @@ export default function PropertyCard({
 
     return (
         <div
-            className={`relative bg-white rounded-2xl border transition-all duration-200 overflow-hidden group ${isHighlighted
-                    ? 'border-indigo-400 ring-2 ring-indigo-100 shadow-[0_4px_20px_-2px_rgba(80,72,229,0.15)]'
-                    : 'border-slate-100 hover:border-slate-200 shadow-[0_2px_12px_-3px_rgba(0,0,0,0.06)] hover:shadow-[0_4px_20px_-2px_rgba(80,72,229,0.1)]'
+            className={`relative bg-white/70 backdrop-blur-md rounded-2xl border transition-all duration-300 overflow-hidden group ${isHighlighted
+                ? 'border-indigo-400 ring-2 ring-indigo-100 shadow-[0_8px_30px_-4px_rgba(80,72,229,0.2)] lg:-translate-y-1'
+                : 'border-white/50 hover:border-indigo-200 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_30px_-4px_rgba(80,72,229,0.15)] lg:hover:-translate-y-1'
                 }`}
             onMouseEnter={onMouseEnter}
             onMouseLeave={onMouseLeave}
@@ -74,8 +74,8 @@ export default function PropertyCard({
                         onToggleCompare?.(uprn)
                     }}
                     className={`absolute top-3 right-3 z-10 w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${isCompared
-                            ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm'
-                            : 'border-slate-300 hover:border-indigo-400 bg-white/80 backdrop-blur-sm'
+                        ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm'
+                        : 'border-slate-300 hover:border-indigo-400 bg-white/80 backdrop-blur-sm'
                         }`}
                     title={isCompared ? 'Remove from compare' : 'Add to compare'}
                 >

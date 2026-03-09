@@ -88,7 +88,7 @@ surreynest/
 │   │   ├── config.py          ← ✅ Env var loading (complete)
 │   │   ├── database.py        ← ✅ SQLAlchemy engine + session (complete)
 │   │   ├── models/            ← ✅ All 11 ORM models complete (see below)
-│   │   ├── schemas/           ← ✅ All Pydantic schemas complete
+│   │   ├── schemas/           ← ✅ All Pydantic schemas complete (incl. leaderboard.py)
 │   │   ├── routers/           ← ✅ All route handlers complete (incl. listings)
 │   │   ├── services/          ← ✅ All business logic complete
 │   │   ├── ml/                ← ✅ ML pipeline complete (train, predict, evaluate, features)
@@ -111,11 +111,17 @@ surreynest/
 │   └── Dockerfile             ← ✅ Production container
 └── frontend/
     ├── src/
-    │   ├── pages/             ← ✅ All pages complete (incl. CheckListing)
-    │   ├── components/        ← ✅ All components complete (incl. GuildfordHeatmap, RentRadarChart)
-    │   ├── hooks/             ← ✅ useAuth, useCompare complete
-    │   ├── services/          ← ✅ api.js, heatmapApi.js complete
-    │   └── utils/
+    │   ├── pages/             ← ✅ All pages are thin orchestrators (<300 lines each)
+    │   ├── components/        ← ✅ Sub-components organized by domain:
+    │   │   ├── ui/            ←   Section.jsx (shared card wrapper)
+    │   │   ├── property/      ←   7 sub-components (PropertyHero, SafetySection, etc.)
+    │   │   ├── safety/        ←   9 sub-components (SafetyHero, CrimeDonut, etc.)
+    │   │   ├── rent/          ←   7 sub-components (RentHero, WaterfallChart, etc.)
+    │   │   ├── home/          ←   7 sub-components (HeroSection, TrustBar, etc.)
+    │   │   └── search/        ←   4 sub-components (SearchHeader, FilterBar, etc.)
+    │   ├── hooks/             ← ✅ useAuth, useCompare active; useSearch.jsx exists (dormant — not consumed yet)
+    │   ├── services/          ← ✅ api.js, heatmapApi.js, safetyApi.js complete
+    │   └── utils/             ← ✅ propertyUtils.js, homeData.jsx, searchUtils.jsx, safetyConstants.js
     ├── vite.config.js         ← ✅ Complete
     └── package.json           ← ✅ All dependencies listed (incl. recharts)
 ```
@@ -221,6 +227,7 @@ These rules are applied during ingestion. **Do not change them** without explici
 | POST | `/api/admin/pipelines/{name}/trigger` | Trigger pipeline | pipelines.py |
 | GET | `/api/safety/intelligence?postcode=` | Full crime analytics for a sector | safety.py |
 | GET | `/api/safety/rankings` | Top 5 safest + top 5 hotspot areas | safety.py |
+| GET | `/api/rent/explain/{uprn}` | XAI: per-prediction SHAP contributions | rent_explain.py |
 
 ---
 
@@ -240,6 +247,7 @@ These rules are applied during ingestion. **Do not change them** without explici
 | `StreetSmarts.jsx` | /best-streets (page) | Leaderboard with ranked cards, district toggle, score breakdowns |
 | `SafetyIntelligence.jsx` | (reusable component) | Crime donut, monthly chart, trend, comparison, student insights |
 | `SafetyDetail.jsx` | /safety/:postcode (page) | Full-page safety analytics — 9 sections, data-driven, plain English |
+| `RentDetail.jsx` | /rent/:uprn (page) | Full-page rent XAI — waterfall, top factors, model explainer, comparison |
 | `safetyApi.js` | (service) | API client for `/api/safety/intelligence` and `/api/safety/rankings` |
 
 ---
@@ -306,7 +314,7 @@ If `.env` ML_MODEL_VERSION is not bumped after retraining, old wrong predictions
 
 ---
 
-## ML Model — Feature Names (v3.1.0, exact column names)
+## ML Model — Feature Names (v4.1.0, exact column names)
 
 The ML model in `docs/ml-model.md` uses these features. Column names must match exactly:
 
@@ -316,8 +324,9 @@ The ML model in `docs/ml-model.md` uses these features. Column names must match 
 'num_rooms'               # EPC habitable rooms (NOT bedrooms!) — includes
                           # bedrooms + living rooms + kitchens if > 13m²
 
-# Derived features (computed at train/predict time):
-'estimated_bedrooms'      # v3.1.0: Flats: max(0, num_rooms-1), Houses: max(1, num_rooms-2)
+# Derived features (computed at train/predict time, or from database sub-model):
+'actual_bedrooms'         # v4.1.0: Ground truth bedrooms from scraped data or RF Classifier
+'rooms_per_m2'            # v3.0.0: num_rooms / floor_area_m2 (space efficiency)
 'rooms_per_m2'            # v3.0.0: num_rooms / floor_area_m2 (space efficiency)
 
 # From properties table:
@@ -338,6 +347,16 @@ The ML model in `docs/ml-model.md` uses these features. Column names must match 
 # From processed Land Registry CSV:
 'sale_count'              # Market liquidity signal
 
+# v3.3.0: new EPC-derived features (from property.construction_age_band etc.):
+'age_band_ordinal'        # Construction era, 0=pre-1900, 11=2012+ (from CONSTRUCTION_AGE_BAND)
+'has_mains_gas'           # 1=mains gas, 0=off-gas (from MAINS_GAS_FLAG Y/N)
+'floor_level_ordinal'     # -1=basement, 0=ground, 1=first... (from FLOOR_LEVEL, flats only)
+'annual_energy_cost'      # £/year total: HEATING + HOT_WATER + LIGHTING costs from EPC
+'energy_improvement_gap'  # potential_rating_ordinal - energy_rating_ordinal (condition proxy)
+
+# v4.0.0: new scraped market features:
+'price_drop_pct'          # % price drops on listings (derived from scraping)
+
 # ⛔ REMOVED from features in v3.0.0+ (data leakage / zero info):
 # 'area_value_index'      — quasi-circular with target (40.7% importance in v2.1.0)
 # 'is_hmo'                — 0% importance, inaccurate postcode-level matching
@@ -345,10 +364,8 @@ The ML model in `docs/ml-model.md` uses these features. Column names must match 
 # 'median_sale_price'     — 91.6% correlation with target (removed in v2.1.0)
 
 # ⛔ NOT a training feature — training target only:
-# 'implied_weekly_rent'   # NEVER put this in get_feature_columns()
-#                         # It IS the MODE C training target basis.
-#                         # Using it as both feature AND target creates a circular
-#                         # dependency: model learns output ≈ input, ignores all else.
+# 'actual_market_rent_weekly' # NEVER put this in get_feature_columns()
+#                             # It IS the v4.0.0 training target.
 ```
 
 ---
@@ -384,6 +401,55 @@ See `docs/conventions.md` for complete details. Key rules:
 - Never bare `except:` — always catch specific exceptions
 - SQLAlchemy ORM queries only — no raw SQL string concatenation
 
+### Pydantic Schemas
+- **ALWAYS** define schemas in `app/schemas/` — NEVER inline in router files
+- Routers import from schemas: `from app.schemas.leaderboard import LeaderboardResponse`
+- This prevents circular dependency risk when other services need to reuse schemas
+- Each domain gets its own schema file: `auth.py`, `property.py`, `review.py`, `score.py`, `leaderboard.py`, etc.
+
+### FastAPI Response Models
+- **NEVER** return raw `Response()` objects from endpoints that declare `response_model=`
+- This bypasses FastAPI's response validation and breaks OpenAPI docs
+- To set cookies: use `response: Response` as a FastAPI parameter, set cookie on it, then return the Pydantic model normally
+- Example: `def login(response: Response) -> LoginResponse: response.set_cookie(...); return LoginResponse(...)`
+
+### Authentication — Cookie-Only JWT
+- JWT is stored ONLY in httpOnly cookies — **NEVER** in localStorage, sessionStorage, or JSON response bodies
+- Login endpoint returns `LoginResponse` (user info) — NOT the JWT string
+- Frontend uses `withCredentials: true` in Axios — browser sends cookie automatically
+- Session restore: `GET /api/auth/me` on mount — **NEVER** decode JWT client-side with `jwtDecode`
+- `oauth2_scheme` has `auto_error=False` so cookie-only requests work without `Authorization` header
+- `get_current_user()` priority: httpOnly cookie → Authorization header (for API clients/tests) → 401
+
+### Password Validation
+- Minimum 8 characters, at least 1 letter + 1 digit (enforced in `schemas/user.py`)
+- **NEVER** accept passwords without complexity validation
+
+### Admin Endpoints
+- All admin endpoints MUST have `@limiter.limit("30/minute")` (or stricter)
+- Always add `request: Request` as the first parameter when using `@limiter.limit()`
+- Import from: `from app.rate_limit import limiter`
+
+### Tests
+- **NEVER** connect tests to the production/dev database
+- Use `TEST_DATABASE_URL` env var (e.g. SQLite in-memory: `sqlite:///./test.db`)
+- `conftest.py` must check `os.environ.get("TEST_DATABASE_URL")` before falling back
+- All tests use transactional rollback — but this is defense-in-depth, NOT a substitute for a separate DB
+
+### Frontend Tests (Vitest + React Testing Library)
+- Test config lives in `vite.config.js` `test` block (jsdom, globals, setup file)
+- Setup file: `src/test/setup.js` (imports `@testing-library/jest-dom`)
+- Test files go in `__tests__/` directories next to the code they test
+- Mock `framer-motion` in component tests to avoid animation issues
+- Mock `api` module for component tests that make API calls
+- Run: `npm run test` (single run) or `npm run test:watch` (watch mode)
+
+### Frontend — No Hardcoded Data
+- **NEVER** hardcode data that comes from an API (e.g. `TOP_STREETS`, leaderboard rankings)
+- Components must fetch live data from the API and handle loading/error states
+- Static UI content (labels, icons, steps) is fine in `utils/` data files
+- Dynamic data (rankings, scores, statistics) must come from API calls
+
 ### Git commits (conventional commits)
 - `feat:` new feature
 - `fix:` bug fix
@@ -391,6 +457,19 @@ See `docs/conventions.md` for complete details. Key rules:
 - `ml:` model changes
 - `docs:` documentation only
 - `test:` test additions
+
+### Frontend — Component Size (Apple <300 lines rule)
+- Page components MUST be **<300 lines** — they are thin orchestrators (state, fetch, composition)
+- Visual sections must be extracted into focused sub-components under `components/{domain}/`
+- Shared UI primitives go in `components/ui/` (e.g. `Section.jsx`)
+- Pure functions (helpers, constants, data) go in `utils/` (e.g. `propertyUtils.js`)
+- JSX-containing utility files MUST use `.jsx` extension (Vite requires this for JSX parsing)
+
+### Frontend — React Navigation
+- **NEVER** use `window.location.href` for navigation — it causes full page reload and destroys all React state
+- Use React Router's `useNavigate()` hook or `<Navigate>` component
+- For auth redirects: use `<Navigate to="/login" state={{ from: location }} replace />` to preserve return URL
+- Axios 401 interceptors should ONLY clear tokens — let React components handle navigation
 
 ### Frontend Charts (Recharts)
 - **NEVER** use separate `data` props on child `<Area>` or `<Line>` components inside a parent `<AreaChart>`/`<LineChart>`
@@ -404,6 +483,10 @@ See `docs/conventions.md` for complete details. Key rules:
 - Popups work with tap on mobile — no special handling needed
 - Mobile responsive: smaller pills `px-3 py-1.5 text-xs` → `md:px-4 md:py-2 md:text-sm`
 
+- **When adding a context Provider to App.jsx**, verify that at least one component imports and calls the corresponding `useXxx()` hook.
+  If no consumer exists yet, do NOT wrap the app — add the provider when the first consumer is built.
+  (F4 lesson: `SearchProvider` wrapped the entire app for months while `SearchResults.jsx` managed state locally.)
+
 ### Backend Rate Limiting
 - Use the SHARED `Limiter()` instance from `app/rate_limiter.py`
 - NEVER create a new `Limiter()` in individual router files — state won't be shared
@@ -413,6 +496,51 @@ See `docs/conventions.md` for complete details. Key rules:
 - Always sanitise `%` and `_` in SQL LIKE/ILIKE queries to prevent wildcard injection
 - Always `.lower().strip()` emails on registration AND login
 - Never expose raw error messages to users — use generic fallbacks in ErrorBoundary
+
+### Performance — Cache Expensive Constants
+- If a value is **identical across all API calls** and only changes when a pipeline runs, it MUST be pre-computed and cached
+- Pattern: pipeline writes to `pipeline_config` table → service reads via Redis cache (`app.cache`)
+- Example: `safety_normaliser_p95` — 95th-percentile weighted crime sum, written by `crime_pipeline`, read by `score_service`
+- Example: `iphrp_growth_pct` — South East IPHRP annual %, written by features pipeline, read by `score_service`
+- **NEVER** do full-table scans inside request handlers to compute static constants
+
+### Caching — Always Use Redis (`app.cache`)
+- **NEVER** use module-level `_cache = {}` dicts — they reset per-worker in production (`--workers N`)
+- **ALWAYS** use `from app.cache import get_json, set_json` for all response/data caching
+- Redis handles TTL automatically — no manual `time.time()` tracking needed
+- Graceful degradation: if Redis is down, `get_json()` returns `None` (cache miss) — app still works
+- Cache keys use namespaced format: `leaderboard:{district}_{limit}`, `heatmap:sectors`, `safety:normaliser_p95`
+- For cache invalidation when pipelines refresh data: use `delete_pattern("leaderboard:*")`
+
+### DRY — Feature Engineering (Single Source of Truth)
+- All ML feature engineering at inference time MUST go through `predict.py:build_prediction_features()`
+- This function is the SINGLE SOURCE OF TRUTH for: distances, energy ordinals, bedroom estimation, rooms_per_m2, one-hot encoding
+- **NEVER** duplicate this logic in router files (e.g. `rent_explain.py`) — always import and call `build_prediction_features()`
+- If a new derived feature is added, add it ONLY in `build_prediction_features()` so both prediction and XAI stay in sync
+- **NEVER** import underscore-prefixed private variables (`_model`, `_feature_columns`, `_log_target`) from `predict.py` or any other module
+- To access ML model internals (for XAI, debugging, etc.), use `get_model_internals()` — it returns `model`, `scaler`, `xgb_model`, `feature_columns`, `log_target`, and `feature_defaults` in a dict
+- Pipeline structure knowledge (which step is the scaler vs. the estimator) is encapsulated inside `get_model_internals()` — callers never index into `_model.steps[]`
+
+### Pydantic + Redis Cache
+- **ALWAYS** call `.model_dump()` on Pydantic models before passing to `set_json()` — `json.dumps(default=str)` converts Pydantic objects to repr strings, not dicts, causing validation failure on cache read (B2 lesson)
+- When caching response data that contains Pydantic models, convert the entire structure to plain dicts first
+
+### Import Hygiene
+- After refactoring code that removes in-memory caches (like the D5 Redis migration), **verify that all replaced code paths still have the necessary imports** — `time`, `datetime`, etc. (B3 lesson: `time.strftime` was unreachable behind the old cache but became live code after migration)
+
+### React Sub-Component Data Contracts  
+- When extracting React sub-components, verify the **shape** of props from API responses — never render API response objects `{tip}` directly as React children. Always destructure: `tip.text`, `tip.icon`, etc. (B4 lesson)
+- `_normalise_postcode()` from `geocoding_service.py` is for **full UK postcodes only** (7+ chars). NEVER pass postcode sectors or partial strings through it — use simple `upper().strip()` instead (B5 lesson)
+
+### CSS Height Gotchas
+- **NEVER** use `height: X%` inside a flex child that has no explicit height — CSS percentage heights resolve to 0 when the containing block has no definite height. Use pixel-based heights instead (B6 lesson)
+
+### Frontend–Backend Field Name Alignment
+- When creating React components that consume API data, **always verify the exact field names** from the API response (e.g. `postcode_sector` vs `sector`, `total_crimes` vs `total`). A single field rename breaks rendering silently — no errors, just blank data (B7 lesson)
+- When the backend returns enum-like strings (e.g. trend `direction`), ensure the frontend handles **all possible values** — not just a subset. Map synonyms: `'improving'`↔`'decreasing'`, `'worsening'`↔`'increasing'` (B6 lesson)
+
+### Geocoding for Non-Property Contexts
+- **NEVER** use property search (`/api/properties?radius=X`) to geocode a postcode — many postcodes have 0 nearby properties. Use Postcodes.io directly (`https://api.postcodes.io/postcodes/{postcode}`) for reliable coords (B8 lesson)
 
 ---
 
@@ -426,6 +554,7 @@ See `.env.example` in each directory for required keys.
 ANTHROPIC_API_KEY=sk-ant-...      # For AI contract review (Phase 4+)
 RATE_LIMIT_SEARCH=60              # Already in .env.example
 RATE_LIMIT_REVIEWS=5              # Already in .env.example
+REDIS_URL=redis://localhost:6379/0  # Shared cache (defaults to localhost)
 ```
 
 ---
@@ -566,6 +695,15 @@ After finishing work:
 - **Data source:** police.uk, updated monthly. All analytics are per postcode sector, not per property.
 - **Components used:** CrimeDonut (SVG), MonthlyChart (pixel-height bars), GuildfordComparison (5-star), AreaRankings (safest+hotspots), TrainStations, StudentSafety, HolidayAlert, SafetyTips
 - **Language:** Plain English only — no percentiles, no indices, no jargon. Target audience: non-technical students.
+
+### Rent XAI Page (`/rent/:uprn`)
+- **Hero:** `bg-gradient-to-br from-emerald-600 via-emerald-700 to-teal-700`, white text, predicted rent inside `bg-white/10 backdrop-blur-sm`
+- **Waterfall:** Horizontal bars (emerald = pushes rent ↑, rose = pushes rent ↓), max 8 features
+- **Top 3 cards:** Gradient from-indigo/emerald/amber backgrounds, numbered badges, plain English explanations
+- **Feature deep-dive:** Expandable list; major features (≥3%) shown by default, minor features hidden behind "Show X smaller factors"
+- **Rent comparison:** Predicted vs sector median vs Guildford median with ↑/↓ percentage badges
+- **Model explainer:** 3-step visual (Collect → Extract → Predict) with icons
+- **Cost section on PropertyDetail:** Brief only — rent band + CTA link to `/rent/:uprn`. **Factor pills removed.**
 
 ### StreetSmarts Leaderboard
 - **Background:** `#f8f9fc`, hero has indigo dot pattern (`opacity-[0.15]`)

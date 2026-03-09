@@ -44,15 +44,15 @@ export default function RadarChart({ properties = [], className = '' }) {
                         key={r}
                         points={AXES.map((_, i) => polarToXY(axisAngle(i), R * r).join(',')).join(' ')}
                         fill="none"
-                        stroke="#E5E7EB"
-                        strokeWidth={0.5}
+                        stroke="#CBD5E1" /* slate-300 */
+                        strokeWidth={0.75}
                     />
                 ))}
 
                 {/* Axis lines */}
                 {AXES.map((_, i) => {
                     const [x, y] = polarToXY(axisAngle(i), R)
-                    return <line key={i} x1={CX} y1={CY} x2={x} y2={y} stroke="#E5E7EB" strokeWidth={0.5} />
+                    return <line key={i} x1={CX} y1={CY} x2={x} y2={y} stroke="#E2E8F0" /* slate-200 */ strokeWidth={1} />
                 })}
 
                 {/* Data polygons */}
@@ -67,7 +67,8 @@ export default function RadarChart({ properties = [], className = '' }) {
                             points={points}
                             fill={colour.fill}
                             stroke={colour.stroke}
-                            strokeWidth={1.5}
+                            strokeWidth={2.5}
+                            strokeLinejoin="round"
                         />
                     )
                 })}

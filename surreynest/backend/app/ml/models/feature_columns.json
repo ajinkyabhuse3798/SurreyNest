@@ -1,7 +1,7 @@
 [
   "floor_area_m2",
   "num_rooms",
-  "estimated_bedrooms",
+  "actual_bedrooms",
   "rooms_per_m2",
   "energy_rating_ordinal",
   "potential_rating_ordinal",
@@ -10,8 +10,15 @@
   "distance_to_station_km",
   "safety_score",
   "sale_count",
+  "age_band_ordinal",
+  "has_mains_gas",
+  "floor_level_ordinal",
+  "annual_energy_cost",
+  "energy_improvement_gap",
+  "price_drop_pct",
   "ptype_Detached",
   "ptype_Flat",
   "ptype_Semi-Detached",
-  "ptype_Terraced"
+  "ptype_Terraced",
+  "ptype_Unknown"
 ]

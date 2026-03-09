@@ -38,7 +38,7 @@ def _escape_like(value: str) -> str:
 POSTCODE_RE = re.compile(
     r"^[A-Z]{1,2}[0-9][0-9A-Z]?\s*[0-9][A-Z]{2}$", re.IGNORECASE
 )
-ALLOWED_RADII = {250, 500, 1000, 2000}
+ALLOWED_RADII = {250, 500, 1000, 2000, 5000}
 
 
 @router.get(

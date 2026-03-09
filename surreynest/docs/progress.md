@@ -7,7 +7,38 @@
 
 ## Current Phase: Phase 6 — New Data Sources + Features
 
-**Last updated:** 2026-03-04
+**Last updated:** 2026-03-09
+**Session summary (Session 14):** ML model v4.1.0 / Sub-Models — Solved the structural discrepancy between EPC "habitable rooms" and expected "bedrooms." Dropped the rigid `max(1, rooms-2)` estimation heuristic. Introduced `actual_bedrooms` ground truth column via Alembic migration. Updated `scraped_rent_pipeline.py` to seed `actual_bedrooms` for matched records. Trained a new `RandomForestClassifier` sub-model (`train_bedroom_classifier.py`) on scraped ground truth to intelligently predict real bedroom counts from `floor_area_m2`, `num_rooms`, `property_type`, and `age_band_ordinal`, successfully backfilling ~18,242 records. Retrained XGBoost main rent model (`v4.1.0`) natively on `actual_bedrooms`, capturing 52.6% feature importance. Exposed `bedrooms` as a direct query override parameter in `score_service.py` and `/api/scores/rent-fairness` for dynamic, interactive predictive capabilities. Tested successfully via API curl.
+
+**Session summary (Session 13):** ML model v4.0.0 — Retrained model on real actual market rates scraped from Zoopla/Rightmove. Fixed strict matching bug traversing 260 listings into synthetic properties with robust defaults. Updated target prediction from `implied_weekly_rent` to `actual_market_rent_weekly`. Re-engineered features to capture `price_drop_pct`. Corrected Docker runtime issue holding `.env` file memory state with `v3.3.0` by performing `docker-compose up -d`. Result: trained robust XGBoost model with MAE £54/wk, R²=0.8143 on true market anchors. Model live in backend API.
+
+**Session summary (Session 12):** ML model v3.3.0 — Added 5 new EPC-derived features. Analyzed 93 raw EPC columns, selected 5 high-impact features, rejected 10 others with reasoning. Modified 6 files: `epc_pipeline.py` (6 new raw columns, AGE_BAND_ORDINAL/FLOOR_LEVEL_MAP cleaning), `property.py` (+4 nullable columns), `features.py` (+5 computed features with median imputation), `train.py` (v3.3.0, 20 total features), `predict.py` (defaults/validation/build + fixed pre-existing debug logging bug), `score_service.py` (+4 property attributes passed). Verified with real data: 18,227 rows, age_band 99.6% coverage, mains_gas 92.8%, energy_cost 100%, floor_level 12.5%. Requires Docker retraining.
+
+**Session summary (Session 11):** Codebase review + root-cause fixes. Fixed 14 issues found during senior-level code audit:
+- **C1:** Duplicate rate limiter in `reviews.py` — replaced duplicate `Limiter()` with shared import from `app.rate_limiter`
+- **C2:** Auth login bypass — rewrote login endpoint to use FastAPI's proper `response` parameter for cookies instead of raw `Response` object, preserving `response_model=Token` validation
+- **C3:** Tests using production DB — added `TEST_DATABASE_URL` support in `conftest.py` with SQLite in-memory fallback, completely isolating test runs from dev data
+- **C4:** `RequireAuth` using `window.location.href` — replaced with React Router's `Navigate` component + `useLocation` for state-preserving redirects; also removed hard redirect from Axios 401 interceptor
+- **D1:** Decomposed 5 large React components (PropertyDetail 866→260, SafetyDetail 658→170, Home 495→80, RentDetail 516→140, SearchResults 520→190 lines). Created 34 sub-components + 4 utility files across `components/{property,safety,rent,home,search,ui}/`. Extracted shared `Section` wrapper to eliminate 3 duplicate definitions. Build verified: 0 errors, 3.06s, 2991 modules.
+- **D2:** Moved inline Pydantic schemas from `leaderboard.py` router to `schemas/leaderboard.py` (ScorePillar, StreetRank, LeaderboardResponse) — eliminates circular dependency risk
+- **D3:** Safety score O(N²) → O(1). `get_safety_score()` was doing 2 full-table scans per call. Now normaliser is pre-computed by crime pipeline and cached in `pipeline_config` + Redis TTL.
+- **D4:** Duplicated feature engineering (~56 lines) in `predict.py` and `rent_explain.py`. Extracted into shared `build_prediction_features()` — single source of truth.
+- **D5:** In-memory caches (`_cache = {}`) won't survive multi-worker deployment. Replaced all 3 (leaderboard, heatmap, safety normaliser) with Redis. Created `app/cache.py` shared service. Added Redis 7 to `docker-compose.yml`.
+- **S1:** JWT exposed in both httpOnly cookie AND JSON body/localStorage — XSS could steal it. Fixed: cookie-only auth. Login returns user info (not token). Frontend uses `withCredentials: true` + `/api/auth/me` for session restore. Removed `jwtDecode` and all `localStorage` token usage.
+- **S2:** No password complexity validation. Fixed: Pydantic validator now requires at least 1 letter + 1 digit (on top of 8-char min).
+- **S3:** Admin routes (`/admin/reviews/queue`, `.../approve`, `.../reject`) not rate-limited. Fixed: `@limiter.limit("30/minute")` on all 3.
+- **F1:** Zero frontend tests. Fixed: configured Vitest in `vite.config.js`, created `src/test/setup.js`, wrote 3 test files (19 tests): `useAuth.test.jsx`, `StreetSmartsTeaser.test.jsx`, `homeData.test.js`.
+- **F2:** Hardcoded `TOP_STREETS` in `homeData.jsx`. Fixed: `StreetSmartsTeaser` now fetches live from `/api/leaderboard/streets`. Removed stale constant.
+- **F4:** Orphan `SearchProvider` import in `App.jsx`. Root cause: `useSearch.jsx` exports both `SearchProvider` and `useSearch()`, but `SearchResults.jsx` manages search state locally via `useSearchParams` + `useState` — no component ever called `useSearch()`. Fixed: removed dead `SearchProvider` import and wrapper from `App.jsx`. The `useSearch.jsx` hook file is kept for potential future use. Build + tests verified (0 errors, 19/19 tests pass).
+- **B1:** `rent_explain.py` importing private variables (`_model`, `_feature_columns`, `_log_target`) from `predict.py` — breaks encapsulation. Also importing unused `_get_latest_iphrp_growth` from `score_service.py`. Fixed: added public `get_model_internals()` to `predict.py`, refactored `rent_explain.py` to use it, removed unused import.
+- **B2:** Heatmap 500 — `_build_heatmap_data()` returns Pydantic `SectorData`/`HeatmapBounds` objects → `json.dumps(default=str)` in Redis serializes them as repr strings → cache read fails Pydantic validation. Fixed: call `.model_dump()` before returning.
+- **B3:** Leaderboard 500 — `time.strftime()`/`time.gmtime()` on lines 127+296 but `time` module never imported (missed during D5 Redis migration). Fixed: replaced with `datetime.now(timezone.utc).isoformat()`.
+- **B4:** Safety page crash — `SafetyTips.jsx` renders `{tip}` directly as React child, but `tip` is an object `{type, icon, text}` from the API. Fixed: render `tip.icon` and `tip.text` explicitly, with string fallback.
+- **B5:** Safety `_extract_sector()` calls `_normalise_postcode()` which corrupts short sector strings (`'GU2 7'` → `'G U27'`). Fixed: replaced with simple `upper().strip()` and `re.sub` whitespace collapse.
+- **B6:** MonthlyChart bars invisible — CSS `height: X%` inside flex child without explicit height resolves to 0px. Also trend badge checks `'decreasing'/'increasing'` but API returns `'improving'/'worsening'`. Fixed: pixel-based bar heights + both direction vocabularies.
+- **B7:** AreaRankings blank — component uses `area.sector`/`area.total` but API returns `postcode_sector`/`total_crimes`. Fixed: aligned field names.
+- **B8:** TrainStations missing — coords fetched via property search (`radius=250m`) returns 0 results for many postcodes → `coords=null` → section hidden. Fixed: geocode via Postcodes.io directly.
+
 **Session summary (Session 9):** ML model audit & v3.0.0 redesign. Found critical quasi-circular data leakage via area_value_index (40.7% importance), config version mismatch (v1.0.0 vs v2.1.0 breaking cache), predictions ~2× too high (studio £287 vs VOA £173). Fixed: VOA rent bands as target anchor (not sale-price-derived implied rents), removed leaked features (area_value_index, iphrp_growth_pct, is_hmo), added rooms_per_m2, fixed yield docstrings, cleaned dead lookups in score_service. Result: all 4 sanity checks pass (studio £113✅, detached £604✅), outliers 7.5%→0.3%, feature importance now sensible (num_rooms 81.5%, floor_area 13.7%).
 
 **Session summary (Session 8):** Redesigned Property Detail page (core feature) using Google Stitch. Generated mobile (780×7654px) and desktop (2560×4526px) Stitch designs. Rewrote PropertyDetail.jsx with premium aesthetic: bg-[#f8f9fc] background, white rounded-2xl card sections with soft shadows, indigo-50 icon badges in section headers. Desktop uses 2-column layout (lg:grid-cols-[1fr_380px]) with sticky right sidebar for Location/Reviews/Rights. Mobile uses single-column stacked layout. All functionality preserved (parallel data fetch, compare, reviews, HMO detail, RentRadar). Also redesigned StreetSmarts leaderboard: added top-3 podium (gold/silver/bronze gradient cards), 2-column desktop grid for ranks 4+, removed HMO from ranking pillars (now Safety/Value/Proximity only), premium animated score bars. Updated CLAUDE.md with design system notes for both pages.
@@ -20,7 +51,7 @@
 | Phase | Status | Notes |
 |-------|--------|-------|
 | Phase 1: Data Pipelines | ✅ Done | EPC + HMO + crime data in PostgreSQL |
-| Phase 2: ML Model | ✅ Done | rent_model v3.2.0 (XGBoost + log-transform, R²=0.87, MAE=£41/wk) |
+| Phase 2: ML Model | ✅ Done | rent_model v4.0.0 (XGBoost + log + real market targets, live in Docker) |
 | Phase 3: FastAPI Backend | ✅ Done | All routers, services, schemas, tests passing |
 | Phase 4: React Frontend | ✅ Done | Stitch design integration complete |
 | Phase 5: Scheduler | ✅ Done | APScheduler cron jobs + admin endpoints |
@@ -313,6 +344,33 @@ New pipelines and data integrations.
 - [x] CLAUDE.md updated: new endpoints, components, design system notes
 - [x] progress.md updated
 
+### Code Quality Fixes — Session 11 (2026-03-08)
+- [x] **C1:** Duplicate rate limiter — `reviews.py` was creating its own `Limiter()` instance, bypassing the shared one. Fixed: import from `app.rate_limiter`.
+- [x] **C2:** Login endpoint bypassing `response_model=Token` — was returning raw `Response()`. Fixed: use FastAPI's `response: Response` parameter for cookies.
+- [x] **C3:** Tests using production DB — `conftest.py` connected to `settings.database_url`. Fixed: `TEST_DATABASE_URL` env var support + SQLite in-memory fallback.
+- [x] **C4:** `RequireAuth` using `window.location.href` (full page reload, state loss) — Fixed: React Router `Navigate` component + removed 401 hard redirect from Axios interceptor.
+- [x] **D1:** Component decomposition — 5 monolith pages broken into 34 sub-components + 4 utility files. Shared `Section` wrapper extracted to `components/ui/Section.jsx`.
+- [x] **D2:** Inline Pydantic schemas in `leaderboard.py` — moved to `schemas/leaderboard.py` (ScorePillar, StreetRank, LeaderboardResponse).
+- [x] **D3:** O(N²) safety score computation — `get_safety_score()` did 2 full-table scans per call to compute the 95th-percentile normaliser. Fixed: crime pipeline now persists normaliser to `pipeline_config` as `safety_normaliser_p95`; score_service reads it via Redis cache.
+- [x] **D4:** Duplicated feature engineering in `predict.py` and `rent_explain.py` (~56 lines copy-pasted). Fixed: extracted shared `build_prediction_features()` into `predict.py`, both callers now use it.
+- [x] **D5:** In-memory caches (`_cache = {}`) in `leaderboard.py`, `heatmap.py`, `score_service.py` don't survive multi-worker deploy. Fixed: added Redis 7 to `docker-compose.yml`, created `app/cache.py` shared service with graceful fallback, migrated all 3 caches.
+- [x] **S1:** JWT in both cookie + localStorage — XSS exposure. Fixed: cookie-only auth. Login returns `LoginResponse` (user info, no token). Frontend session via `/api/auth/me`. Removed `jwtDecode`, `localStorage.getItem('token')`, and `Authorization` header from Axios.
+- [x] **S2:** No password complexity — only checked length. Fixed: `field_validator` in `schemas/user.py` now requires 1 letter + 1 digit.
+- [x] **S3:** Admin moderation routes not rate-limited. Fixed: `@limiter.limit("30/minute")` on queue, approve, and reject endpoints.
+- [x] **F1:** Zero frontend tests. Fixed: Vitest configured, `src/test/setup.js` created, 3 test files (19 tests): useAuth session/redirect, StreetSmartsTeaser API fetch, POSTCODE_RE validation.
+- [x] **F2:** Hardcoded `TOP_STREETS` in `homeData.jsx`. Fixed: `StreetSmartsTeaser` fetches from `/api/leaderboard/streets?district=GU2&limit=3` on mount. Removed `TOP_STREETS` constant.
+- [x] **F4:** Orphan `SearchProvider` import in `App.jsx`. `useSearch.jsx` existed but `useSearch()` was never consumed — `SearchResults.jsx` manages state locally. Fixed: removed dead import and provider wrapper from `App.jsx`.
+- [x] **B1:** `rent_explain.py` accessing private module variables (`_model`, `_feature_columns`, `_log_target`) from `predict.py`. Also unused `_get_latest_iphrp_growth` import from `score_service.py`. Fixed: added `get_model_internals()` public accessor to `predict.py` (returns model, scaler, xgb_model, feature_columns, log_target, feature_defaults). Refactored `rent_explain.py` to use it. Removed unused import.
+
+### Rent Explainability (XAI) — Dedicated Page (Session 10)
+- [x] Backend: `rent_explain.py` router — `GET /api/rent/explain/{uprn}`
+- [x] XGBoost tree SHAP (`pred_contribs=True`) for per-prediction feature contributions
+- [x] 15 features with human-readable plain English explanations
+- [x] Rent comparison: predicted vs sector median vs Guildford median
+- [x] Frontend: `RentDetail.jsx` full-page route at `/rent/:uprn` (7 sections: hero, waterfall, top 3, deep-dive, comparison, model explainer, global importance)
+- [x] PropertyDetail simplified: rent band + "See how this rent was calculated" CTA link (factor pills removed)
+- [x] CLAUDE.md updated: new endpoint, component, design system notes
+
 ### Data Folder Structure
 ```
 backend/data/raw/
@@ -373,49 +431,85 @@ See `docs/deployment.md` for full instructions.
 *Always fill this in before ending a session:*
 
 ```
-Session 6 — 2026-03-03
+Session 11 — 2026-03-08
 Last thing done:
-  - Fixed admin auth guard (ProtectedRoute component)
-  - Fixed 4 high-severity bugs: SQL injection, email normalisation, rate limiter, IPHRP constant
-  - Fixed 3 low-severity: unused import, ErrorBoundary leak, .gitignore venv
-  - Built NeighbourhoodPulse heatmap on Home page (17 sectors, 3 layers)
-  - Built RentRadar rent trend chart on PropertyDetail (5yr history + 2yr forecast)
-  - Made heatmap mobile-responsive (smaller pills, dynamic height)
-  - Built MarketPulse seasonal availability indicator on Home page (static, no backend)
-  - Built StreetSmarts leaderboard (/best-streets) with 4-pillar composite scoring
+  - Comprehensive codebase review: identified 14 issues (C1–C4, D1–D5, S1–S3, F1–F2)
+  - Fixed all 14 issues with root-cause fixes (no patch fixes)
+  - D1 was the biggest: decomposed 5 monolith page components into 34 focused sub-components
+  - D3: safety score O(N²) → O(1) by pre-computing normaliser in crime pipeline
+  - D4: extracted shared build_prediction_features() to eliminate 56-line duplication
+  - D5: replaced all in-memory caches with Redis for multi-worker production deployment
+  - S1: cookie-only JWT auth (removed localStorage exposure)
+  - S2: password complexity validation (1 letter + 1 digit minimum)
+  - S3: admin routes rate-limited at 30/minute
+  - F1: frontend test suite: 19 tests across 3 files (Vitest + RTL)
+  - F2: StreetSmartsTeaser fetches live from leaderboard API (no hardcoded data)
+  - All files follow Orchestrator Pattern: page manages state + fetch, sub-components render sections
+  - Build verified: npm run build → 0 errors, 3.04s
+  - Tests verified: vitest run → 19 passed, 1.22s
 
-STILL NOT FIXED: ML model bugs (see Blockers). Do NOT mark Phase 2 as fully complete.
+Frontend file structure changes:
+  - NEW: components/ui/Section.jsx (shared wrapper)
+  - NEW: components/safety/ (9 files)
+  - NEW: components/rent/ (7 files)
+  - NEW: components/home/ (7 files)
+  - NEW: components/search/ (4 files)
+  - NEW: utils/safetyConstants.js, homeData.jsx, searchUtils.jsx
+  - MODIFIED: pages/SafetyDetail.jsx, Home.jsx, RentDetail.jsx, SearchResults.jsx (all rewritten as orchestrators)
 
-New DB tables this session:
-  - rent_history: 90 rows (populated from raw PP CSVs, not auto-pipeline yet)
-  - pipeline_config: 1 row (iphrp_growth_pct)
-
-New routers registered in main.py:
-  - heatmap.router → /api/heatmap/sectors
-  - rent_trends.router → /api/rent-trends/{sector}
-  - leaderboard.router → /api/leaderboard/streets
-
-New frontend dependencies:
-  - recharts (chart library for RentRadar)
+Backend changes:
+  - NEW: schemas/leaderboard.py (3 Pydantic models moved from router)
+  - MODIFIED: routers/leaderboard.py (imports from schemas now)
+  - MODIFIED: routers/reviews.py (uses shared rate limiter)
+  - MODIFIED: routers/auth.py (proper FastAPI response model)
+  - MODIFIED: tests/conftest.py (isolated test DB)
+  - MODIFIED: services/score_service.py (cached normaliser, no more full-table scans)
+  - MODIFIED: data_pipelines/crime_pipeline.py (persists safety_normaliser_p95)
+  - MODIFIED: ml/predict.py (new build_prediction_features shared function)
+  - MODIFIED: routers/rent_explain.py (uses shared build_prediction_features)
+  - MODIFIED: hooks/useAuth.jsx (React Router Navigate)
+  - MODIFIED: services/api.js (removed 401 hard redirect)
+  - NEW: app/cache.py (Redis cache service with graceful fallback)
+  - MODIFIED: routers/leaderboard.py (Redis cache instead of _cache dict)
+  - MODIFIED: routers/heatmap.py (Redis cache instead of _cache/_cache_time globals)
+  - MODIFIED: services/score_service.py (Redis cache for normaliser)
+  - MODIFIED: config.py (added redis_url setting)
+  - MODIFIED: requirements.txt (added redis>=5.0.0)
+  - MODIFIED: docker-compose.yml (added Redis 7 service + volume)
+  - MODIFIED: schemas/auth.py (new LoginResponse, Token now internal-only)
+  - MODIFIED: routers/auth.py (login returns user info, not token)
+  - MODIFIED: services/auth_service.py (OAuth2 scheme auto_error=False for cookie-only)
+  - MODIFIED: schemas/user.py (password complexity: 1 letter + 1 digit)
+  - MODIFIED: routers/reviews.py (admin routes rate-limited 30/min)
+  - MODIFIED: hooks/useAuth.jsx (cookie-only auth, /api/auth/me session restore)
+  - MODIFIED: services/api.js (withCredentials:true, removed localStorage auth)
+  - MODIFIED: components/home/StreetSmartsTeaser.jsx (fetches from leaderboard API)
+  - MODIFIED: utils/homeData.jsx (removed hardcoded TOP_STREETS)
+  - MODIFIED: package.json (removed jwt-decode)
+  - MODIFIED: vite.config.js (added test config)
+  - NEW: src/test/setup.js (jest-dom matchers)
+  - NEW: src/hooks/__tests__/useAuth.test.jsx (4 tests)
+  - NEW: src/components/home/__tests__/StreetSmartsTeaser.test.jsx (3 tests)
+  - NEW: src/utils/__tests__/homeData.test.js (12 tests)
 
 Next step for next session (in this exact order):
-  1. Fix ML model bugs (all 4 in Blockers above)
-  2. Retrain model + bump ML_MODEL_VERSION
-  3. Phase 7 — Testing
-  4. Phase 8 — Deployment
+  1. Phase 7 — More frontend tests (expand from 19 to full coverage)
+  2. Phase 8 — Deployment (Railway + Vercel)
 
 Gotchas to remember:
-  - Land Registry PP files have NO headers (use COLUMN_NAMES list)
-  - HPI has Guildford-specific rows (RegionName=Guildford)
-  - IPHRP is regional (South East), not Guildford-specific
-  - Price Paid file for 2025 is named "pp-2025 (1).csv" (space + parens)
-  - EPC tenure: normalised now, rented → rental
-  - HMO licence_holder removed from API response and frontend
-  - implied_weekly_rent MUST NOT be a training feature when it IS the training target (circular)
+  - NEVER define Pydantic schemas in router files — always in schemas/
+  - NEVER create per-router Limiter() instances — always import from app.rate_limiter
+  - NEVER use window.location.href for React navigation — use Navigate or useNavigate
+  - NEVER bypass FastAPI response_model by returning raw Response objects
+  - NEVER use module-level _cache dicts — use Redis via app.cache (get_json/set_json)
+  - NEVER store JWT in localStorage — use httpOnly cookies only (withCredentials: true)
+  - NEVER return JWT in JSON response body — cookie is the ONLY transport
+  - NEVER accept passwords without complexity check — min 8 chars + 1 letter + 1 digit
+  - ALWAYS rate-limit admin endpoints — @limiter.limit("30/minute")
+  - ALWAYS use a separate TEST_DATABASE_URL for tests — never connect tests to dev DB
+  - Page components should be <300 lines — extract sections into sub-components
+  - JSX-containing utility files must use .jsx extension (not .js) for Vite
+  - NEVER import underscore-prefixed private variables from another module — use public accessor functions (e.g. get_model_internals())
+  - Docker/PostgreSQL must be running for ANY backend endpoint to work
   - Always bump ML_MODEL_VERSION in .env after every retrain to flush stale cache
-  - Recharts: DO NOT use separate `data` props on child Area components — use one dataset with separate dataKeys
-  - Docker/PostgreSQL must be running for ANY backend endpoint to work (heatmap, search, etc.)
-  - rent_history table needs manual re-population when new PP CSVs arrive (not in auto-scheduler yet)
-  - heatmap.py _extract_sector() needs null guard — some HMO records have null postcodes
-  - Leaflet map height: use Tailwind h-[320px] md:h-[480px], NOT inline style={{ height }}
 ```

@@ -26,7 +26,9 @@ logger = logging.getLogger(__name__)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # ── OAuth2 scheme for JWT bearer tokens ──────────────────────────────────────
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+# auto_error=False: don't reject requests without Authorization header,
+# because browser requests send the JWT in an httpOnly cookie instead.
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
 
 
 def hash_password(plain: str) -> str:

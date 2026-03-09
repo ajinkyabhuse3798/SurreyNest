@@ -14,8 +14,7 @@ from urllib.parse import urlparse
 import requests as http_requests
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
-from slowapi import Limiter
-from slowapi.util import get_remote_address
+from app.rate_limit import limiter  # shared singleton — one instance for the whole app
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -26,7 +25,7 @@ from app.services.score_service import get_safety_score, get_rent_prediction
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-limiter = Limiter(key_func=get_remote_address)
+
 
 # ── Allowed domains ──────────────────────────────────────────────────────────
 ALLOWED_DOMAINS = {

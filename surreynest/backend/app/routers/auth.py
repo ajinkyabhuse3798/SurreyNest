@@ -11,10 +11,11 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.database import get_db
 from app.models.review import Review
 from app.models.user import User
-from app.schemas.auth import Token
+from app.schemas.auth import LoginResponse
 from app.schemas.user import UserCreate, UserResponse
 from app.services.auth_service import (
     create_access_token,
@@ -78,23 +79,27 @@ async def register(
 
 @router.post(
     "/auth/login",
-    response_model=Token,
-    summary="Login and get JWT token",
+    response_model=LoginResponse,
+    summary="Login and get auth cookie",
 )
 async def login(
+    response: Response,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
-) -> Token:
-    """Authenticate user and return a JWT access token.
+) -> LoginResponse:
+    """Authenticate user and set a JWT httpOnly cookie.
 
     Uses OAuth2 password flow (username field = email).
+    JWT is set as an httpOnly cookie ONLY — never exposed in the response body.
+    Returns user info (id, email, role) for the frontend to display.
 
     Args:
+        response: FastAPI-injected response — used to set the auth cookie.
         form_data: OAuth2 form with username (email) and password.
         db: SQLAlchemy session.
 
     Returns:
-        JWT token.
+        LoginResponse with user info (no token).
 
     Raises:
         HTTPException: 401 if credentials are invalid.
@@ -115,9 +120,8 @@ async def login(
     token = create_access_token(user.id, user.role)
     logger.info("User logged in: %s", user.email)
 
-    # Set JWT as httpOnly cookie (XSS-safe) AND return in body for backward compat
-    from app.config import settings
-    response = Response()
+    # Set JWT as httpOnly cookie (XSS-safe) — the ONLY place the token lives.
+    # JavaScript cannot read this cookie.
     response.set_cookie(
         key="access_token",
         value=token,
@@ -127,12 +131,11 @@ async def login(
         max_age=settings.access_token_expire_days * 86400,
         path="/",
     )
-    # Return JSON body too so frontend can decode user info from the token
-    import json
-    response.status_code = 200
-    response.headers["content-type"] = "application/json"
-    response.body = json.dumps({"access_token": token, "token_type": "bearer"}).encode()
-    return response
+
+    # Return user info (NOT the token) — frontend uses this for display
+    return LoginResponse(
+        user=UserResponse.model_validate(user),
+    )
 
 
 @router.post(

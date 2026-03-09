@@ -29,9 +29,19 @@ from app.models.user import User
 from app.services.auth_service import create_access_token, hash_password
 
 # ── Test database setup ───────────────────────────────────────────────────────
-# Uses the same database but wraps tests in transactions that are rolled back.
-engine = create_engine(settings.database_url, pool_pre_ping=True)
+# Uses a SEPARATE database (surreynest_test) so tests never touch dev/prod data.
+# Tables are created at the start of the test session and dropped at the end.
+# Individual tests still use transactional rollback for speed and isolation.
+engine = create_engine(settings.test_database_url, pool_pre_ping=True)
 TestSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _create_test_schema():
+    """Create all tables in the test DB at session start, drop at session end."""
+    Base.metadata.create_all(bind=engine)
+    yield
+    Base.metadata.drop_all(bind=engine)
 
 
 @pytest.fixture(scope="function")

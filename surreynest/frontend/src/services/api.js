@@ -1,8 +1,10 @@
 /**
- * Axios API client with JWT auth interceptor, error handling, and dev logging.
+ * Axios API client with cookie-based auth, error handling, and dev logging.
  *
  * All API calls go through this instance — never use fetch() directly.
  * Domain-specific wrappers live in propertyApi.js, scoreApi.js, etc.
+ *
+ * Auth: Uses httpOnly cookies (withCredentials: true) — no localStorage tokens.
  */
 import axios from 'axios'
 
@@ -39,15 +41,11 @@ const api = axios.create({
     baseURL: import.meta.env.VITE_API_URL || '',
     timeout: 15000,
     headers: { 'Content-Type': 'application/json' },
+    withCredentials: true,  // Send httpOnly cookies with every request
 })
 
-// ── Request interceptor: attach JWT + dev logging ────────────────────────────
+// ── Request interceptor: dev logging ─────────────────────────────────────────
 api.interceptors.request.use((config) => {
-    const token = localStorage.getItem('token')
-    if (token) {
-        config.headers.Authorization = `Bearer ${token}`
-    }
-
     if (import.meta.env.DEV) {
         console.debug(`→ ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`, config.params || '')
     }
@@ -82,16 +80,8 @@ api.interceptors.response.use(
             console.warn(`← ${status} ${error.config?.url}`, detail)
         }
 
-        // 401 — clear token and redirect
-        if (status === 401) {
-            localStorage.removeItem('token')
-            if (
-                !window.location.pathname.includes('/login') &&
-                !window.location.pathname.includes('/register')
-            ) {
-                window.location.href = '/login'
-            }
-        }
+        // 401 — cookie expired or cleared; React auth guards handle the redirect
+        // No localStorage cleanup needed — auth is cookie-based
 
         const message = ERROR_MESSAGES[status] || `Request failed (${status}).`
         return Promise.reject(new AppError(message, status, detail))

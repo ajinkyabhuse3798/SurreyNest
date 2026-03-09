@@ -2,9 +2,11 @@
 
 from pydantic import BaseModel
 
+from app.schemas.user import UserResponse
+
 
 class Token(BaseModel):
-    """JWT token response returned after successful login.
+    """JWT token — used internally only (never exposed to API clients).
 
     Attributes:
         access_token: The JWT string.
@@ -13,6 +15,18 @@ class Token(BaseModel):
 
     access_token: str
     token_type: str = "bearer"
+
+
+class LoginResponse(BaseModel):
+    """Login response — returns user info only (JWT is in httpOnly cookie).
+
+    Attributes:
+        user: Authenticated user info.
+        message: Success message.
+    """
+
+    user: UserResponse
+    message: str = "Login successful"
 
 
 class TokenData(BaseModel):

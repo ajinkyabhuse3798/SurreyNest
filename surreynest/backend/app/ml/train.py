@@ -1,9 +1,13 @@
 """ML model training: rent prediction using XGBoost.
 
-MODE F (v3.2.0): Upgrades from sklearn GradientBoostingRegressor to XGBoost
-with log-transformed target and outlier capping.
+MODE G (v3.3.0): Adds 5 new EPC-derived features on top of v3.2.0 XGBoost.
 
-Three improvements over v3.1.0:
+New features over v3.2.0:
+  1. age_band_ordinal — construction era (newer = higher rent)
+  2. has_mains_gas — binary (off-gas = higher running cost = lower rent)
+  3. floor_level_ordinal — upper floors more desirable for flats
+  4. annual_energy_cost — real £/yr running cost (stronger than EPC band)
+  5. energy_improvement_gap — potential minus current rating (condition proxy)
   1. XGBoost (faster, better regularisation, handles missing values natively)
   2. Log-transform target: trains on log1p(rent), predicts with expm1()
      - Skewness 2.60 → 0.24 (near-normal)
@@ -42,7 +46,7 @@ MODEL_DIR = Path(__file__).resolve().parent / "models"
 MODEL_PATH = MODEL_DIR / "rent_model_v1.pkl"
 
 # ── Model version ────────────────────────────────────────────────────────────
-MODEL_VERSION = "v3.2.0"  # MODE F — XGBoost + log-transform + outlier cap
+MODEL_VERSION = "v4.1.0"  # MODE H — XGBoost + actual_bedrooms + raw scraped market prices
 
 # Path to processed Land Registry CSV
 LAND_REGISTRY_CSV = Path(__file__).resolve().parents[2] / "data" / "processed" / "land_registry_guildford.csv"
@@ -83,75 +87,24 @@ def estimate_bedrooms(df: pd.DataFrame) -> pd.Series:
 
 
 def compute_real_target(df: pd.DataFrame) -> pd.Series:
-    """Compute rent target using Land Registry implied rents (MODE E/F).
+    """Compute rent target using Actual Market Rates scraped from portals (MODE H).
 
-    Uses implied_weekly_rent (postcode median, HPI-adjusted at 3.5% yield) as
-    the base anchor. This captures real postcode-level market pricing.
-
-    Then applies structured property-level adjustments:
-      - Floor area relative to sector median (bigger → more rent)
-      - Property type (Detached +18%, Semi +8%, Flat −10%, Terraced 0%)
-      - Room count vs sector median (+4% per extra habitable room)
-      - Energy efficiency ordinal (A/B small positive; E/F/G small negative)
-
+    Uses `actual_market_rent_weekly` which represents true listed/achieved rents. 
+    Drops the outdated 'implied_weekly_rent' formula.
+    
     Args:
-        df: Feature DataFrame (must contain implied_weekly_rent, postcode_sector,
-            floor_area_m2, num_rooms, and ptype_* one-hot columns).
+        df: Feature DataFrame containing actual_market_rent_weekly.
 
     Returns:
-        Series of weekly rent targets in £, rounded to 2 d.p.
-
-    Raises:
-        ValueError: If implied_weekly_rent column is missing or all-NaN.
+        Series of weekly rent targets.
     """
-    if "implied_weekly_rent" not in df.columns or df["implied_weekly_rent"].isna().all():
+    if "actual_market_rent_weekly" not in df.columns or df["actual_market_rent_weekly"].isna().all():
         raise ValueError(
-            "implied_weekly_rent not found in features — "
-            "run land_registry_pipeline and features.py first"
+            "actual_market_rent_weekly not found in features — "
+            "run scraped_rent_pipeline and features.py first"
         )
-
-    rng = np.random.RandomState(42)
-    base = df["implied_weekly_rent"].copy()
-
-    # Guard: postcode_sector must exist for group-relative calculations
-    if "postcode_sector" not in df.columns:
-        logger.warning("postcode_sector missing — using dataset-level medians for adjustments")
-        df = df.copy()
-        df["postcode_sector"] = "GU_FALLBACK"
-
-    # ── Floor area premium ────────────────────────────────────────────────
-    sector_area_median = df.groupby("postcode_sector")["floor_area_m2"].transform("median")
-    area_ratio = (df["floor_area_m2"] / sector_area_median.clip(lower=20)).clip(0.5, 2.0)
-    area_adj = (area_ratio - 1.0) * 0.40
-
-    # ── Property type premium ─────────────────────────────────────────────
-    type_adj = pd.Series(0.0, index=df.index)
-    if "ptype_Detached" in df.columns:
-        type_adj += df["ptype_Detached"] * 0.18
-    if "ptype_Semi-Detached" in df.columns:
-        type_adj += df["ptype_Semi-Detached"] * 0.08
-    if "ptype_Flat" in df.columns:
-        type_adj += df["ptype_Flat"] * (-0.10)
-
-    # ── Room count premium ────────────────────────────────────────────────
-    sector_room_median = df.groupby("postcode_sector")["num_rooms"].transform("median")
-    room_adj = ((df["num_rooms"] - sector_room_median) * 0.04).clip(-0.15, 0.20)
-
-    # ── Energy efficiency premium ─────────────────────────────────────────
-    energy_adj = pd.Series(0.0, index=df.index)
-    if "energy_rating_ordinal" in df.columns:
-        energy_adj = ((df["energy_rating_ordinal"] - 3) * 0.02).clip(-0.06, 0.06)
-
-    # ── Combine and apply ─────────────────────────────────────────────────
-    total_adj = (area_adj + type_adj + room_adj + energy_adj).clip(-0.35, 0.60)
-    noise = 1 + rng.normal(0, 0.03, size=len(df))
-    target = (base * (1 + total_adj) * noise).clip(lower=50, upper=2_500)
-
-    logger.info(
-        "MODE F target stats: mean=£%.1f  median=£%.1f  std=£%.1f  min=£%.1f  max=£%.1f",
-        target.mean(), target.median(), target.std(), target.min(), target.max(),
-    )
-    return target.round(2)
+        
+    return df["actual_market_rent_weekly"].copy()
 
 
 def get_feature_columns(df: pd.DataFrame) -> list:
@@ -175,8 +128,8 @@ def get_feature_columns(df: pd.DataFrame) -> list:
     """
     feature_cols = [
         "floor_area_m2",
-        "num_rooms",                 # EPC habitable rooms (NOT bedrooms)
-        "estimated_bedrooms",        # v3.1.0: derived from habitable rooms + property type
+        "num_rooms",                 # EPC habitable rooms
+        "actual_bedrooms",           # v4.1.0: Sub-model / Ground Truth Bedrooms
         "rooms_per_m2",              # v3.0.0: space efficiency
         "energy_rating_ordinal",
         "potential_rating_ordinal",
@@ -185,6 +138,14 @@ def get_feature_columns(df: pd.DataFrame) -> list:
         "distance_to_station_km",
         "safety_score",
         "sale_count",
+        # v3.3.0: new EPC-derived features
+        "age_band_ordinal",          # construction era (0=pre-1900, 11=2012+)
+        "has_mains_gas",             # 1=gas, 0=no gas
+        "floor_level_ordinal",       # floor level (-1=basement, 0=ground, etc.)
+        "annual_energy_cost",        # £/year running cost from EPC
+        "energy_improvement_gap",    # potential - current EPC ordinal
+        # v4.0.0: Scraped real rents and price drops
+        "price_drop_pct",            # % price drops on listings
     ]
 
     # Add one-hot property type columns
@@ -216,7 +177,8 @@ def train_model(df: pd.DataFrame) -> Tuple[Pipeline, Dict[str, float], list]:
     # ── Add derived features ─────────────────────────────────────────────
     df = df.copy()
     df["rooms_per_m2"] = (df["num_rooms"] / df["floor_area_m2"].clip(lower=10)).round(4)
-    df["estimated_bedrooms"] = estimate_bedrooms(df)
+    # We now use actual_bedrooms from the database / RF classifier!
+    # df["estimated_bedrooms"] = estimate_bedrooms(df)
 
     # ── Compute target ─────────────────────────────────────────────────
     target = compute_real_target(df)
@@ -321,7 +283,7 @@ def train_model(df: pd.DataFrame) -> Tuple[Pipeline, Dict[str, float], list]:
     }
 
     logger.info("=" * 60)
-    logger.info("MODEL EVALUATION RESULTS (MODE F — v3.2.0)")
+    logger.info("MODEL EVALUATION RESULTS (MODE G — v3.3.0)")
     logger.info("=" * 60)
     logger.info("MAE:  £%.2f/week", mae)
     logger.info("RMSE: £%.2f/week", rmse)
