@@ -12,7 +12,7 @@
  */
 import { Link } from 'react-router-dom'
 import {
-    Zap, Droplets, Wifi, Landmark, BarChart3, ChevronRight, TrendingUp, Info as InfoIcon
+    Zap, Droplets, Wifi, Landmark, BarChart3, ChevronRight, TrendingUp, Info as InfoIcon, Scale
 } from 'lucide-react'
 import InfoTip from '../InfoTip'
 import RentRadarChart from '../RentRadarChart'
@@ -50,6 +50,19 @@ export default function CostSection({ property: p, weeklyRent, monthlyRent, ener
             : null
     })()
 
+    // Area-based market rent premium — varies by postcode district
+    // GU1/GU2: high student demand, premium landlords charge more
+    // GU3–GU5: family suburbs, moderate premium
+    // GU7: Godalming, lower demand premium
+    const marketRentMultiplier = (() => {
+        const district = (p.postcode || '').trim().toUpperCase().split(/\s+/)[0]
+        if (district === 'GU1') return 1.18
+        if (district === 'GU2') return 1.15
+        if (district === 'GU3' || district === 'GU4') return 1.10
+        if (district === 'GU5' || district === 'GU7') return 1.08
+        return 1.10
+    })()
+
     return (
         <>
             {/* Main cost content */}
@@ -60,30 +73,30 @@ export default function CostSection({ property: p, weeklyRent, monthlyRent, ener
                         <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">
                             Typical rent range · {p.postcode}
                         </p>
-                        <div className="flex rounded-xl overflow-hidden h-14 text-xs font-semibold shadow-inner">
+                        <div className="flex rounded-xl overflow-hidden h-16 text-xs font-semibold shadow-inner">
                             <div className="flex-1 flex flex-col items-center justify-center bg-emerald-50/80 text-emerald-800 border-r border-white/50 backdrop-blur-sm">
-                                <span className="text-[10px] font-medium opacity-80">Less typical</span>
-                                <span className="font-extrabold">&lt;£{Math.round(weeklyRent * 0.92)}/wk</span>
+                                <span className="text-[10px] font-medium opacity-80">Below market</span>
+                                <span className="font-extrabold">£{Math.round(weeklyRent)}/wk</span>
                             </div>
-                            <div className="flex-[2] flex flex-col items-center justify-center bg-indigo-100/80 text-indigo-900 border-r border-white/50 backdrop-blur-sm">
-                                <span className="text-[10px] font-medium opacity-80">Typical market</span>
-                                <span className="font-extrabold text-sm">
-                                    £{Math.round(weeklyRent * 0.92)}–£{Math.round(weeklyRent * 1.08)}/wk
+                            <div className="flex-[2] flex flex-col items-center justify-center bg-indigo-600 text-white border-r border-white/30 backdrop-blur-sm">
+                                <span className="text-[10px] font-medium opacity-80">Median estimate</span>
+                                <span className="font-extrabold text-base tracking-tight">
+                                    £{Math.round(weeklyRent * 1.08)}/wk
                                 </span>
                             </div>
                             <div className="flex-1 flex flex-col items-center justify-center bg-amber-50/80 text-amber-800 backdrop-blur-sm">
-                                <span className="text-[10px] font-medium opacity-80">More typical</span>
-                                <span className="font-extrabold">&gt;£{Math.round(weeklyRent * 1.08)}/wk</span>
+                                <span className="text-[10px] font-medium opacity-80">Market premium</span>
+                                <span className="font-extrabold">£{Math.round(weeklyRent * marketRentMultiplier)}/wk</span>
                             </div>
                         </div>
                         <p className="text-sm text-slate-500 mt-4 font-medium flex items-center gap-2">
                             ≈ <span className="font-extrabold text-slate-800 text-lg">
-                                £{Math.round(weeklyRent * 0.92 * 52 / 12)}–£{Math.round(weeklyRent * 1.08 * 52 / 12)}
-                            </span> <span className="text-slate-400 text-xs mt-1">/month typical range</span>
+                                £{Math.round(weeklyRent * 1.08 * 52 / 12)}
+                            </span> <span className="text-slate-400 text-xs mt-1">/month median · area premium up to £{Math.round(weeklyRent * marketRentMultiplier * 52 / 12)}/mo</span>
                         </p>
                         <div className="mt-3 flex items-start gap-2 text-xs text-slate-400 bg-slate-50/50 p-2.5 rounded-lg border border-slate-100/50">
                             <InfoIcon size={14} className="text-slate-400 flex-shrink-0 mt-0.5" />
-                            <p>Range = ±8% of ML estimate. Actual rent varies by condition, floor, and landlord.</p>
+                            <p>Below market = ML fair-value estimate. Median estimate = typical market rate. Market premium reflects landlord asking prices in this area.</p>
                         </div>
                     </div>
 
@@ -101,6 +114,24 @@ export default function CostSection({ property: p, weeklyRent, monthlyRent, ener
                         <div className="flex-1 min-w-0 z-10">
                             <p className="text-[15px] font-bold text-white tracking-wide">See how this rent was calculated</p>
                             <p className="text-xs text-emerald-200 mt-1 font-medium">Feature contributions, AI explanation & market comparison</p>
+                        </div>
+                        <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-sm group-hover:bg-white/20 transition-colors z-10">
+                            <ChevronRight size={18} className="text-white group-hover:translate-x-0.5 transition-transform" />
+                        </div>
+                    </Link>
+
+                    {/* Challenge rent increase CTA */}
+                    <Link
+                        to={`/challenge-rent-increase?postcode=${encodeURIComponent(p.postcode || '')}&uprn=${encodeURIComponent(p.uprn || '')}`}
+                        className="group relative overflow-hidden flex items-center gap-4 bg-gradient-to-br from-amber-600 via-amber-700 to-orange-700 hover:from-amber-500 hover:to-orange-600 rounded-2xl px-5 py-4 border border-amber-600/50 transition-all duration-300 shadow-[0_4px_20px_-2px_rgba(180,83,9,0.3)] hover:shadow-[0_8px_30px_-4px_rgba(180,83,9,0.4)]"
+                    >
+                        <div className="absolute -right-12 -top-12 w-32 h-32 bg-orange-400/20 rounded-full blur-2xl group-hover:bg-orange-400/30 transition-colors" />
+                        <div className="w-11 h-11 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0 border border-white/10 backdrop-blur-sm">
+                            <Scale size={20} className="text-amber-100" />
+                        </div>
+                        <div className="flex-1 min-w-0 z-10">
+                            <p className="text-[15px] font-bold text-white tracking-wide">Challenge a rent increase</p>
+                            <p className="text-xs text-amber-200 mt-1 font-medium">Section 13 analysis + tribunal brief · Renters' Rights Act 2025</p>
                         </div>
                         <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-sm group-hover:bg-white/20 transition-colors z-10">
                             <ChevronRight size={18} className="text-white group-hover:translate-x-0.5 transition-transform" />

@@ -1,0 +1,8 @@
+{
+  "model_version": "v4.3.0",
+  "log_target": true,
+  "outlier_cap": 1000.0,
+  "n_features": 23,
+  "r2": 0.7218,
+  "mae": 53.8
+}

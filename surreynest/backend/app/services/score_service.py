@@ -314,6 +314,16 @@ def get_rent_prediction(uprn: str, db: Session, bedrooms_override: Optional[int]
     if not prop:
         return None
 
+    # University-managed accommodation: skip ML prediction
+    if prop.is_university:
+        return {
+            "predicted_weekly_rent": None,
+            "is_university_managed": True,
+            "message": "University-managed accommodation — bills included in rent",
+            "model_version": settings.ml_model_version,
+            "computed_at": datetime.now(timezone.utc),
+        }
+
     try:
         from app.ml.predict import predict_rent
 

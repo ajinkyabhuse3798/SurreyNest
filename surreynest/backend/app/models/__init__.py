@@ -15,6 +15,7 @@ from app.models.property import Property
 from app.models.rent_history import RentHistory
 from app.models.rent_prediction import RentPrediction
 from app.models.review import Review
+from app.models.letting_agent import LettingAgent
 from app.models.user import User
 from app.models.voa_rent_band import VoaRentBand
 
@@ -30,6 +31,7 @@ __all__ = [
     "RentHistory",
     "RentPrediction",
     "Review",
+    "LettingAgent",
     "User",
     "VoaRentBand",
 ]

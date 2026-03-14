@@ -73,8 +73,8 @@ app = FastAPI(
     title="SurreyNest API",
     description="Guildford student rental intelligence platform",
     version="1.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
+    docs_url="/docs" if settings.environment != "production" else None,
+    redoc_url="/redoc" if settings.environment != "production" else None,
     lifespan=lifespan,
 )
 
@@ -92,7 +92,7 @@ app.add_middleware(
 )
 
 # ── Import and mount routers ─────────────────────────────────────────────────
-from app.routers import auth, heatmap, hmo, leaderboard, listings, pipelines, properties, rent_explain, rent_trends, reviews, safety, scores  # noqa: E402
+from app.routers import agents, auth, contract, heatmap, hmo, leaderboard, listings, pipelines, properties, rent_challenge, rent_explain, rent_trends, reviews, safety, scores  # noqa: E402
 
 app.include_router(auth.router, prefix="/api", tags=["Auth"])
 app.include_router(properties.router, prefix="/api", tags=["Properties"])
@@ -106,6 +106,9 @@ app.include_router(listings.router, prefix="/api", tags=["Listings"])
 app.include_router(heatmap.router, prefix="/api", tags=["Heatmap"])
 app.include_router(rent_trends.router, prefix="/api", tags=["Rent Trends"])
 app.include_router(leaderboard.router, prefix="/api", tags=["Leaderboard"])
+app.include_router(agents.router, prefix="/api", tags=["Agents"])
+app.include_router(rent_challenge.router, prefix="/api", tags=["Rent Challenge"])
+app.include_router(contract.router, prefix="/api", tags=["Contract Checker"])
 
 
 # ── Global exception handler ─────────────────────────────────────────────────

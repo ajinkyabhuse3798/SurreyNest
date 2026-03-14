@@ -26,11 +26,15 @@ logger = logging.getLogger(__name__)
 _model = None
 _feature_columns: List[str] = []
 _log_target: bool = False  # v3.2.0: whether model was trained on log1p(target)
+_sector_rent_map: Dict = {}  # v4.3.0: postcode_sector → sector_median_rent
 
 # ── Guildford reference points ────────────────────────────────────────────────
 GUILDFORD_TOWN_CENTRE = (51.2362, -0.5704)
 UNIVERSITY_OF_SURREY = (51.2430, -0.5890)
 GUILDFORD_STATION = (51.2372, -0.5617)       # London Road station forecourt
+
+# ── Location score Gaussian bandwidth ────────────────────────────────────────
+_LOCATION_SIGMA_KM = 1.5  # v4.3.0: Gaussian decay σ=1.5km for proximity scores
 
 # ── Energy rating ordinal encoding ────────────────────────────────────────────
 ENERGY_ORDINAL = {"G": 0, "F": 1, "E": 2, "D": 3, "C": 4, "B": 5, "A": 6}
@@ -54,6 +58,16 @@ FEATURE_DEFAULTS = {
     "annual_energy_cost": 1500.0,      # £1,500/yr typical EPC estimate
     "energy_improvement_gap": 1,       # 1 band improvement potential (typical)
     "price_drop_pct": 0.0,             # v4.0.0: No historical price drop usually
+    "location_score": 0.30,            # v4.3.0: ~2.5km from town/uni (outer Guildford)
+    "town_proximity_score": 0.30,      # v4.4.0: split from location_score
+    "uni_proximity_score": 0.30,       # v4.4.0: split from location_score
+    "sector_median_rent": 350.0,       # v4.3.0: Guildford all-sector median £/week
+    "is_studio": 0,                    # v4.5.0: explicit studio flag (0 = not a studio)
+    "station_proximity_score": 0.30,   # v4.6.0: Gaussian proximity to station, σ=1.5km
+    "accessibility_score": 0.30,       # v4.6.0: max(town, uni, station) [0,1]
+    "is_student_zone": 0,              # v4.6.0: GU1/GU2=1 (student market), else 0
+    "m2_per_bedroom": 30.0,            # v4.6.0: floor_area_m2 / actual_bedrooms (60m²/2beds)
+    "flat_floor_premium": 0.0,         # v4.6.0: floor_level_ordinal × ptype_Flat
 }
 
 # ── Validation ranges for input warnings ──────────────────────────────────
@@ -73,6 +87,16 @@ VALIDATION_RANGES = {
     "annual_energy_cost": (100.0, 10000.0),
     "energy_improvement_gap": (-3, 6),
     "price_drop_pct": (0.0, 1.0),
+    "location_score": (0.0, 1.0),
+    "town_proximity_score": (0.0, 1.0),
+    "uni_proximity_score": (0.0, 1.0),
+    "sector_median_rent": (50.0, 2000.0),
+    "is_studio": (0, 1),
+    "station_proximity_score": (0.0, 1.0),
+    "accessibility_score": (0.0, 1.0),
+    "is_student_zone": (0, 1),
+    "m2_per_bedroom": (5.0, 300.0),
+    "flat_floor_premium": (-1, 10),
 }
 
 
@@ -151,6 +175,16 @@ def load_model() -> None:
             "ptype_Terraced",
         ]
 
+    # ── Load sector rent map (v4.3.0) ────────────────────────────────────────
+    global _sector_rent_map
+    sector_map_path = model_dir / "sector_rent_map.json"
+    if sector_map_path.exists():
+        _sector_rent_map = json.loads(sector_map_path.read_text())
+        logger.info("Loaded sector rent map: %d sectors", len(_sector_rent_map))
+    else:
+        logger.warning("sector_rent_map.json not found — sector_median_rent will use default")
+        _sector_rent_map = {}
+
     # ── Alignment check ───────────────────────────────────────────────────
     if hasattr(_model, "n_features_in_"):
         expected = _model.n_features_in_
@@ -204,6 +238,28 @@ def _validate_feature(name: str, value: float) -> None:
             )
 
 
+def _compute_location_score(
+    distance_to_town_km: float, distance_to_uni_km: float
+) -> float:
+    """Gaussian proximity score: max(town_proximity, uni_proximity).
+
+    σ=1.5km — score = 1.0 at distance 0, decays to ~0.1 at 2.6km.
+    Single source of truth for location_score at inference time (v4.3.0).
+
+    Args:
+        distance_to_town_km: Geodesic km to Guildford High Street.
+        distance_to_uni_km: Geodesic km to Surrey Uni Stag Hill.
+
+    Returns:
+        location_score in [0.0, 1.0].
+    """
+    import math
+    sigma_sq = 2.0 * _LOCATION_SIGMA_KM ** 2
+    town_score = math.exp(-(distance_to_town_km ** 2) / sigma_sq)
+    uni_score = math.exp(-(distance_to_uni_km ** 2) / sigma_sq)
+    return round(max(town_score, uni_score), 4)
+
+
 def build_prediction_features(
     property_features: Dict, feature_columns: List[str]
 ) -> Optional[Dict]:
@@ -254,12 +310,36 @@ def build_prediction_features(
 
     actual_beds = property_features.get("actual_bedrooms")
     if actual_beds is None:
-        actual_beds = FEATURE_DEFAULTS["actual_bedrooms"]
+        # Estimate from EPC habitable rooms — matches features.py null-filling strategy.
+        # Flats: max(0, num_rooms - 1); Houses: max(1, num_rooms - 2)
+        num_rooms_int = int(rooms_val)
+        if property_type == "Flat":
+            actual_beds = max(0, num_rooms_int - 1)
+        else:
+            actual_beds = max(1, num_rooms_int - 2)
+
+    # ── Proximity scores (v4.4.0: disentangled from single location_score) ──
+    import math
+    sigma_sq = 2.0 * _LOCATION_SIGMA_KM ** 2
+    town_proximity_score = round(math.exp(-(distance_to_town ** 2) / sigma_sq), 4)
+    uni_proximity_score = round(math.exp(-(distance_to_uni ** 2) / sigma_sq), 4)
+    station_proximity_score = round(math.exp(-(distance_to_station ** 2) / sigma_sq), 4)
+    accessibility_score = round(max(town_proximity_score, uni_proximity_score, station_proximity_score), 4)
+
+    # ── Sector median rent (v4.3.0) ─────────────────────────────────────
+    postcode = property_features.get("postcode", "")
+    postcode_sector = (
+        " ".join([postcode.strip().split()[0], postcode.strip().split()[1][0]])
+        if postcode and len(postcode.strip().split()) >= 2
+        else ""
+    )
+    sector_median_rent = float(
+        _sector_rent_map.get(postcode_sector, FEATURE_DEFAULTS["sector_median_rent"])
+    )
 
     # ── Assemble computed dict ────────────────────────────────────────
     computed = {
         "floor_area_m2": floor_val,
-        "num_rooms": rooms_val,
         "actual_bedrooms": float(actual_beds),
         "rooms_per_m2": rooms_per_m2,
         "energy_rating_ordinal": energy_ordinal,
@@ -267,10 +347,15 @@ def build_prediction_features(
         "distance_to_town_km": distance_to_town,
         "distance_to_uni_km": distance_to_uni,
         "distance_to_station_km": distance_to_station,
+        "town_proximity_score": town_proximity_score,
+        "uni_proximity_score": uni_proximity_score,
+        "station_proximity_score": station_proximity_score,
+        "accessibility_score": accessibility_score,
         "safety_score": float(property_features.get("safety_score", FEATURE_DEFAULTS["safety_score"])),
         "sale_count": float(
             property_features.get("sale_count") or FEATURE_DEFAULTS["sale_count"]
         ),
+        "sector_median_rent": sector_median_rent,
     }
 
     # ── Dynamic one-hot encoding for property type ────────────────────
@@ -297,11 +382,13 @@ def build_prediction_features(
         mains_gas if mains_gas is not None else FEATURE_DEFAULTS["has_mains_gas"]
     )
 
-    # 3. Floor level ordinal
+    # 3. Floor level → flat_floor_premium (floor_level_ordinal × ptype_Flat)
     floor_lvl = property_features.get("floor_level")
-    computed["floor_level_ordinal"] = float(
+    floor_level_ordinal = float(
         floor_lvl if floor_lvl is not None else FEATURE_DEFAULTS["floor_level_ordinal"]
     )
+    is_flat_for_floor = computed.get("ptype_Flat", 0)
+    computed["flat_floor_premium"] = floor_level_ordinal * float(is_flat_for_floor)
 
     # 4. Annual energy cost
     energy_cost = property_features.get("annual_energy_cost")
@@ -319,6 +406,18 @@ def build_prediction_features(
     computed["price_drop_pct"] = float(
         drop_pct if drop_pct is not None else FEATURE_DEFAULTS["price_drop_pct"]
     )
+
+    # 7. is_studio (v4.5.0): ptype_Flat=1 AND actual_bedrooms=0
+    is_flat = computed.get("ptype_Flat", 0)
+    computed["is_studio"] = float(1 if (is_flat == 1 and actual_beds == 0) else 0)
+
+    # 8. is_student_zone (v4.6.0): GU1/GU2 postcode districts
+    postcode_district = postcode.strip().split()[0].upper() if postcode else ""
+    computed["is_student_zone"] = float(1 if postcode_district in {"GU1", "GU2"} else 0)
+
+    # 9. m2_per_bedroom (v4.6.0): floor area per bedroom (studios use full area / 1)
+    beds_for_ratio = max(float(actual_beds), 1.0)
+    computed["m2_per_bedroom"] = round(floor_val / beds_for_ratio, 1)
 
     return computed
 
@@ -386,6 +485,15 @@ def predict_rent(property_features: Dict) -> Optional[Dict]:
             predicted_rent = round(float(np.expm1(prediction)), 2)
         else:
             predicted_rent = round(float(prediction), 2)
+
+        # v4.4.1: Post-prediction bias correction.
+        # The raw model has a -£5.66/week underestimate bias on scraped
+        # ground truth. For a tenant-protection product, slight
+        # overestimation is safer than underestimation (a student should
+        # never be told their rent is unfair when it is actually at
+        # market rate). +£11 shifts the bias to approx +£5/week.
+        _BIAS_CORRECTION = 11.0  # £/week
+        predicted_rent = round(predicted_rent + _BIAS_CORRECTION, 2)
 
         logger.debug(
             "Predicted rent for %s: £%.2f/week (floor_area=%.0f, type=%s, "

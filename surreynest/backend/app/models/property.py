@@ -9,7 +9,7 @@ from typing import Optional
 
 from datetime import date, datetime, timezone
 
-from sqlalchemy import Date, DateTime, Float, Integer, String, Index
+from sqlalchemy import Boolean, Date, DateTime, Float, Integer, String, Index
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -76,6 +76,14 @@ class Property(Base):
 
     # v4.1.0: Real bedrooms ground truth
     actual_bedrooms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+
+    # v4.2.0: University-managed accommodation flag
+    is_university_managed: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+    is_university: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime,

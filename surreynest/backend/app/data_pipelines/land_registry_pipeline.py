@@ -53,6 +53,14 @@ PROPERTY_TYPE_MAP = {
 # that caused the v2.0.0 model to underpredict rent for expensive GU1 postcodes.
 GROSS_YIELD = 0.035
 
+# Forward projection: annualised growth rate used when projecting from latest HPI date to today.
+# UK HPI has ~2 month lag; fallback covers periods where trailing 12-month data is absent.
+ANNUAL_FORWARD_GROWTH_FALLBACK = 0.04   # 4% per annum (South East England long-run average)
+
+# Only project forward if gap is meaningfully large (avoids floating-point noise
+# when HPI data is near-current, e.g. last month's data on a nightly run).
+FORWARD_PROJECTION_MIN_YEARS = 0.05    # ~18 days
+
 
 def _normalise_postcode(pc: str) -> str:
     """Normalise postcode to 'GU1 1AA' format."""
@@ -65,11 +73,20 @@ def _normalise_postcode(pc: str) -> str:
 # ═════════════════════════════════════════════════════════════════════════════
 # HPI LOADING
 # ═════════════════════════════════════════════════════════════════════════════
+TYPE_INDEX_COLS = {
+    "F": "FlatIndex",
+    "D": "DetachedIndex",
+    "S": "SemiDetachedIndex",
+    "T": "TerracedIndex",
+}
+
+
 def load_hpi_guildford() -> Optional[pd.DataFrame]:
     """Load UK HPI CSVs and return the Guildford monthly series.
 
     Returns:
-        DataFrame with ['Date', 'Index', 'AveragePrice'] for Guildford,
+        DataFrame with ['Date', 'Index', 'AveragePrice', 'FlatIndex',
+        'DetachedIndex', 'SemiDetachedIndex', 'TerracedIndex'] for Guildford,
         sorted by date, duplicates dropped (latest file wins).
         Returns None if no HPI files found.
     """
@@ -100,49 +117,121 @@ def load_hpi_guildford() -> Optional[pd.DataFrame]:
     hpi_gu = hpi_gu.dropna(subset=["Date"])
     hpi_gu = hpi_gu.drop_duplicates(subset=["Date"], keep="last")  # 2025 file wins
     hpi_gu = hpi_gu.sort_values("Date").reset_index(drop=True)
-    hpi_gu["Index"] = pd.to_numeric(hpi_gu["Index"], errors="coerce")
 
+    numeric_cols = ["Index", "AveragePrice"] + list(TYPE_INDEX_COLS.values())
+    for col in numeric_cols:
+        if col in hpi_gu.columns:
+            hpi_gu[col] = pd.to_numeric(hpi_gu[col], errors="coerce")
+    keep_cols = ["Date"] + numeric_cols
+
+    # Log type-index coverage at latest month
+    latest = hpi_gu.iloc[-1]
     logger.info(
-        "Loaded HPI Guildford: %d months (%s → %s)",
+        "Loaded HPI Guildford: %d months (%s → %s) | Latest: Flat=%.1f Det=%.1f Semi=%.1f Ter=%.1f Blend=%.1f",
         len(hpi_gu),
         hpi_gu["Date"].iloc[0].strftime("%b %Y"),
         hpi_gu["Date"].iloc[-1].strftime("%b %Y"),
+        latest.get("FlatIndex", float("nan")),
+        latest.get("DetachedIndex", float("nan")),
+        latest.get("SemiDetachedIndex", float("nan")),
+        latest.get("TerracedIndex", float("nan")),
+        latest.get("Index", float("nan")),
     )
-    return hpi_gu[["Date", "Index", "AveragePrice"]].copy()
+
+    available = [c for c in keep_cols if c in hpi_gu.columns]
+    return hpi_gu[available].copy()
 
 
-def compute_hpi_adjustment(sale_date: pd.Series, hpi_df: pd.DataFrame) -> pd.Series:
-    """Compute HPI adjustment factor to normalise prices to latest month.
+def compute_hpi_adjustment(
+    sale_date: pd.Series,
+    property_type: pd.Series,
+    hpi_df: pd.DataFrame,
+) -> pd.Series:
+    """Compute property-type-specific HPI adjustment factor to normalise prices to latest month.
 
-    For each sale date, finds the closest HPI month and computes:
-        factor = latest_index / sale_month_index
+    Routes each sale to its own index series:
+        F (Flat) → FlatIndex, D (Detached) → DetachedIndex,
+        S (Semi-Detached) → SemiDetachedIndex, T (Terraced) → TerracedIndex,
+        O / unknown → blended Index (fallback).
 
-    So a property sold when index was 80 and latest is 100 gets factor=1.25.
+    For each sale: factor = latest_type_index / sale_month_type_index
 
     Args:
         sale_date: Series of sale dates.
-        hpi_df: Guildford HPI DataFrame with 'Date' and 'Index'.
+        property_type: Series of Price Paid type codes (D/S/T/F/O).
+        hpi_df: Guildford HPI DataFrame with 'Date', 'Index', and type-specific columns.
 
     Returns:
         Series of adjustment factors (1.0 if no adjustment possible).
     """
-    latest_index = hpi_df["Index"].iloc[-1]
-
-    # Build a monthly index lookup
     hpi_df = hpi_df.copy()
     hpi_df["year_month"] = hpi_df["Date"].dt.to_period("M")
-    index_map = dict(zip(hpi_df["year_month"], hpi_df["Index"]))
 
-    def _get_factor(dt):
+    # Build per-type lookup: {type_code: {year_month: index_value}}
+    type_maps: dict = {}
+    type_latest: dict = {}
+    for code, col in TYPE_INDEX_COLS.items():
+        if col in hpi_df.columns:
+            type_maps[code] = dict(zip(hpi_df["year_month"], hpi_df[col]))
+            type_latest[code] = hpi_df[col].iloc[-1]
+
+    # Blended fallback
+    blend_map = dict(zip(hpi_df["year_month"], hpi_df["Index"]))
+    blend_latest = hpi_df["Index"].iloc[-1]
+
+    # Log which types use type-specific vs blended index
+    available_types = list(type_maps.keys())
+    logger.info("Type-specific HPI adjustment enabled for: %s (fallback: blended Index)", available_types)
+
+    def _get_factor(row):
+        dt, ptype = row
         if pd.isna(dt):
             return 1.0
         ym = pd.Period(dt, freq="M")
-        idx = index_map.get(ym)
+        if ptype in type_maps:
+            latest = type_latest[ptype]
+            idx = type_maps[ptype].get(ym)
+        else:
+            latest = blend_latest
+            idx = blend_map.get(ym)
+        if idx is None or idx == 0 or pd.isna(idx):
+            # Fallback to blended index if type-specific is missing for that month
+            idx = blend_map.get(ym)
+            latest = blend_latest
         if idx is None or idx == 0 or pd.isna(idx):
             return 1.0
-        return latest_index / idx
+        return latest / idx
 
-    return sale_date.apply(_get_factor)
+    combined = pd.DataFrame({"dt": sale_date, "ptype": property_type})
+    return combined.apply(_get_factor, axis=1)
+
+
+def compute_forward_growth_rate(hpi_df: pd.DataFrame) -> float:
+    """Derive annualised HPI growth rate from trailing 12 months of data.
+
+    Uses ratio of last index to index 12 months prior. Clamped to [0.0, 0.10].
+    Falls back to ANNUAL_FORWARD_GROWTH_FALLBACK if fewer than 13 rows.
+    """
+    if len(hpi_df) < 13:
+        logger.info(
+            "Fewer than 13 HPI months (%d rows) — using fallback growth %.1f%%",
+            len(hpi_df), ANNUAL_FORWARD_GROWTH_FALLBACK * 100,
+        )
+        return ANNUAL_FORWARD_GROWTH_FALLBACK
+
+    idx_now = hpi_df["Index"].iloc[-1]
+    idx_12m_ago = hpi_df["Index"].iloc[-13]
+
+    if pd.isna(idx_now) or pd.isna(idx_12m_ago) or idx_12m_ago == 0:
+        logger.warning("HPI index invalid for growth calc — using fallback")
+        return ANNUAL_FORWARD_GROWTH_FALLBACK
+
+    raw_growth = (idx_now / idx_12m_ago) - 1.0
+    clamped = max(0.0, min(0.10, raw_growth))
+    if raw_growth != clamped:
+        logger.warning("Raw HPI growth %.1f%% clamped to %.1f%%", raw_growth * 100, clamped * 100)
+    logger.info("Trailing 12-month HPI growth: %.2f%%", clamped * 100)
+    return clamped
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -207,16 +296,48 @@ def clean_land_registry_data() -> pd.DataFrame:
     # ── HPI time-adjustment ──────────────────────────────────────────────
     hpi_df = load_hpi_guildford()
     if hpi_df is not None:
-        df["hpi_factor"] = compute_hpi_adjustment(df["date_of_transfer"], hpi_df)
+        df["hpi_factor"] = compute_hpi_adjustment(
+            df["date_of_transfer"], df["property_type"], hpi_df
+        )
         df["adjusted_price"] = (df["price"] * df["hpi_factor"]).round(0)
+        # Log per-type factor stats to verify type-specific adjustment is working
+        for ptype, label in [("F","Flat"), ("D","Detached"), ("S","Semi"), ("T","Terraced")]:
+            mask = df["property_type"] == ptype
+            if mask.any():
+                logger.info(
+                    "  HPI factor %s: mean=%.3f, median=%.3f (n=%d)",
+                    label, df.loc[mask, "hpi_factor"].mean(),
+                    df.loc[mask, "hpi_factor"].median(), mask.sum(),
+                )
         logger.info(
-            "HPI adjustment applied: mean factor=%.3f, median factor=%.3f",
+            "HPI adjustment applied (type-specific): overall mean factor=%.3f, median=%.3f",
             df["hpi_factor"].mean(),
             df["hpi_factor"].median(),
         )
     else:
         df["adjusted_price"] = df["price"]
         logger.warning("No HPI data — using raw prices (no time-adjustment)")
+
+    # ── Forward projection: HPI latest date → today ───────────────────────
+    if hpi_df is not None:
+        today = datetime.now(timezone.utc).date()
+        latest_hpi_date = hpi_df["Date"].iloc[-1].date()
+        years_forward = (today - latest_hpi_date).days / 365.25
+
+        if years_forward > FORWARD_PROJECTION_MIN_YEARS:
+            annual_growth = compute_forward_growth_rate(hpi_df)
+            forward_factor = (1 + annual_growth) ** years_forward
+            df["adjusted_price"] = (df["adjusted_price"] * forward_factor).round(0)
+            logger.info(
+                "Forward projection: HPI latest=%s → today=%s, gap=%.2f yrs, "
+                "growth=%.2f%%, factor=%.4f",
+                latest_hpi_date.strftime("%b %Y"), today.strftime("%Y-%m-%d"),
+                years_forward, annual_growth * 100, forward_factor,
+            )
+        elif years_forward < 0:
+            logger.warning("HPI date %s is future — skipping forward projection", latest_hpi_date)
+        else:
+            logger.info("HPI data is current (gap=%.3f yrs) — no projection needed", years_forward)
 
     # ── Compute implied weekly rent ──────────────────────────────────────
     df["implied_weekly_rent"] = (df["adjusted_price"] * GROSS_YIELD / 52).round(2)

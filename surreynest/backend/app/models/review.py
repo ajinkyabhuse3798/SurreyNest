@@ -73,6 +73,7 @@ class Review(Base):
     value_rating: Mapped[int] = mapped_column(Integer, nullable=False)
     weekly_rent_paid: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     move_in_year: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    agent_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, index=True)
     review_text: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime,

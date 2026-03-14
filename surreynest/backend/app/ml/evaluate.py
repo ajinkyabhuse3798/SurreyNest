@@ -30,7 +30,6 @@ from app.ml.train import (
     MODEL_VERSION,
     OUTLIER_CAP_WEEKLY,
     compute_real_target,
-    estimate_bedrooms,
     get_feature_columns,
 )
 
@@ -232,20 +231,31 @@ def run_sanity_checks(pipeline, feature_cols: List[str]) -> List[Dict]:
         """Build a feature array with sensible defaults."""
         defaults = {
             "floor_area_m2": 60.0,
-            "num_rooms": 3,
-            "estimated_bedrooms": 2,  # v3.1.0: flats: rooms-1
-            "rooms_per_m2": 0.05,  # 3 rooms / 60m²
+            "actual_bedrooms": 2,        # v4.1.0: real/predicted bedrooms (not estimated_bedrooms)
+            "rooms_per_m2": 0.05,        # 3 rooms / 60m²
             "energy_rating_ordinal": 4,  # C
             "potential_rating_ordinal": 5,  # B
             "distance_to_town_km": 2.0,
             "distance_to_uni_km": 2.0,
             "distance_to_station_km": 2.5,
+            "location_score": 0.30,      # ~2.5km from town/uni (outer Guildford)
+            "town_proximity_score": 0.30,  # v4.4.0: split from location_score
+            "uni_proximity_score": 0.30,   # v4.4.0: split from location_score
             "safety_score": 50.0,
             "sale_count": 4.0,
+            "sector_median_rent": 350.0,   # v4.3.0: Guildford median
+            "age_band_ordinal": 6,         # 1983-1990 (Guildford median)
+            "has_mains_gas": 1,
+            "floor_level_ordinal": 0,
+            "annual_energy_cost": 1500.0,
+            "energy_improvement_gap": 1,
+            "price_drop_pct": 0.0,
+            "is_studio": 0,               # v4.5.0: explicit studio flag
             "ptype_Detached": 0,
             "ptype_Flat": 0,
             "ptype_Semi-Detached": 0,
             "ptype_Terraced": 0,
+            "ptype_Unknown": 0,
         }
         defaults.update(overrides)
         return np.array([[defaults.get(c, 0) for c in feature_cols]])
@@ -258,8 +268,9 @@ def run_sanity_checks(pipeline, feature_cols: List[str]) -> List[Dict]:
     # ── Check 1: 34.5m² studio flat (matches user's £1,200/mo market ref) ──
     # Real market: £1,200/mo = £277/wk. Data shows studios median £299/wk.
     studio = _make_features(
-        floor_area_m2=34.5, num_rooms=1, estimated_bedrooms=0,
-        rooms_per_m2=round(1/34.5, 4), ptype_Flat=1
+        floor_area_m2=34.5, actual_bedrooms=0, is_studio=1,
+        rooms_per_m2=round(1/34.5, 4), ptype_Flat=1,
+        sector_median_rent=270.0,  # studio/1-bed sector typical
     )
     studio_pred = _predict_rent(studio)
     results.append({
@@ -272,8 +283,9 @@ def run_sanity_checks(pipeline, feature_cols: List[str]) -> List[Dict]:
     # ── Check 2: 120m² detached house (5 hab rooms = 3 bedrooms) ──────
     # Data shows 3-bed houses median £319/wk, with 120m² area premium.
     detached = _make_features(
-        floor_area_m2=120.0, num_rooms=5, estimated_bedrooms=3,
-        rooms_per_m2=round(5/120, 4), ptype_Detached=1
+        floor_area_m2=120.0, actual_bedrooms=3,
+        rooms_per_m2=round(5/120, 4), ptype_Detached=1,
+        sector_median_rent=380.0,  # 3-bed detached sector typical
     )
     detached_pred = _predict_rent(detached)
     results.append({
@@ -285,15 +297,15 @@ def run_sanity_checks(pipeline, feature_cols: List[str]) -> List[Dict]:
 
     # ── Check 3: Type ordering (80m², 3-bed, all else equal) ─────────────
     flat_pred = _predict_rent(_make_features(
-        floor_area_m2=80.0, num_rooms=3, estimated_bedrooms=2,
+        floor_area_m2=80.0, actual_bedrooms=2,
         rooms_per_m2=round(3/80, 4), ptype_Flat=1
     ))
     semi_pred = _predict_rent(_make_features(
-        floor_area_m2=80.0, num_rooms=3, estimated_bedrooms=1,
+        floor_area_m2=80.0, actual_bedrooms=2,
         rooms_per_m2=round(3/80, 4), **{"ptype_Semi-Detached": 1}
     ))
     detached_80 = _predict_rent(_make_features(
-        floor_area_m2=80.0, num_rooms=3, estimated_bedrooms=1,
+        floor_area_m2=80.0, actual_bedrooms=2,
         rooms_per_m2=round(3/80, 4), ptype_Detached=1
     ))
 
@@ -309,9 +321,8 @@ def run_sanity_checks(pipeline, feature_cols: List[str]) -> List[Dict]:
     areas = [30, 60, 90, 120]
     area_preds = []
     for area in areas:
-        est_beds = max(0, 3 - 1)  # 3 hab rooms flat = 2 bedrooms
         pred = _predict_rent(_make_features(
-            floor_area_m2=float(area), num_rooms=3, estimated_bedrooms=est_beds,
+            floor_area_m2=float(area), actual_bedrooms=2,
             rooms_per_m2=round(3/max(area,10), 4), ptype_Flat=1
         ))
         area_preds.append(pred)
@@ -395,6 +406,7 @@ def generate_report(
     sanity_results: List[Dict],
     dist_stats: Dict,
     report_path: Path,
+    scraped_metrics: Dict = None,
 ) -> str:
     """Generate evaluation report as markdown.
 
@@ -426,12 +438,31 @@ def generate_report(
         f"| MAPE | {metrics['mape']:.1f}% |",
         "",
         "---",
+    ]
+
+    if scraped_metrics:
+        lines.extend([
+            "",
+            "## 1b. Scraped-Only Metrics (Ground Truth)",
+            "",
+            "> Primary production quality metric — evaluated on actual Zoopla/Rightmove rents only",
+            "",
+            "| Metric | Value |",
+            "|--------|-------|",
+            f"| MAE (scraped) | £{scraped_metrics['mae']:.2f}/week |",
+            f"| RMSE (scraped) | £{scraped_metrics['rmse']:.2f}/week |",
+            f"| R² (scraped) | {scraped_metrics['r2']:.4f} |",
+            "",
+            "---",
+        ])
+
+    lines.extend([
         "",
         "## 2. Cross-Validation (5-fold)",
         "",
         "| Metric | Mean ± Std |",
         "|--------|-----------|",
-    ]
+    ])
 
     for metric, value in cv_results.items():
         lines.append(f"| {metric} | {value} |")
@@ -522,9 +553,8 @@ def run_evaluation() -> None:
 
     # ── Add derived features (same as train_model) ─────────────────────
     df["rooms_per_m2"] = (df["num_rooms"] / df["floor_area_m2"].clip(lower=10)).round(4)
-    df["estimated_bedrooms"] = estimate_bedrooms(df)
 
-    # ── Compute target (MODE E — Land Registry implied rents) ────────────
+    # ── Compute target ────────────────────────────────────────────────────
     target = compute_real_target(df)
     feature_cols = get_feature_columns(df)
     X = df[feature_cols].copy()
@@ -572,6 +602,26 @@ def run_evaluation() -> None:
     logger.info("  MAPE: %.1f%%", metrics["mape"])
     logger.info("=" * 40)
 
+    # ── 1b. Scraped-only evaluation (production quality metric) ──────────────────────
+    # The hybrid training target uses ~98% implied rents — evaluate against
+    # scraped ground truth only to measure true production accuracy.
+    scraped_mask = df.loc[X_test.index, "actual_market_rent_weekly"].notna() \
+        if "actual_market_rent_weekly" in df.columns else pd.Series(False, index=X_test.index)
+    if scraped_mask.sum() >= 10:
+        y_scraped_true = y_test[scraped_mask].values
+        y_scraped_pred = np.expm1(pipeline.predict(X_test[scraped_mask]))
+        scraped_metrics = compute_metrics(y_scraped_true, y_scraped_pred)
+        logger.info("=" * 40)
+        logger.info("SCRAPED-ONLY METRICS (ground truth: %d rows)", scraped_mask.sum())
+        logger.info("  MAE:  £%.2f/week  ← primary production quality metric", scraped_metrics["mae"])
+        logger.info("  RMSE: £%.2f/week", scraped_metrics["rmse"])
+        logger.info("  R²:   %.4f", scraped_metrics["r2"])
+        logger.info("=" * 40)
+    else:
+        logger.warning("Insufficient scraped rows in test set (%d) for scraped-only evaluation",
+                       scraped_mask.sum())
+        scraped_metrics = {}
+
     # ── 2. Cross-validation ──────────────────────────────────────────────
     # Use a fresh (untrained) pipeline for CV
     from sklearn.pipeline import Pipeline as SKPipeline
@@ -583,9 +633,10 @@ def run_evaluation() -> None:
     fresh_pipeline = SKPipeline([
         ("scaler", StandardScaler()),
         ("model", XGBRegressor(
-            n_estimators=500, max_depth=6, learning_rate=0.05,
+            # v4.3.0 hyperparameters — must stay in sync with train.py
+            n_estimators=300, max_depth=5, learning_rate=0.05,
             subsample=0.8, colsample_bytree=0.8,
-            reg_alpha=0.1, reg_lambda=1.0, min_child_weight=5,
+            reg_alpha=0.1, reg_lambda=1.0, min_child_weight=8,
             random_state=42, n_jobs=-1, verbosity=0,
         )),
     ])
@@ -635,6 +686,7 @@ def run_evaluation() -> None:
     report = generate_report(
         metrics, cv_results, importance_df,
         sanity_results, dist_stats, REPORT_PATH,
+        scraped_metrics=scraped_metrics,
     )
 
     logger.info("=" * 60)

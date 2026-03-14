@@ -9,7 +9,7 @@ import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
     LinkIcon, Loader2, Shield, PoundSterling, Home, AlertTriangle,
-    Droplets, MapPin, ExternalLink, CheckCircle2, ArrowRight, Info,
+    Droplets, MapPin, ExternalLink, CheckCircle2, ArrowRight, Info, Hash,
 } from 'lucide-react'
 import Navbar from '../components/Navbar'
 import api from '../services/api'
@@ -31,6 +31,7 @@ function scoreColor(score) {
 
 export default function CheckListing() {
     const [url, setUrl] = useState('')
+    const [postcode, setPostcode] = useState('')
     const [loading, setLoading] = useState(false)
     const [result, setResult] = useState(null)
     const [error, setError] = useState('')
@@ -41,6 +42,8 @@ export default function CheckListing() {
         setResult(null)
 
         const trimmed = url.trim()
+        const pc = postcode.trim().toUpperCase()
+
         if (!trimmed) {
             setError('Please paste a listing URL.')
             return
@@ -61,7 +64,9 @@ export default function CheckListing() {
 
         setLoading(true)
         try {
-            const res = await api.post('/api/listings/check', { url: trimmed })
+            const body = { url: trimmed }
+            if (pc) body.postcode = pc
+            const res = await api.post('/api/listings/check', body)
             setResult(res.data)
         } catch (err) {
             const detail = err?.response?.data?.detail
@@ -120,30 +125,51 @@ export default function CheckListing() {
                             transition={{ duration: 0.5, delay: 0.15 }}
                             className="bg-white rounded-2xl border border-gray-200 shadow-lg shadow-gray-200/50 p-4 md:p-5"
                         >
-                            <div className="flex flex-col gap-3 sm:flex-row">
-                                <div className="relative flex-1">
-                                    <LinkIcon size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-                                    <input
-                                        type="text"
-                                        value={url}
-                                        onChange={(e) => { setUrl(e.target.value); if (error) setError('') }}
-                                        onPaste={handlePaste}
-                                        placeholder="Paste listing URL here..."
-                                        className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-shadow"
-                                        id="listing-url-input"
-                                    />
+                            <div className="flex flex-col gap-3">
+                                {/* URL row */}
+                                <div className="flex flex-col gap-3 sm:flex-row">
+                                    <div className="relative flex-1">
+                                        <LinkIcon size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                                        <input
+                                            type="text"
+                                            value={url}
+                                            onChange={(e) => { setUrl(e.target.value); if (error) setError('') }}
+                                            onPaste={handlePaste}
+                                            placeholder="Paste listing URL here..."
+                                            className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-shadow"
+                                            id="listing-url-input"
+                                        />
+                                    </div>
                                 </div>
-                                <button
-                                    type="submit"
-                                    disabled={loading}
-                                    className="bg-indigo-600 text-white rounded-xl px-6 py-3 text-sm font-semibold hover:bg-indigo-700 active:scale-[0.98] transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 sm:px-8"
-                                >
-                                    {loading ? (
-                                        <><Loader2 size={16} className="animate-spin" /> Analysing...</>
-                                    ) : (
-                                        <><CheckCircle2 size={16} /> Check Listing</>
-                                    )}
-                                </button>
+                                {/* Postcode + submit row */}
+                                <div className="flex flex-col gap-3 sm:flex-row">
+                                    <div className="relative sm:w-44">
+                                        <MapPin size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                                        <input
+                                            type="text"
+                                            value={postcode}
+                                            onChange={(e) => { setPostcode(e.target.value.toUpperCase()); if (error) setError('') }}
+                                            placeholder="Area e.g. GU1 or GU1 3JT"
+                                            maxLength={8}
+                                            className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-shadow uppercase"
+                                            id="listing-postcode-input"
+                                        />
+                                    </div>
+                                    <p className="hidden sm:flex items-center text-xs text-gray-400 font-medium">
+                                        Rightmove/Zoopla show GU1, GU2 etc. — that works too
+                                    </p>
+                                    <button
+                                        type="submit"
+                                        disabled={loading}
+                                        className="sm:ml-auto bg-indigo-600 text-white rounded-xl px-6 py-3 text-sm font-semibold hover:bg-indigo-700 active:scale-[0.98] transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 sm:px-8"
+                                    >
+                                        {loading ? (
+                                            <><Loader2 size={16} className="animate-spin" /> Analysing...</>
+                                        ) : (
+                                            <><CheckCircle2 size={16} /> Check Listing</>
+                                        )}
+                                    </button>
+                                </div>
                             </div>
 
                             {error && (

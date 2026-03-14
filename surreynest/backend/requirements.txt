@@ -48,9 +48,5 @@ redis>=5.0.0
 # ─── Configuration ───────────────────────────────────────────────────────────
 python-dotenv==1.0.1
 
-# ─── Development / Testing ───────────────────────────────────────────────────
-pytest==8.2.0
-pytest-asyncio==0.23.7
-pytest-cov==5.0.0             # Coverage reporting
-black==24.4.2                 # Code formatter
-ruff==0.4.4                   # Linter
+# ─── AI / Anthropic ──────────────────────────────────────────────────────────
+anthropic>=0.40.0

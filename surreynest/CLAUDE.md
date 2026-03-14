@@ -60,7 +60,7 @@ It solves three documented problems for University of Surrey students:
 | Auth | **JWT (python-jose) + bcrypt (passlib)** | No paid auth services ever |
 | Maps | **Leaflet.js + react-leaflet + OpenStreetMap** | 100% free, no Google Maps API |
 | Jobs | **APScheduler** inside FastAPI | No separate Celery/Redis for MVP |
-| Deployment | **Railway.app** (backend + DB) + **Vercel** (frontend) | Both free tiers |
+| Deployment | **Railway.app** / **Render** / **Hetzner VPS** + **Cloudflare Pages** (frontend) | See `docker-compose.prod.yml` |
 
 **All external APIs are free.** See `docs/api-reference.md` for full list.
 
@@ -73,6 +73,7 @@ surreynest/
 ├── CLAUDE.md                  ← YOU ARE HERE — read every session
 ├── README.md
 ├── docker-compose.yml
+├── docker-compose.prod.yml    ← Production compose (4 workers, no hot-reload, ENVIRONMENT=production)
 ├── .gitignore
 ├── docs/
 │   ├── api-reference.md       ← All free APIs used (police.uk, Postcodes.io, EA, VOA)
@@ -87,10 +88,20 @@ surreynest/
 │   │   ├── main.py            ← ✅ FastAPI entry point (complete)
 │   │   ├── config.py          ← ✅ Env var loading (complete)
 │   │   ├── database.py        ← ✅ SQLAlchemy engine + session (complete)
-│   │   ├── models/            ← ✅ All 11 ORM models complete (see below)
-│   │   ├── schemas/           ← ✅ All Pydantic schemas complete (incl. leaderboard.py)
-│   │   ├── routers/           ← ✅ All route handlers complete (incl. listings)
+│   │   ├── models/            ← ✅ All 12 ORM models complete (see below)
+│   │   │   └── letting_agent.py  ← NEW: letting agent model
+│   │   ├── schemas/           ← ✅ All Pydantic schemas complete
+│   │   │   ├── agent.py          ← NEW: agent list/detail schemas
+│   │   │   ├── rent_challenge.py ← NEW: Section 13 challenge schemas
+│   │   │   └── contract.py       ← NEW: AI contract checker schemas
+│   │   ├── routers/           ← ✅ All route handlers complete
+│   │   │   ├── agents.py         ← NEW: agent directory + detail endpoints
+│   │   │   ├── rent_challenge.py ← NEW: Section 13 analysis endpoint
+│   │   │   └── contract.py       ← NEW: AI contract check endpoint
 │   │   ├── services/          ← ✅ All business logic complete
+│   │   │   ├── agent_service.py         ← NEW: agent reputation scoring
+│   │   │   ├── rent_challenge_service.py ← NEW: Section 13 analysis logic
+│   │   │   └── contract_service.py      ← NEW: Anthropic-powered contract review
 │   │   ├── ml/                ← ✅ ML pipeline complete (train, predict, evaluate, features)
 │   │   └── data_pipelines/    ← ✅ All ETL jobs complete
 │   ├── data/
@@ -107,20 +118,38 @@ surreynest/
 │   ├── tests/                 ← ✅ All tests passing
 │   ├── alembic/               ← ✅ Migrations complete
 │   ├── requirements.txt       ← ✅ All dependencies pinned
+│   ├── requirements-dev.txt   ← Dev/test-only deps (pytest, black, ruff, etc.)
 │   ├── .env.example           ← ✅ Template
-│   └── Dockerfile             ← ✅ Production container
+│   ├── Dockerfile             ← ✅ Multi-stage production container (non-root)
+│   └── .dockerignore          ← ✅ Excludes tests, raw data, dev files
 └── frontend/
+    ├── Dockerfile             ← ✅ Node build → Nginx Alpine container
+    ├── nginx.conf             ← ✅ SPA routing, security headers, gzip, 1yr asset caching
+    ├── .dockerignore
     ├── src/
     │   ├── pages/             ← ✅ All pages are thin orchestrators (<300 lines each)
+    │   │   ├── AgentDetail.jsx      ← NEW: agent detail + recent reviews
+    │   │   ├── AgentDirectory.jsx   ← NEW: agent list with reputation scores
+    │   │   ├── RentChallengePage.jsx ← NEW: Section 13 rent increase challenger
+    │   │   └── ContractChecker.jsx  ← NEW: AI tenancy agreement checker
     │   ├── components/        ← ✅ Sub-components organized by domain:
     │   │   ├── ui/            ←   Section.jsx (shared card wrapper)
     │   │   ├── property/      ←   7 sub-components (PropertyHero, SafetySection, etc.)
     │   │   ├── safety/        ←   9 sub-components (SafetyHero, CrimeDonut, etc.)
     │   │   ├── rent/          ←   7 sub-components (RentHero, WaterfallChart, etc.)
     │   │   ├── home/          ←   7 sub-components (HeroSection, TrustBar, etc.)
-    │   │   └── search/        ←   4 sub-components (SearchHeader, FilterBar, etc.)
+    │   │   ├── search/        ←   4 sub-components (SearchHeader, FilterBar, etc.)
+    │   │   ├── agent/         ←   NEW: AgentHero.jsx, AgentReviewCard.jsx, AgentScoreCards.jsx
+    │   │   ├── rent_challenge/ ←  NEW: ChallengeForm.jsx, ComparablesTable.jsx, TribunalBrief.jsx, VerdictCard.jsx
+    │   │   └── contract/      ←   NEW: ClauseCard.jsx, ContractInput.jsx, ContractSummary.jsx, OverallRiskBadge.jsx
     │   ├── hooks/             ← ✅ useAuth, useCompare active; useSearch.jsx exists (dormant — not consumed yet)
-    │   ├── services/          ← ✅ api.js, heatmapApi.js, safetyApi.js complete
+    │   ├── services/          ← ✅ All API clients complete
+    │   │   ├── api.js         ← Axios base instance
+    │   │   ├── heatmapApi.js
+    │   │   ├── safetyApi.js
+    │   │   ├── agentApi.js         ← NEW
+    │   │   ├── rentChallengeApi.js ← NEW
+    │   │   └── contractApi.js      ← NEW
     │   └── utils/             ← ✅ propertyUtils.js, homeData.jsx, searchUtils.jsx, safetyConstants.js
     ├── vite.config.js         ← ✅ Complete
     └── package.json           ← ✅ All dependencies listed (incl. recharts)
@@ -136,8 +165,13 @@ surreynest/
 - `backend/alembic/env.py` — Alembic wired to settings.database_url
 - `backend/alembic/versions/62efbusz7xg4_initial_schema.py` — Full initial migration
 
+### Three New Features (Session 19)
+- **Agent Directory** — Letting agent reputation tracker with review-based scores, sector search, autocomplete, and detail pages
+- **Rent Challenge Tool** — Section 13 rent increase analyser: ML prediction + comparables + Tribunal brief generator (Renters' Rights Act 2025)
+- **Contract Checker** — AI-powered tenancy agreement reviewer using Anthropic Claude; flags unfair/illegal clauses; falls back gracefully when API key not set
+
 ### Complete SQLAlchemy Models (all in `backend/app/models/`)
-All 11 models are complete with correct column names — **use these exact names everywhere**:
+All 12 models are complete with correct column names — **use these exact names everywhere**:
 
 | File | Table | Key columns |
 |------|-------|-------------|
@@ -152,6 +186,7 @@ All 11 models are complete with correct column names — **use these exact names
 | `area_value.py` | `area_values` | `postcode` (PK), `median_sale_price`, `area_value_index`, `implied_weekly_rent`, `sale_count`, `updated_at` |
 | `rent_history.py` | `rent_history` | `postcode_sector` + `year` (composite PK), `median_sale_price`, `implied_weekly_rent`, `transaction_count` |
 | `pipeline_config.py` | `pipeline_config` | `key` (PK), `value`, `description`, `updated_at` |
+| `letting_agent.py` | `letting_agents` | `id` (UUID), `name`, `postcode_sector`, `review_count`, `avg_rating`, `last_seen` |
 
 **Critical column names — never get these wrong:**
 ```python
@@ -186,7 +221,7 @@ These rules are applied during ingestion. **Do not change them** without explici
 - Filter: GU1–GU5, GU7 districts only
 - Outlier removal: drop prices < £30,000 or > £3,000,000
 - HPI time-adjustment: normalises all sale prices to latest month using Guildford-specific UK HPI index
-- Implied weekly rent: `adjusted_price × 4% ÷ 52`
+- Implied weekly rent: `adjusted_price × 3.5% ÷ 52` (changed from 4% to 3.5% in v4.5.0 to reduce GU1 underestimation)
 - Output: `data/processed/land_registry_guildford.csv` (2,515 postcodes)
 - DB upsert: `area_values` table with `area_value_index` (0.0–1.0)
 
@@ -228,6 +263,11 @@ These rules are applied during ingestion. **Do not change them** without explici
 | GET | `/api/safety/intelligence?postcode=` | Full crime analytics for a sector | safety.py |
 | GET | `/api/safety/rankings` | Top 5 safest + top 5 hotspot areas | safety.py |
 | GET | `/api/rent/explain/{uprn}` | XAI: per-prediction SHAP contributions | rent_explain.py |
+| GET | `/api/agents?sector=&limit=20` | Agent list with reputation scores | agents.py |
+| GET | `/api/agents/suggest?q=` | Agent name autocomplete | agents.py |
+| GET | `/api/agents/{agent_name}` | Agent detail + recent reviews | agents.py |
+| POST | `/api/rent/challenge-increase` | Section 13 rent challenge analysis | rent_challenge.py |
+| POST | `/api/contract/check` | AI tenancy agreement checker | contract.py |
 
 ---
 
@@ -249,16 +289,28 @@ These rules are applied during ingestion. **Do not change them** without explici
 | `SafetyDetail.jsx` | /safety/:postcode (page) | Full-page safety analytics — 9 sections, data-driven, plain English |
 | `RentDetail.jsx` | /rent/:uprn (page) | Full-page rent XAI — waterfall, top factors, model explainer, comparison |
 | `safetyApi.js` | (service) | API client for `/api/safety/intelligence` and `/api/safety/rankings` |
+| `AgentDirectory.jsx` | /agent (page) | Agent list with reputation scores, sector filter, search |
+| `AgentDetail.jsx` | /agent/:name (page) | Agent detail page with score cards, reviews history |
+| `RentChallengePage.jsx` | /challenge-rent-increase (page) | Section 13 challenge form + verdict + Tribunal brief |
+| `ContractChecker.jsx` | /check-contract (page) | Paste contract text → AI clause analysis + risk badge |
+
+### Navbar Tools Dropdown
+The Navbar has a **Tools** dropdown (desktop: hover/click; mobile: expandable section) with three items:
+- **Agent Tracker** → `/agent`
+- **Challenge Rent Increase** → `/challenge-rent-increase`
+- **Check Contract** → `/check-contract`
+
+These routes are all registered in `App.jsx` and backed by dedicated page components.
 
 ---
 
 ## Remaining Work
 
 ### Next priorities:
-1. Retrain ML model with real Price Paid rent targets (instead of synthetic formula)
-2. Update `features.py` to use `land_registry_guildford.csv` implied rents
-3. Phase 7 — Testing (frontend Vitest + E2E)
-4. Phase 8 — Deployment (Railway + Vercel)
+1. Phase 7 — Testing (frontend Vitest + E2E)
+2. Phase 8 — Deployment (Railway + Vercel / Hetzner)
+3. Seed `letting_agents` table with real agent data from reviews pipeline
+4. Add `ANTHROPIC_API_KEY` to `.env` to enable live AI contract checking
 
 ---
 
@@ -276,86 +328,83 @@ These were not in the original plan but are free and add significant value:
 
 ---
 
-## ⛔ ML Model — Known Bugs (MUST FIX before next retrain)
-
-These bugs were found on 2026-03-02 after user observed predictions too low for GU1 properties.
-**Do NOT retrain the model without fixing all three first.**
-
-### Bug 1: Circular Dependency in MODE C Training (`train.py`)
-**File:** `backend/app/ml/train.py` — `get_feature_columns()` and `compute_real_target()`
-**Problem:** `implied_weekly_rent` is used as BOTH a training feature AND the basis for the training target.
-The GBR learns `output ≈ implied_weekly_rent_input`. All other features (floor area, rooms, property type,
-distance to uni/town, safety score) become near-irrelevant. Changing datasets has no effect because
-the model just echoes back the `implied_weekly_rent` feature.
-**Fix:** Remove `implied_weekly_rent` from `get_feature_columns()` so it is used only as the target.
-Keep `median_sale_price`, `sale_count`, `area_value_index` as features (they don't cause circularity).
-
-### Bug 2: `area_value_index` Missing from Prediction Features (`score_service.py`)
-**File:** `backend/app/services/score_service.py` — `get_rent_prediction()`
-**Problem:** The `features` dict built and passed to `predict_rent()` never includes `area_value_index`.
-Every prediction falls back to the hardcoded default of 0.5, meaning GU1 (expensive) and GU5 (cheaper)
-properties get the same area adjustment.
-**Fix:** Add to features dict:
-```python
-"area_value_index": float(area_val.area_value_index) if area_val else 0.5,
-```
+## ⛔ ML Model — Known Issues
 
 ### Bug 3: 4% Yield Underestimates GU1 Rents (`land_registry_pipeline.py`)
-**Problem:** The implied_weekly_rent formula uses `adjusted_price × 4% ÷ 52`. In GU1 (town centre),
-property prices have risen faster than rents — actual gross yield is 3–3.5%, not 4%.
-Using 4% makes the training signal systematically too low for expensive GU1 postcodes.
-**Fix:** Change yield rate from 4% to 3.5% in `land_registry_pipeline.py`, then re-run the pipeline
-before retraining.
+**Status:** Mitigated — yield changed to 3.5% in v4.5.0. The +£11/week bias correction in `predict.py` further compensates.
 
 ### Bug 4: Stale Prediction Cache After Retrain
 **Problem:** `score_service.get_rent_prediction()` checks `cached.model_version == settings.ml_model_version`.
 If `.env` ML_MODEL_VERSION is not bumped after retraining, old wrong predictions are served from cache.
-**Fix:** Always update `ML_MODEL_VERSION` in `backend/.env` after every retrain (e.g. v2.0.0 → v2.1.0).
+**Fix:** Always update `ML_MODEL_VERSION` in `backend/.env` after every retrain (e.g. v4.3.0 → v4.5.0).
+
+### Resolved Bugs (kept for history)
+- Bug 1: Circular Dependency in MODE C Training — RESOLVED in v4.3.0
+- Bug 2: `area_value_index` Missing from Prediction Features — RESOLVED (feature removed from model in v3.0.0+)
 
 ---
 
-## ML Model — Feature Names (v4.1.0, exact column names)
+## ML Model — Feature Names (v4.5.0, exact column names — 25 features)
 
-The ML model in `docs/ml-model.md` uses these features. Column names must match exactly:
+The ML model uses these features. Column names must match exactly:
 
 ```python
 # From properties table:
 'floor_area_m2'           # property.floor_area_m2
-'num_rooms'               # EPC habitable rooms (NOT bedrooms!) — includes
-                          # bedrooms + living rooms + kitchens if > 13m²
 
 # Derived features (computed at train/predict time, or from database sub-model):
-'actual_bedrooms'         # v4.1.0: Ground truth bedrooms from scraped data or RF Classifier
+'actual_bedrooms'         # v4.1.0+: EPC-based RF Classifier estimate (not constant 2)
+                          # v4.5.0 fix: actual_bedrooms now estimated from EPC floor_area_m2
+                          # + num_rooms via RF Classifier, not hardcoded to 2
 'rooms_per_m2'            # v3.0.0: num_rooms / floor_area_m2 (space efficiency)
-'rooms_per_m2'            # v3.0.0: num_rooms / floor_area_m2 (space efficiency)
+                          # NOTE: num_rooms still used to compute rooms_per_m2 but is
+                          # NOT itself a model feature (95%+ correlated with actual_bedrooms)
 
 # From properties table:
 'energy_rating_ordinal'   # derived from property.energy_rating (G=0...A=6)
 'potential_rating_ordinal' # derived from property.potential_rating
 
 # From properties table (one-hot encoded):
-'ptype_Flat', 'ptype_Detached', 'ptype_Semi-Detached', 'ptype_Terraced'
+'ptype_Flat', 'ptype_Detached', 'ptype_Semi-Detached', 'ptype_Terraced', 'ptype_Unknown'
 
-# Computed (no DB column — calculated in features.py):
+# Computed (no DB column — calculated in predict.py):
 'distance_to_town_km'     # Haversine to GU1 3AY (51.2362, -0.5704)
 'distance_to_uni_km'      # Haversine to Surrey Uni (51.2417, -0.5888)
 'distance_to_station_km'  # Haversine to Guildford Station
+'town_proximity_score'    # v4.4.0: Gaussian proximity to town, σ=1.5km, [0,1]
+'uni_proximity_score'     # v4.4.0: Gaussian proximity to uni, σ=1.5km, [0,1]
+'station_proximity_score' # v4.6.0: Gaussian proximity to Guildford station, σ=1.5km, [0,1]
+'accessibility_score'     # v4.6.0: max(town, uni, station) — best proximity signal
+                          # These replaced the single 'location_score' from v4.3.0
 
 # From crime_data table (aggregated):
 'safety_score'            # score_service.compute_safety_score(postcode_sector)
 
 # From processed Land Registry CSV:
 'sale_count'              # Market liquidity signal
+'sector_median_rent'      # v4.3.0: sector-level implied rent anchor (£/week)
+                          # Loaded at inference from sector_rent_map.json (model artifact)
 
 # v3.3.0: new EPC-derived features (from property.construction_age_band etc.):
 'age_band_ordinal'        # Construction era, 0=pre-1900, 11=2012+ (from CONSTRUCTION_AGE_BAND)
 'has_mains_gas'           # 1=mains gas, 0=off-gas (from MAINS_GAS_FLAG Y/N)
-'floor_level_ordinal'     # -1=basement, 0=ground, 1=first... (from FLOOR_LEVEL, flats only)
+'flat_floor_premium'      # v4.6.0: floor_level_ordinal × ptype_Flat (signal only for flats)
 'annual_energy_cost'      # £/year total: HEATING + HOT_WATER + LIGHTING costs from EPC
 'energy_improvement_gap'  # potential_rating_ordinal - energy_rating_ordinal (condition proxy)
 
 # v4.0.0: new scraped market features:
 'price_drop_pct'          # % price drops on listings (derived from scraping)
+
+# v4.6.0: new interaction features
+'is_student_zone'         # GU1/GU2=1 (student-dominated market), else 0
+'m2_per_bedroom'          # floor_area_m2 / actual_bedrooms (space generosity per bedroom)
+
+# ⛔ REMOVED from features in v4.6.0:
+# 'floor_level_ordinal'   — replaced by flat_floor_premium (floor_level_ordinal × ptype_Flat)
+
+# ⛔ REMOVED from features in v4.4.0:
+# 'location_score'        — split into town_proximity_score + uni_proximity_score (v4.4.0)
+# 'num_rooms'             — 95%+ correlated with actual_bedrooms → double-counting (v4.3.0)
 
 # ⛔ REMOVED from features in v3.0.0+ (data leakage / zero info):
 # 'area_value_index'      — quasi-circular with target (40.7% importance in v2.1.0)
@@ -363,10 +412,75 @@ The ML model in `docs/ml-model.md` uses these features. Column names must match 
 # 'iphrp_growth_pct'      — constant across all rows = zero information
 # 'median_sale_price'     — 91.6% correlation with target (removed in v2.1.0)
 
-# ⛔ NOT a training feature — training target only:
-# 'actual_market_rent_weekly' # NEVER put this in get_feature_columns()
-#                             # It IS the v4.0.0 training target.
+# ⛔ NOT training features — used as training target:
+# 'actual_market_rent_weekly' # v4.0.0+ primary target. NEVER in get_feature_columns()
+# 'implied_weekly_rent'   # v4.3.0 fallback target only. NEVER in get_feature_columns()
 ```
+
+### Model Artifacts (must all exist after retraining)
+- `rent_model_v1.pkl` — trained sklearn Pipeline
+- `feature_columns.json` — ordered feature list (saved by train.py)
+- `model_metadata.json` — version, log_target flag, outlier_cap
+- `sector_rent_map.json` — postcode_sector → sector_median_rent map (v4.3.0, NEW)
+
+### Training Target (v4.3.0 hybrid)
+`compute_real_target()` in train.py: scraped `actual_market_rent_weekly` first (priority), then
+`implied_weekly_rent` fallback. Training data: 261 → ~18,000 rows. This is the canonical training mode.
+
+### Proximity Score Convention (v4.4.0)
+In v4.4.0, the single `location_score` was disentangled into two independent features:
+`town_proximity_score` and `uni_proximity_score`, both computed inline in
+`build_prediction_features()` using the same Gaussian formula (σ=1.5km).
+features.py replicates this formula at training time. Both must stay in sync.
+
+### actual_bedrooms Fix (v4.5.0)
+In earlier sessions, `actual_bedrooms` fell back to a hardcoded constant of `2` for all ~18k non-scraped
+training rows. This meant the model never learned bedroom variation from the bulk of training data.
+v4.5.0 fixes this: when `actual_bedrooms` is NULL in the DB, `features.py` now estimates bedrooms from
+EPC habitable rooms using the same formula as `estimate_bedrooms()` in `train.py`:
+- **Flats:** `max(0, num_rooms - 1)` — subtract 1 living room; studios get 0 bedrooms
+- **Houses:** `max(1, num_rooms - 2)` — subtract living room + kitchen; minimum 1 bedroom
+
+`predict.py` does the same at inference time: if `actual_bedrooms` is not provided, it estimates from
+`num_rooms` and `property_type`. This keeps train/predict aligned.
+
+**Result:** bedroom distribution in training went from constant 2 → realistic 1–7 range.
+
+### Bias Correction (v4.5.0)
+`predict.py` adds a +£11/week bias correction after raw model prediction.
+The raw model has a systematic underestimate bias on scraped ground truth.
+For tenant protection, slight overestimation is safer. The correction shifts bias to approximately +£5/week.
+
+### Evaluation Metrics (v4.6.0 — current deployed model)
+
+| Metric | v4.5.0 baseline | **v4.6.0 current** | Change |
+|--------|-----------------|---------------------|--------|
+| Hybrid MAE | £41.59/wk | **£41.76/wk** | ~same |
+| Hybrid R² | 0.8123 | **0.8164** | +0.5% |
+| Scraped-only MAE | £67.64/wk | **£61.75/wk** | **-8.7%** |
+| Scraped-only R² | 0.7150 | **0.7544** | **+5.5%** |
+
+Scraped-only = evaluated on 62 real Zoopla/Rightmove rents = **primary production quality metric**.
+Getting to R²>0.85 requires more scraped ground-truth rows (≥10 sectors × ≥5 scraped each).
+
+### Sanity Checks (v4.6.0 state)
+- ✅ 34.5m² studio flat → £293/wk
+- ✅ 120m² detached house → £458/wk (£350–700/wk range)
+- ✅ Type ordering: Flat (£340) < Semi (£374) < Detached (£424)
+- ❌ Monotonic floor area — same pre-existing test design issue (GU1 small studio premium)
+- ❌ Monotonic floor area with same bedroom count (30m²=£275 > 60m²=£259) — test design issue, not model bug
+
+### ⛔ Session 17 Safety Gate — Failed (lesson learned)
+Per-sector calibration (scraped/implied ratio per postcode sector) failed catastrophically:
+- Only GU1 1 had ≥5 scraped rows after university exclusion (260 rows)
+- Global fallback factor = £460/£312 = 1.469 (scraped £460 = GU1 1 town centre avg; implied £312 = all-sector avg)
+- 1.469× applied to ALL non-GU1-1 implied rents → training targets inflated by 47% → hybrid MAE £83.81 (was £48.48)
+- GU2 7 had calibration factor 0.656 in evaluate.py but 1.469 in train.py (university exclusion removed GU2 7 scraped rows)
+- **DO NOT attempt global calibration** until scraped data covers all sectors adequately (min 10+ sectors with ≥5 scraped each)
+- **Second attempt (sample_weight=10 + split location_score, no calibration) ALSO failed**: hybrid MAE £55.72 (gate ≤ £48.48), R² 0.7025 (gate ≥ 0.78). sample_weight shifts model focus away from implied-rent dominated test set.
+- **⛔ CRITICAL GIT LESSON**: After two git checkouts, code reverted to an older HEAD state (v4.1.0) that predated v4.3.0 features (location_score, sector_median_rent, price_drop_pct fillna, rooms_per_m2). These were NEVER committed. Always commit the working tree state before attempting major changes — or use git stash.
+- **v4.3.0 manually reconstructed** (2026-03-10 session 17 cont): features.py, predict.py, train.py all restored to match the backup pkl. Baseline confirmed: hybrid MAE £48.48, R² 0.7854, scraped-only MAE £88.82.
+- **Next safe steps**: (A) scrape more data (need ≥5 scraped/sector for calibration), (B) hyperparameter tuning only, (C) accept v4.3.0 and proceed to Phase 7 testing.
 
 ---
 
@@ -528,7 +642,7 @@ See `docs/conventions.md` for complete details. Key rules:
 ### Import Hygiene
 - After refactoring code that removes in-memory caches (like the D5 Redis migration), **verify that all replaced code paths still have the necessary imports** — `time`, `datetime`, etc. (B3 lesson: `time.strftime` was unreachable behind the old cache but became live code after migration)
 
-### React Sub-Component Data Contracts  
+### React Sub-Component Data Contracts
 - When extracting React sub-components, verify the **shape** of props from API responses — never render API response objects `{tip}` directly as React children. Always destructure: `tip.text`, `tip.icon`, etc. (B4 lesson)
 - `_normalise_postcode()` from `geocoding_service.py` is for **full UK postcodes only** (7+ chars). NEVER pass postcode sectors or partial strings through it — use simple `upper().strip()` instead (B5 lesson)
 
@@ -551,7 +665,7 @@ See `.env.example` in each directory for required keys.
 
 ```bash
 # New vars to add when building new features:
-ANTHROPIC_API_KEY=sk-ant-...      # For AI contract review (Phase 4+)
+ANTHROPIC_API_KEY=sk-ant-...      # For AI contract review — add to .env to enable live checking
 RATE_LIMIT_SEARCH=60              # Already in .env.example
 RATE_LIMIT_REVIEWS=5              # Already in .env.example
 REDIS_URL=redis://localhost:6379/0  # Shared cache (defaults to localhost)
@@ -559,14 +673,14 @@ REDIS_URL=redis://localhost:6379/0  # Shared cache (defaults to localhost)
 
 ---
 
-## Running the Project Locally
+## Running the Project Locally (Development)
 
 ```bash
-# Start database (MUST be running for any backend endpoint to work)
+# Start database + backend + Redis
 docker-compose up -d
 
-# Verify container is running
-docker ps | grep surreynest-db
+# Verify containers are running
+docker ps | grep surreynest
 
 # Run DB migrations (first time, or after new migration)
 docker exec surreynest-backend alembic upgrade head
@@ -586,11 +700,31 @@ docker exec surreynest-backend python -m app.ml.evaluate
 # Start frontend (separate terminal)
 cd frontend && npm run dev
 
-# Run backend tests
-cd backend && pytest -v
+# Run backend tests (install dev deps first)
+cd backend && pip install -r requirements-dev.txt && pytest -v
 
-# API docs
+# API docs (development only — disabled in production)
 open http://localhost:8000/docs
+```
+
+## Running in Production
+
+```bash
+# Set required env vars (or create .env.production)
+export POSTGRES_PASSWORD=<strong-password>
+export SECRET_KEY=$(python -c "import secrets; print(secrets.token_hex(32))")
+export ALLOWED_ORIGINS=https://your-domain.com
+export VITE_API_URL=https://api.your-domain.com
+
+# Build and start all services
+docker-compose -f docker-compose.prod.yml up -d --build
+
+# Run migrations on production DB
+docker exec surreynest-backend alembic upgrade head
+
+# Verify health
+curl http://localhost:8000/health
+# /docs is NOT available in production (ENVIRONMENT=production)
 ```
 
 ---
@@ -603,7 +737,7 @@ All decisions logged in `docs/decisions.md` (ADR-001 through ADR-012). Summary:
 2. **APScheduler not Celery** — runs in-process, no Redis needed
 3. **scikit-learn not PyTorch** — tabular data, GBR is sufficient
 4. **Soft-delete reviews** — `is_flagged=True` never hard delete
-5. **JWT in localStorage** — acceptable risk for MVP, document trade-offs
+5. **JWT in httpOnly cookies only** — never localStorage (XSS-safe, enforced session 11)
 6. **PostGIS ST_DWithin** — not Haversine in Python, spatial queries in DB
 7. **OpenStreetMap not Google Maps** — zero cost, attribution required
 8. **VOA median bands as ML target** — switch to user rents when 50+ reviews
@@ -617,7 +751,6 @@ All decisions logged in `docs/decisions.md` (ADR-001 through ADR-012). Summary:
 - Email verification (schema ready, logic deferred)
 - Landlord-side dashboard
 - Mobile app (PWA via React)
-- Redis caching layer
 - Elasticsearch
 - Auto-scheduling `rent_history` population (currently manual via script)
 - Choropleth map with real GeoJSON sector boundaries (currently uses CircleMarkers)
@@ -713,6 +846,22 @@ After finishing work:
 - **Pillars:** 3 only — Safety (emerald), Value (blue), Proximity (violet) — **HMO excluded**
 - **Score bars:** Gradient fills with `framer-motion` animation, `h-2 rounded-full`
 - **Quick stat pills:** `rounded-full` with colored borders (blue/slate/violet)
+
+### Rent Challenge Page (`/challenge-rent-increase`)
+- **Hero:** Indigo gradient, bold "Fight Your Rent Increase" headline
+- **Form:** ChallengeForm.jsx — postcode, current rent, proposed rent inputs with validation
+- **Results:** VerdictCard (CHALLENGE / BORDERLINE / ACCEPT), ComparablesTable, TribunalBrief (pre-filled text for copy-paste)
+- **Challenge strength:** STRONG / MODERATE / WEAK with color coding (rose/amber/emerald)
+
+### Contract Checker Page (`/check-contract`)
+- **Layout:** ContractInput (paste area) → submit → ContractSummary + ClauseCard list + OverallRiskBadge
+- **Risk levels per clause:** HIGH (rose), MEDIUM (amber), LOW (emerald)
+- **Fallback:** When ANTHROPIC_API_KEY not set, backend returns 503 with human-readable message
+
+### Agent Directory Page (`/agent`)
+- **List view:** AgentDirectory.jsx — sector filter dropdown, search bar, cards with reputation score badge
+- **Detail view:** AgentDetail.jsx — AgentHero (name + score), AgentScoreCards (rating breakdown), AgentReviewCard list
+- **Reputation score:** 0–100, computed from `avg_rating × review_count` (reputation-weighted)
 
 ---
 

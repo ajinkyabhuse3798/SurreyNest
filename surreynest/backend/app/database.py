@@ -27,7 +27,9 @@ logger = logging.getLogger(__name__)
 engine = create_engine(
     settings.database_url,
     pool_pre_ping=True,
-    echo=(settings.environment == "development"),  # Log SQL in dev only
+    pool_size=10,                                   # Base connections
+    max_overflow=20,                                # Burst capacity (total: 30)
+    echo=(settings.environment == "development"),   # Log SQL in dev only
 )
 
 # ── Session factory ───────────────────────────────────────────────────────────

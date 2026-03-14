@@ -120,6 +120,7 @@ async def create_review(
         weekly_rent_paid=review_data.weekly_rent_paid,
         move_in_year=review_data.move_in_year,
         review_text=review_data.review_text,
+        agent_name=review_data.agent_name,
     )
     db.add(review)
     db.commit()

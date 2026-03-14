@@ -9,7 +9,7 @@ services:
     environment:
       POSTGRES_DB: surreynest
       POSTGRES_USER: surreynest
-      POSTGRES_PASSWORD: surreynest_dev_password
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-2468}
     ports:
       - "5432:5432"
     volumes:
@@ -46,19 +46,18 @@ services:
     env_file:
       - ./backend/.env
     environment:
-      DATABASE_URL: postgresql://surreynest:surreynest_dev_password@postgres:5432/surreynest
+      DATABASE_URL: postgresql://surreynest:${POSTGRES_PASSWORD:-2468}@postgres:5432/surreynest
       REDIS_URL: redis://redis:6379/0
     ports:
       - "8000:8000"
     volumes:
-      - ./backend:/app # Hot reload in development
-      - ./backend/data:/app/data # Persist data files
+      - ./backend/data:/app/data # Persist data files (raw CSVs, ML models)
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2
 
 volumes:
   postgres_data:

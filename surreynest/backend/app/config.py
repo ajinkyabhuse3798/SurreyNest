@@ -10,7 +10,7 @@ from functools import lru_cache
 
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(override=True)  # Override Docker env vars so .env always wins
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +49,7 @@ class Settings:
     ).split(",")
 
     # ── ML Model ───────────────────────────────────────────────────────────
-    ml_model_version: str = os.getenv("ML_MODEL_VERSION", "v4.0.0")
+    ml_model_version: str = os.getenv("ML_MODEL_VERSION", "v4.4.0")
     ml_model_path: str = os.getenv("ML_MODEL_PATH", "app/ml/models")
 
     # ── Rate Limiting ──────────────────────────────────────────────────────
@@ -58,6 +58,9 @@ class Settings:
 
     # ── Redis (shared cache for multi-worker deployment) ──────────────────
     redis_url: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+
+    # ── AI / Anthropic ────────────────────────────────────────────────────
+    anthropic_api_key: str = os.getenv("ANTHROPIC_API_KEY", "")
 
     def __init__(self) -> None:
         """Validate critical settings on startup."""

@@ -537,6 +537,68 @@ def build_features(db: Optional[Session] = None) -> pd.DataFrame:
             df["energy_improvement_gap"].median(),
         )
 
+        # ── v4.3.0: Derived features ─────────────────────────────────────
+        # rooms_per_m2: space efficiency signal
+        df["rooms_per_m2"] = (
+            df["num_rooms"].fillna(3) / df["floor_area_m2"].clip(lower=10.0)
+        ).round(4)
+
+        # v4.4.0: Split proximity scores (town + uni independently), σ=1.5km [0,1]
+        # Replaces the single location_score from v4.3.0.
+        _LOC_SIGMA = 1.5
+        _sigma_sq = 2.0 * _LOC_SIGMA ** 2
+        df["town_proximity_score"] = df["distance_to_town_km"].apply(
+            lambda d: round(np.exp(-((d ** 2) / _sigma_sq)), 4) if pd.notna(d) else 0.3
+        )
+        df["uni_proximity_score"] = df["distance_to_uni_km"].apply(
+            lambda d: round(np.exp(-((d ** 2) / _sigma_sq)), 4) if pd.notna(d) else 0.3
+        )
+        df["station_proximity_score"] = df["distance_to_station_km"].apply(
+            lambda d: round(np.exp(-((d ** 2) / _sigma_sq)), 4) if pd.notna(d) else 0.3
+        )
+        df["accessibility_score"] = df[["town_proximity_score", "uni_proximity_score", "station_proximity_score"]].max(axis=1)
+        # Keep location_score for backwards compatibility with older code paths
+        df["location_score"] = df["accessibility_score"]
+        logger.info(
+            "proximity: town mean=%.3f, uni mean=%.3f, station mean=%.3f",
+            df["town_proximity_score"].mean(), df["uni_proximity_score"].mean(),
+            df["station_proximity_score"].mean(),
+        )
+
+        # v4.5.0: is_studio — explicit flag: ptype_Flat AND actual_bedrooms==0
+        # XGBoost can learn this from actual_bedrooms + ptype_Flat, but an explicit
+        # binary feature gives the model a direct hook for the studio rent gap.
+        ptype_flat_col = df["ptype_Flat"] if "ptype_Flat" in df.columns else pd.Series(0, index=df.index)
+        df["is_studio"] = (
+            (df["actual_bedrooms"] == 0) & (ptype_flat_col == 1)
+        ).astype(int)
+        logger.info("is_studio: %d studios (%.1f%%)", df["is_studio"].sum(), df["is_studio"].mean() * 100)
+
+        # v4.6.0: is_student_zone — GU1/GU2 = student-dominated market (1), else family market (0)
+        df["is_student_zone"] = (
+            df["postcode"].str.strip().str.split().str[0].isin({"GU1", "GU2"})
+        ).astype(int)
+        logger.info(
+            "is_student_zone: %d student-zone (%.1f%%)",
+            df["is_student_zone"].sum(), df["is_student_zone"].mean() * 100,
+        )
+
+        # sector_median_rent: postcode-sector level implied rent anchor (v4.3.0)
+        if isinstance(lr_result, tuple):
+            _, _sector_medians = lr_result
+            if not _sector_medians.empty:
+                _sector_rent = _sector_medians[["postcode_sector", "implied_weekly_rent"]].rename(
+                    columns={"implied_weekly_rent": "sector_median_rent"}
+                )
+                df = df.merge(_sector_rent, on="postcode_sector", how="left")
+                _global_median = df["implied_weekly_rent"].median()
+                df["sector_median_rent"] = df["sector_median_rent"].fillna(_global_median)
+                logger.info("sector_median_rent: mean=£%.0f, std=£%.0f", df["sector_median_rent"].mean(), df["sector_median_rent"].std())
+            else:
+                df["sector_median_rent"] = df["implied_weekly_rent"].median()
+        else:
+            df["sector_median_rent"] = df["implied_weekly_rent"].fillna(350.0).median()
+
         # ── Handle nulls ────────────────────────────────────────────────
         # Critical features: drop rows missing floor area
         df = df.dropna(subset=["floor_area_m2"])
@@ -545,9 +607,43 @@ def build_features(db: Optional[Session] = None) -> pd.DataFrame:
         for col in ["num_rooms", "distance_to_town_km", "distance_to_uni_km", "distance_to_station_km"]:
             median_val = df[col].median()
             df[col] = df[col].fillna(median_val)
-            
-        # For actual_bedrooms, default to 2 if missing
-        df["actual_bedrooms"] = df["actual_bedrooms"].fillna(2).astype(int)
+
+        # price_drop_pct: 0.0 for properties without scraped listing data
+        # (only scraped properties have this; default = no historical price drop)
+        df["price_drop_pct"] = df["price_drop_pct"].fillna(0.0)
+
+        # For actual_bedrooms, estimate from EPC habitable rooms when NULL.
+        # Using constant 2 for all NULL rows means the model never sees bedroom
+        # variation across the ~98% non-scraped rows — this kills its ability to
+        # differentiate studios from 1-beds from 3-bed houses.
+        # Formula: Flats: max(0, num_rooms - 1); Houses: max(1, num_rooms - 2)
+        null_beds = df["actual_bedrooms"].isna()
+        if null_beds.sum() > 0:
+            num_rooms_series = df.loc[null_beds, "num_rooms"].fillna(3).astype(int)
+            is_flat_series = df.loc[null_beds, "ptype_Flat"].fillna(0).astype(int) \
+                if "ptype_Flat" in df.columns else pd.Series(0, index=df.index[null_beds])
+            flat_beds = (num_rooms_series - 1).clip(lower=0)
+            house_beds = (num_rooms_series - 2).clip(lower=1)
+            df.loc[null_beds, "actual_bedrooms"] = (
+                is_flat_series * flat_beds + (1 - is_flat_series) * house_beds
+            )
+            logger.info(
+                "actual_bedrooms: filled %d NULLs from EPC rooms (bedrooms dist: %s)",
+                null_beds.sum(),
+                df["actual_bedrooms"].value_counts().sort_index().to_dict(),
+            )
+        df["actual_bedrooms"] = df["actual_bedrooms"].astype(int)
+
+        # v4.6.0: m2_per_bedroom — floor area per bedroom (studios: full area / 1)
+        df["m2_per_bedroom"] = (
+            df["floor_area_m2"] / df["actual_bedrooms"].replace(0, 1)
+        ).round(1)
+
+        # v4.6.0: flat_floor_premium — floor_level_ordinal × ptype_Flat
+        # floor_level is near-zero importance for non-flats; this interaction term
+        # isolates the signal to flats only.
+        _ptype_flat = df["ptype_Flat"] if "ptype_Flat" in df.columns else pd.Series(0, index=df.index)
+        df["flat_floor_premium"] = (df["floor_level_ordinal"] * _ptype_flat).astype(float)
 
         # ── Select final feature columns ────────────────────────────────
         feature_cols = [
@@ -566,21 +662,34 @@ def build_features(db: Optional[Session] = None) -> pd.DataFrame:
             "is_hmo",
             "safety_score",
             "area_value_index",
-            "actual_bedrooms",       # v4.1.0: Real/Classifier-predicted bedrooms
+            "actual_bedrooms",           # v4.1.0: Real/Classifier-predicted bedrooms
+            "rooms_per_m2",              # v4.3.0: space efficiency (num_rooms / floor_area_m2)
             # ── New: Land Registry real data features ──────────────────────
-            "implied_weekly_rent",   # postcode-level real rent anchor (MODE C target)
-            "median_sale_price",     # absolute neighbourhood value (£)
-            "sale_count",            # market liquidity (how many sales we have data for)
-            "iphrp_growth_pct",      # South East rental growth trend (%)
+            "implied_weekly_rent",       # postcode-level real rent anchor (training target fallback)
+            "median_sale_price",         # absolute neighbourhood value (£)
+            "sale_count",                # market liquidity (how many sales we have data for)
+            "iphrp_growth_pct",          # South East rental growth trend (%)
+            # ── v4.3.0: Derived proximity + sector features ────────────────
+            "town_proximity_score",       # v4.4.0: Gaussian proximity to town, σ=1.5km [0,1]
+            "uni_proximity_score",        # v4.4.0: Gaussian proximity to uni, σ=1.5km [0,1]
+            "station_proximity_score",    # v4.6.0: Gaussian proximity to station, σ=1.5km [0,1]
+            "accessibility_score",        # v4.6.0: max(town, uni, station) [0,1]
+            "location_score",            # v4.3.0: max(town, uni) — kept for reference
+            "sector_median_rent",        # postcode-sector implied rent anchor (£/week)
             # ── v3.3.0: EPC-derived ML features ───────────────────────────
             "age_band_ordinal",          # construction era (0=pre-1900, 11=2012+)
             "has_mains_gas",             # 1=gas, 0=no gas
-            "floor_level_ordinal",       # -1=basement, 0=ground, 1=first...
+            "flat_floor_premium",        # v4.6.0: floor_level_ordinal × ptype_Flat (flats only)
             "annual_energy_cost",        # £/year running cost from EPC
             "energy_improvement_gap",    # potential - current EPC ordinal
             # ── v4.0.0: Scraped real rents and price drops ─────────────────
             "actual_market_rent_weekly", # ground-truth market targets
             "price_drop_pct",            # % price drops on listings
+            # ── v4.5.0: explicit studio flag ──────────────────────────────
+            "is_studio",                 # ptype_Flat AND actual_bedrooms==0
+            # ── v4.6.0: new interaction features ──────────────────────────
+            "is_student_zone",           # GU1/GU2=1 (student market), else 0
+            "m2_per_bedroom",            # floor_area_m2 / actual_bedrooms (space per bedroom)
         ]
         # Add one-hot property type columns
         ptype_cols = [c for c in df.columns if c.startswith("ptype_")]

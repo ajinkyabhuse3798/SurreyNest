@@ -5,6 +5,8 @@
  * @param {{ uprn: string }} props
  */
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
+import { Building2 } from 'lucide-react'
 import api from '../services/api'
 
 export default function ReviewList({ uprn }) {
@@ -79,6 +81,18 @@ export default function ReviewList({ uprn }) {
                             <span>£{review.weekly_rent_paid}/wk</span>
                         )}
                     </div>
+                    {review.agent_name && (
+                        <div className="flex items-center gap-1.5 mt-2 text-xs text-gray-500">
+                            <Building2 size={12} className="text-gray-400" />
+                            Managed by{' '}
+                            <Link
+                                to={`/agent/${review.agent_name}`}
+                                className="text-indigo-500 hover:text-indigo-700 font-medium"
+                            >
+                                {review.agent_name.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                            </Link>
+                        </div>
+                    )}
                 </div>
             ))}
 

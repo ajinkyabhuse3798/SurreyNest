@@ -46,7 +46,7 @@ MODEL_DIR = Path(__file__).resolve().parent / "models"
 MODEL_PATH = MODEL_DIR / "rent_model_v1.pkl"
 
 # ── Model version ────────────────────────────────────────────────────────────
-MODEL_VERSION = "v4.1.0"  # MODE H — XGBoost + actual_bedrooms + raw scraped market prices
+MODEL_VERSION = "v4.6.0"  # station_proximity + accessibility_score + is_student_zone + m2_per_bedroom + flat_floor_premium
 
 # Path to processed Land Registry CSV
 LAND_REGISTRY_CSV = Path(__file__).resolve().parents[2] / "data" / "processed" / "land_registry_guildford.csv"
@@ -87,24 +87,39 @@ def estimate_bedrooms(df: pd.DataFrame) -> pd.Series:
 
 
 def compute_real_target(df: pd.DataFrame) -> pd.Series:
-    """Compute rent target using Actual Market Rates scraped from portals (MODE H).
+    """Compute hybrid rent target (v4.3.0).
 
-    Uses `actual_market_rent_weekly` which represents true listed/achieved rents. 
-    Drops the outdated 'implied_weekly_rent' formula.
-    
+    Priority:
+      1. actual_market_rent_weekly (scraped from Zoopla/Rightmove — gold standard)
+      2. implied_weekly_rent (Land Registry proxy — fallback for ~98% of rows)
+
+    This hybrid approach expands training data from 261 scraped rows to ~18k rows,
+    using the Land Registry implied rent as a noisy but broad-coverage proxy.
+
     Args:
-        df: Feature DataFrame containing actual_market_rent_weekly.
+        df: Feature DataFrame.
 
     Returns:
-        Series of weekly rent targets.
+        Series of weekly rent targets (~18k rows vs 261 scraped-only).
     """
-    if "actual_market_rent_weekly" not in df.columns or df["actual_market_rent_weekly"].isna().all():
-        raise ValueError(
-            "actual_market_rent_weekly not found in features — "
-            "run scraped_rent_pipeline and features.py first"
+    target = df["actual_market_rent_weekly"].copy()
+    n_scraped = target.notna().sum()
+
+    if "implied_weekly_rent" in df.columns:
+        missing_mask = target.isna()
+        target[missing_mask] = df.loc[missing_mask, "implied_weekly_rent"]
+        n_filled = missing_mask.sum() - target.isna().sum()
+        logger.info(
+            "Hybrid target: %d scraped + %d implied = %d total training rows",
+            n_scraped, n_filled, target.notna().sum(),
         )
-        
-    return df["actual_market_rent_weekly"].copy()
+    else:
+        logger.warning("implied_weekly_rent missing — using scraped rents only (%d rows)", n_scraped)
+
+    if target.isna().all():
+        raise ValueError("No valid rent targets: both actual_market_rent_weekly and implied_weekly_rent are null")
+
+    return target
 
 
 def get_feature_columns(df: pd.DataFrame) -> list:
@@ -128,7 +143,6 @@ def get_feature_columns(df: pd.DataFrame) -> list:
     """
     feature_cols = [
         "floor_area_m2",
-        "num_rooms",                 # EPC habitable rooms
         "actual_bedrooms",           # v4.1.0: Sub-model / Ground Truth Bedrooms
         "rooms_per_m2",              # v3.0.0: space efficiency
         "energy_rating_ordinal",
@@ -136,16 +150,26 @@ def get_feature_columns(df: pd.DataFrame) -> list:
         "distance_to_town_km",
         "distance_to_uni_km",
         "distance_to_station_km",
+        "town_proximity_score",      # v4.4.0: Gaussian proximity to town, σ=1.5km
+        "uni_proximity_score",       # v4.4.0: Gaussian proximity to uni, σ=1.5km
+        "station_proximity_score",   # v4.6.0: Gaussian proximity to station, σ=1.5km
+        "accessibility_score",       # v4.6.0: max(town, uni, station) [0,1]
         "safety_score",
         "sale_count",
+        "sector_median_rent",        # v4.3.0: postcode-sector implied rent anchor
         # v3.3.0: new EPC-derived features
         "age_band_ordinal",          # construction era (0=pre-1900, 11=2012+)
         "has_mains_gas",             # 1=gas, 0=no gas
-        "floor_level_ordinal",       # floor level (-1=basement, 0=ground, etc.)
+        "flat_floor_premium",        # v4.6.0: floor_level_ordinal × ptype_Flat (flats only)
         "annual_energy_cost",        # £/year running cost from EPC
         "energy_improvement_gap",    # potential - current EPC ordinal
         # v4.0.0: Scraped real rents and price drops
         "price_drop_pct",            # % price drops on listings
+        # v4.5.0: explicit studio flag
+        "is_studio",                 # ptype_Flat AND actual_bedrooms==0
+        # v4.6.0: new interaction features
+        "is_student_zone",           # GU1/GU2=1 (student market), else 0
+        "m2_per_bedroom",            # floor_area_m2 / actual_bedrooms
     ]
 
     # Add one-hot property type columns
@@ -367,10 +391,23 @@ def run_training() -> Dict[str, float]:
     df = pd.read_csv(str(FEATURES_PATH))
     logger.info("Loaded feature matrix: shape=%s", df.shape)
 
+    # Save sector rent map (v4.3.0: used by predict.py for sector_median_rent feature)
+    from app.ml.features import load_land_registry_features
+    lr_result = load_land_registry_features()
+    if isinstance(lr_result, tuple) and len(lr_result) == 2:
+        lr_df, sector_medians = lr_result
+        if not sector_medians.empty:
+            sector_rent_map = dict(
+                zip(sector_medians["postcode_sector"], sector_medians["implied_weekly_rent"])
+            )
+            sector_map_path = MODEL_DIR / "sector_rent_map.json"
+            sector_map_path.write_text(json.dumps(sector_rent_map, indent=2))
+            logger.info("Saved sector rent map: %d sectors → %s", len(sector_rent_map), sector_map_path)
+
     # Train
     pipeline, metrics, feature_cols = train_model(df)
 
-    # Save versioned archive (e.g. rent_model_v3.2.0.pkl)
+    # Save versioned archive (e.g. rent_model_v4.3.0.pkl)
     versioned_path = MODEL_DIR / f"rent_model_{MODEL_VERSION}.pkl"
     save_model(pipeline, feature_cols, metrics, versioned_path)
 

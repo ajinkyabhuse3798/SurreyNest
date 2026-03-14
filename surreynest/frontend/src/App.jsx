@@ -30,6 +30,10 @@ const CheckListing = React.lazy(() => import('./pages/CheckListing'))
 const StreetSmarts = React.lazy(() => import('./pages/StreetSmarts'))
 const SafetyDetail = React.lazy(() => import('./pages/SafetyDetail'))
 const RentDetail = React.lazy(() => import('./pages/RentDetail'))
+const AgentDirectory = React.lazy(() => import('./pages/AgentDirectory'))
+const AgentDetail = React.lazy(() => import('./pages/AgentDetail'))
+const RentChallengePage = React.lazy(() => import('./pages/RentChallengePage'))
+const ContractChecker = React.lazy(() => import('./pages/ContractChecker'))
 
 // ── Route-level loading spinner ──────────────────────────────────────────────
 function RouteLoader() {
@@ -111,6 +115,10 @@ export default function App() {
                                         <Route path="/login" element={<Login />} />
                                         <Route path="/register" element={<Register />} />
                                         <Route path="/rights" element={<RightsGuide />} />
+                                        <Route path="/agent" element={<AgentDirectory />} />
+                                        <Route path="/agent/:agentName" element={<AgentDetail />} />
+                                        <Route path="/challenge-rent-increase" element={<RentChallengePage />} />
+                                        <Route path="/check-contract" element={<ContractChecker />} />
                                         <Route path="/admin" element={<RequireAuth adminOnly><AdminDashboard /></RequireAuth>} />
                                         <Route path="*" element={<NotFound />} />
                                     </Routes>

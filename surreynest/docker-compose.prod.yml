@@ -1,0 +1,84 @@
+# ─── SurreyNest Production Compose ────────────────────────────────────────────
+# Usage: docker-compose -f docker-compose.prod.yml up -d
+# Requires: POSTGRES_PASSWORD, SECRET_KEY set in environment or .env
+# ──────────────────────────────────────────────────────────────────────────────
+
+services:
+  # ─── PostgreSQL with PostGIS ─────────────────────────────────────────────
+  postgres:
+    image: postgis/postgis:15-3.4
+    container_name: surreynest-db
+    restart: always
+    environment:
+      POSTGRES_DB: surreynest
+      POSTGRES_USER: surreynest
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U surreynest -d surreynest" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # No ports exposed — only accessible from internal Docker network
+
+    # ─── Redis ──────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: surreynest-redis
+    restart: always
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # No ports exposed — only accessible from internal Docker network
+
+    # ─── FastAPI Backend ────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: surreynest-backend
+    restart: always
+    environment:
+      DATABASE_URL: postgresql://surreynest:${POSTGRES_PASSWORD}@postgres:5432/surreynest
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: ${SECRET_KEY}
+      ENVIRONMENT: production
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-https://surreynest.com}
+      ML_MODEL_VERSION: ${ML_MODEL_VERSION:-v4.4.0}
+      ML_MODEL_PATH: app/ml/models
+      EPC_API_USERNAME: ${EPC_API_USERNAME}
+      EPC_API_KEY: ${EPC_API_KEY}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
+    # No volume mounts — code is baked into the Docker image
+
+    # ─── Nginx Frontend ─────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
+    container_name: surreynest-frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+    name: surreynest_prod_postgres
+  redis_data:
+    name: surreynest_prod_redis

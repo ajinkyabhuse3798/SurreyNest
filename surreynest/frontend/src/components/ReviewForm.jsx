@@ -5,10 +5,11 @@
  *
  * @param {{ uprn: string, onSubmitted?: Function }} props
  */
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import api from '../services/api'
+import { suggestAgents } from '../services/agentApi'
 
 /** Rating selector row */
 function RatingSelect({ label, value, onChange }) {
@@ -43,6 +44,10 @@ export default function ReviewForm({ uprn, onSubmitted }) {
     const [text, setText] = useState('')
     const [rent, setRent] = useState('')
     const [moveInYear, setMoveInYear] = useState('')
+    const [agentName, setAgentName] = useState('')
+    const [suggestions, setSuggestions] = useState([])
+    const [showSuggestions, setShowSuggestions] = useState(false)
+    const debounceRef = useRef(null)
     const [submitting, setSubmitting] = useState(false)
     const [error, setError] = useState(null)
     const [success, setSuccess] = useState(false)
@@ -71,6 +76,20 @@ export default function ReviewForm({ uprn, onSubmitted }) {
         )
     }
 
+    function handleAgentInput(value) {
+        setAgentName(value)
+        clearTimeout(debounceRef.current)
+        if (value.trim().length >= 2) {
+            debounceRef.current = setTimeout(() => {
+                suggestAgents(value.trim())
+                    .then(setSuggestions)
+                    .catch(() => setSuggestions([]))
+            }, 300)
+        } else {
+            setSuggestions([])
+        }
+    }
+
     async function handleSubmit(e) {
         e.preventDefault()
         if (!overall || !landlord || !condition || !valueMoney) {
@@ -91,6 +110,7 @@ export default function ReviewForm({ uprn, onSubmitted }) {
                 review_text: text || undefined,
                 weekly_rent_paid: rent ? parseFloat(rent) : undefined,
                 move_in_year: moveInYear ? parseInt(moveInYear, 10) : undefined,
+                agent_name: agentName.trim() || undefined,
             }
             await api.post('/api/reviews', body)
             setSuccess(true)
@@ -164,6 +184,41 @@ export default function ReviewForm({ uprn, onSubmitted }) {
                         className="border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-indigo-600 transition-colors"
                     />
                 </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5 relative">
+                <label className="text-xs font-medium text-gray-700">
+                    Letting agent (optional)
+                </label>
+                <input
+                    type="text"
+                    value={agentName}
+                    onChange={e => handleAgentInput(e.target.value)}
+                    onFocus={() => setShowSuggestions(true)}
+                    onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                    placeholder="e.g. Cavenders"
+                    autoComplete="off"
+                    className="border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-indigo-600 transition-colors"
+                />
+                {showSuggestions && suggestions.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-md z-20 mt-1 max-h-48 overflow-y-auto">
+                        {suggestions.map(s => (
+                            <button
+                                key={s.name}
+                                type="button"
+                                onMouseDown={() => {
+                                    setAgentName(s.display_name)
+                                    setSuggestions([])
+                                    setShowSuggestions(false)
+                                }}
+                                className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center justify-between"
+                            >
+                                <span>{s.display_name}</span>
+                                <span className="text-xs text-gray-400">{s.review_count} reviews</span>
+                            </button>
+                        ))}
+                    </div>
+                )}
             </div>
 
             <button

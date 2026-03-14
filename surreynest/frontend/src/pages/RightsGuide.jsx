@@ -3,6 +3,8 @@
  * Accordion-style collapsible sections. Static content, no API calls.
  */
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
+import { Scale, FileSearch } from 'lucide-react'
 import Navbar from '../components/Navbar'
 
 const SECTIONS = [
@@ -145,6 +147,35 @@ export default function RightsGuide() {
                             </div>
                         </div>
                     ))}
+                </div>
+
+                {/* Tool CTAs */}
+                <div className="space-y-3 mt-8">
+                    <h2 className="text-lg font-semibold text-[#0A0A0A]">Useful Tools</h2>
+                    <Link
+                        to="/challenge-rent-increase"
+                        className="flex items-center gap-4 bg-amber-50 border border-amber-200 rounded-xl p-4 hover:bg-amber-100 transition-colors"
+                    >
+                        <Scale size={20} className="text-amber-600 flex-shrink-0" />
+                        <div>
+                            <p className="text-sm font-semibold text-amber-800">Received a rent increase notice?</p>
+                            <p className="text-xs text-amber-600 mt-0.5">
+                                Use our Section 13 challenge tool — ML analysis + tribunal brief generator
+                            </p>
+                        </div>
+                    </Link>
+                    <Link
+                        to="/check-contract"
+                        className="flex items-center gap-4 bg-violet-50 border border-violet-200 rounded-xl p-4 hover:bg-violet-100 transition-colors"
+                    >
+                        <FileSearch size={20} className="text-violet-600 flex-shrink-0" />
+                        <div>
+                            <p className="text-sm font-semibold text-violet-800">About to sign a tenancy agreement?</p>
+                            <p className="text-xs text-violet-600 mt-0.5">
+                                Run it through our AI contract checker — spots illegal clauses before you sign
+                            </p>
+                        </div>
+                    </Link>
                 </div>
 
                 <div className="border-t border-gray-100 mt-8 pt-6">

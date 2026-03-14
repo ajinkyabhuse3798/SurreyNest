@@ -20,7 +20,19 @@
       "Bash(open:*)",
       "Bash(python3:*)",
       "Bash(docker-compose up:*)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Bash(docker-compose:*)",
+      "WebSearch",
+      "Bash(cd \"/Users/ajinkyabhuse/Downloads/Aj Projects/surreynest/backend\" && python -m pytest -v tests/test_agents.py tests/test_rent_challenge.py tests/test_contract.py 2>&1)",
+      "Bash(pip install:*)",
+      "Bash(cd \"/Users/ajinkyabhuse/Downloads/Aj Projects/surreynest/frontend\" && npm run build 2>&1)",
+      "Bash(cd \"/Users/ajinkyabhuse/Downloads/Aj Projects/surreynest/frontend\" && npm install pdfjs-dist --save 2>&1 | tail -5)",
+      "Bash(mkdir -p \"/Users/ajinkyabhuse/.claude/projects/-Users-ajinkyabhuse-Downloads-Aj-Projects/memory\" && cat > \"/Users/ajinkyabhuse/.claude/projects/-Users-ajinkyabhuse-Downloads-Aj-Projects/memory/project_surreynest_db.md\" << 'EOF'\n---\nname: SurreyNest DB credentials\ndescription: PostgreSQL credentials and test setup for SurreyNest docker-compose stack\ntype: project\n---\n\n## Database Credentials\n- User: `surreynest`\n- Password: `2468`\n- Dev DB: `surreynest` on host `postgres` \\(docker-compose service name\\)\n- Test DB: `surreynest_test` on host `postgres`\n\n## Running Tests in Container\n```bash\ndocker exec -w /app \\\\\n  -e TEST_DATABASE_URL=\"postgresql://surreynest:2468@postgres:5432/surreynest_test\" \\\\\n  surreynest-backend \\\\\n  python -m pytest -v tests/\n```\n\n## Copying Files to Container\nSince only `backend/data` is volume-mounted, new Python files must be copied:\n```bash\ndocker cp path/to/file.py surreynest-backend:/app/app/.../file.py\n```\n\n## Alembic Migrations\nMigration files must also be copied into the container before running upgrade:\n```bash\ndocker cp backend/alembic/versions/xxx.py surreynest-backend:/app/alembic/versions/\ndocker exec surreynest-backend alembic upgrade head\n```\nEOF\necho \"Saved\")",
+      "Bash(docker cp:*)",
+      "Bash(echo \"=== Test 1: GET /api/agents ===\"\ncurl -s http://localhost:8000/api/agents\n\necho \"\"\necho \"=== Test 2: POST /api/rent/challenge-increase ===\"\ncurl -s -X POST http://localhost:8000/api/rent/challenge-increase \\\\\n  -H \"Content-Type: application/json\" \\\\\n  -d '{\"postcode\":\"GU2 7XH\",\"current_weekly_rent\":200,\"proposed_weekly_rent\":260}'\n\necho \"\"\necho \"=== Test 3: POST /api/contract/check ===\"\ncurl -s -X POST http://localhost:8000/api/contract/check \\\\\n  -H \"Content-Type: application/json\" \\\\\n  -d '{\"contract_text\":\"This is a test tenancy agreement with more than 100 characters for the minimum length requirement\"}')",
+      "Bash(cd \"/Users/ajinkyabhuse/Downloads/Aj Projects/surreynest/frontend\" && npm run build 2>&1 | tail -30)",
+      "Bash(curl -s http://localhost:8000/health && echo \"\" && curl -s http://localhost:8000/api/agents | python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('agents endpoint:', 'OK', type\\(d\\)\\)\" && curl -s -X POST http://localhost:8000/api/rent/challenge-increase -H \"Content-Type: application/json\" -d '{\"postcode\":\"GU1 3AY\",\"current_weekly_rent\":180,\"proposed_weekly_rent\":240}' | python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('sector:', d.get\\('postcode_sector'\\), '| ml_predicted:', d.get\\('ml_predicted_rent'\\), '| verdict:', d.get\\('verdict'\\)\\)\")",
+      "Bash(echo \"=== FRONTEND ===\" && \\\\\nlsof -i :5173 -i :5174 2>/dev/null | grep LISTEN && \\\\\necho \"\" && \\\\\necho \"Build check:\" && \\\\\ncd \"/Users/ajinkyabhuse/Downloads/Aj Projects/surreynest/frontend\" && npm run build 2>&1 | grep -E \"\\(built in|error|Error|warning\\)\" | head -10)"
     ]
   }
 }

@@ -29,12 +29,19 @@ class ReviewCreate(BaseModel):
     weekly_rent_paid: Optional[float] = Field(default=None, gt=0)
     move_in_year: Optional[int] = Field(default=None, ge=2000, le=2030)
     review_text: str = Field(min_length=50, max_length=1000)
+    agent_name: Optional[str] = None
 
     @field_validator("review_text")
     @classmethod
     def strip_review_text(cls, v: str) -> str:
         """Strip whitespace from review text."""
         return v.strip()
+
+    @field_validator("agent_name")
+    @classmethod
+    def normalise_agent_name(cls, v: Optional[str]) -> Optional[str]:
+        """Normalise agent name to lowercase slug."""
+        return v.lower().strip() if v else None
 
 
 class ReviewResponse(BaseModel):
@@ -64,6 +71,7 @@ class ReviewResponse(BaseModel):
     value_rating: int
     weekly_rent_paid: Optional[float] = None
     move_in_year: Optional[int] = None
+    agent_name: Optional[str] = None
     review_text: str
     created_at: datetime
     is_moderated: bool

@@ -3,19 +3,25 @@
  * Auth-aware: shows Sign in/Register or user links based on auth state.
  * Uses framer-motion for smooth mobile menu animation.
  */
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Menu, X } from 'lucide-react'
+import { Menu, X, ChevronDown } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 
 const NAV_LINKS = [
     { to: '/search', label: 'Search' },
     { to: '/best-streets', label: 'Best Streets' },
-    { to: '/check-listing', label: 'Check Listing' },
     { to: '/compare', label: 'Compare' },
     { to: '/rights', label: 'Rights Guide' },
     { to: '/about', label: 'About' },
+]
+
+const TOOLS_LINKS = [
+    { to: '/check-listing', label: 'Check Listing' },
+    { to: '/agent', label: 'Agent Tracker' },
+    { to: '/challenge-rent-increase', label: 'Challenge Rent Increase' },
+    { to: '/check-contract', label: 'Check Contract' },
 ]
 
 export default function Navbar() {
@@ -23,6 +29,18 @@ export default function Navbar() {
     const navigate = useNavigate()
     const location = useLocation()
     const [mobileOpen, setMobileOpen] = useState(false)
+    const [toolsOpen, setToolsOpen] = useState(false)
+    const dropdownRef = useRef(null)
+
+    useEffect(() => {
+        function handleClickOutside(e) {
+            if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+                setToolsOpen(false)
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [])
 
     function handleLogout() {
         logout()
@@ -57,6 +75,43 @@ export default function Navbar() {
                             {label}
                         </Link>
                     ))}
+
+                    {/* Tools dropdown */}
+                    <div className="relative" ref={dropdownRef}>
+                        <button
+                            onClick={() => setToolsOpen(o => !o)}
+                            className={`flex items-center gap-1 text-sm px-3 py-2 rounded-lg transition-colors ${
+                                toolsOpen ? 'text-indigo-600 bg-indigo-50 font-medium' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                            }`}
+                        >
+                            Tools
+                            <ChevronDown size={14} className={`transition-transform ${toolsOpen ? 'rotate-180' : ''}`} />
+                        </button>
+                        <AnimatePresence>
+                            {toolsOpen && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: -8 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -8 }}
+                                    transition={{ duration: 0.15 }}
+                                    className="absolute top-full right-0 mt-1 w-52 bg-white rounded-xl border border-gray-200 shadow-lg py-1 z-50"
+                                >
+                                    {TOOLS_LINKS.map(({ to, label }) => (
+                                        <Link
+                                            key={to}
+                                            to={to}
+                                            onClick={() => setToolsOpen(false)}
+                                            className={`block text-sm px-4 py-2.5 transition-colors ${
+                                                isActive(to) ? 'text-indigo-600 bg-indigo-50 font-medium' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                                            }`}
+                                        >
+                                            {label}
+                                        </Link>
+                                    ))}
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
                 </div>
 
                 {/* Desktop auth + mobile hamburger */}
@@ -133,6 +188,24 @@ export default function Navbar() {
                                     {label}
                                 </Link>
                             ))}
+
+                            <div className="border-t border-gray-100 pt-2 mt-1">
+                                <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest px-3 py-1.5">
+                                    Tools
+                                </p>
+                                {TOOLS_LINKS.map(({ to, label }) => (
+                                    <Link
+                                        key={to}
+                                        to={to}
+                                        onClick={() => setMobileOpen(false)}
+                                        className={`block text-sm px-3 py-2.5 rounded-lg transition-colors ${
+                                            isActive(to) ? 'text-indigo-600 bg-indigo-50 font-medium' : 'text-gray-600 hover:bg-gray-50'
+                                        }`}
+                                    >
+                                        {label}
+                                    </Link>
+                                ))}
+                            </div>
 
                             <div className="border-t border-gray-100 pt-2 mt-2">
                                 {user ? (
