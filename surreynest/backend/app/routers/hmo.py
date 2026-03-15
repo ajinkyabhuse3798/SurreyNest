@@ -7,12 +7,13 @@ Returns status as "licensed", "expired", or "not_found".
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.hmo_record import HmoRecord
 from app.models.property import Property
+from app.rate_limit import limiter
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,9 @@ router = APIRouter()
     "/hmo/check",
     summary="Check HMO status for a property",
 )
+@limiter.limit("60/minute")
 async def check_hmo_status(
+    request: Request,
     uprn: Optional[str] = Query(None, description="Property UPRN to check"),
     postcode: Optional[str] = Query(None, description="Postcode to check"),
     db: Session = Depends(get_db),

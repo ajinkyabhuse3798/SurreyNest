@@ -17,12 +17,13 @@ import math
 from datetime import datetime, timezone
 from typing import List
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.cache import get_json, set_json
 from app.database import get_db
+from app.rate_limit import limiter
 from app.schemas.leaderboard import LeaderboardResponse, ScorePillar, StreetRank
 from app.services.score_service import get_safety_score
 
@@ -305,7 +306,9 @@ def _build_leaderboard(db: Session, district: str, limit: int) -> LeaderboardRes
     response_model=LeaderboardResponse,
     summary="Top-ranked streets by composite student score",
 )
+@limiter.limit("30/minute")
 async def get_street_leaderboard(
+    request: Request,
     district: str = Query("GU2", description="Postcode district, e.g. GU1 or GU2"),
     limit: int = Query(10, ge=1, le=50, description="Max streets to return"),
     db: Session = Depends(get_db),

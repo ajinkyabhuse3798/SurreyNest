@@ -16,11 +16,12 @@ from typing import Dict, List, Optional
 
 import numpy as np
 import xgboost as xgb_lib
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database import get_db
+from app.rate_limit import limiter
 from app.models import Property
 from app.models.hmo_record import HmoRecord
 from app.models.area_value import AreaValue
@@ -194,8 +195,11 @@ def _format_feature_value(feature_name: str, raw_value: float) -> str:
     "/rent/explain/{uprn}",
     summary="Explain rent prediction for a property (XAI)",
 )
+@limiter.limit("30/minute")
 async def explain_rent_prediction(
-    uprn: str, db: Session = Depends(get_db),
+    request: Request,
+    uprn: str,
+    db: Session = Depends(get_db),
 ):
     """Get a detailed explanation of how the ML model predicted rent.
 

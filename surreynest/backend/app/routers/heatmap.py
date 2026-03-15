@@ -10,13 +10,14 @@ import logging
 from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 from sqlalchemy import func, case, literal_column
 from sqlalchemy.orm import Session
 
 from app.cache import get_json, set_json
 from app.database import get_db
+from app.rate_limit import limiter
 from app.models.crime_data import CrimeData
 from app.models.hmo_record import HmoRecord
 from app.models.property import Property
@@ -234,7 +235,8 @@ def _build_heatmap_data(db: Session) -> dict:
     response_model=HeatmapResponse,
     summary="Aggregated sector data for the NeighbourhoodPulse heatmap",
 )
-async def get_heatmap_sectors(db: Session = Depends(get_db)) -> HeatmapResponse:
+@limiter.limit("30/minute")
+async def get_heatmap_sectors(request: Request, db: Session = Depends(get_db)) -> HeatmapResponse:
     """Return aggregated rent, safety, and HMO data per postcode sector.
 
     Cached in Redis for 10 minutes since underlying data only changes weekly.

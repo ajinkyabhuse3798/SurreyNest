@@ -44,7 +44,7 @@ export default function TribunalBrief({ brief }) {
                     </button>
                     <button
                         onClick={handleDownload}
-                        className="flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-700 border border-indigo-200 rounded-lg px-3 py-1.5 hover:bg-indigo-50 transition-colors"
+                        className="flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/90 border border-primary/20 rounded-lg px-3 py-1.5 hover:bg-primary/10 transition-colors"
                     >
                         <Download size={13} />
                         Download .txt

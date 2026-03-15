@@ -182,7 +182,7 @@ function MonthlyChart({ data, trend }) {
                                 <span className="text-[10px] font-bold text-slate-600 mb-0.5">{d.count}</span>
                                 {/* Bar — fixed pixel height */}
                                 <div
-                                    className={`w-full rounded-t-sm transition-all duration-500 ${d.count > 0 ? 'bg-indigo-400' : 'bg-slate-200'}`}
+                                    className={`w-full rounded-t-sm transition-all duration-500 ${d.count > 0 ? 'bg-primary-400' : 'bg-slate-200'}`}
                                     style={{ height: `${barPx}px`, transitionDelay: `${i * 50}ms` }}
                                 />
                                 {/* Month label */}
@@ -321,10 +321,10 @@ function StudentSafety({ data }) {
     const starColor = stars >= 4 ? 'text-emerald-500' : stars >= 3 ? 'text-amber-500' : 'text-red-500'
 
     return (
-        <div className="bg-gradient-to-br from-indigo-50 to-violet-50/60 rounded-xl p-4 border border-indigo-200/60">
+        <div className="bg-gradient-to-br from-primary-50 to-primary-50/60 rounded-xl p-4 border border-primary/20/60">
             <div className="flex items-center gap-2 mb-3">
-                <GraduationCap size={16} className="text-indigo-600" />
-                <span className="text-xs font-bold text-indigo-800 uppercase tracking-wider">Is this area good for students?</span>
+                <GraduationCap size={16} className="text-primary" />
+                <span className="text-xs font-bold text-primary-800 uppercase tracking-wider">Is this area good for students?</span>
             </div>
 
             {/* Emoji + verdict */}
@@ -345,7 +345,7 @@ function StudentSafety({ data }) {
 
             {/* Category tags with plain labels */}
             {data.impacts?.length > 0 && (
-                <div className="mt-3 pt-3 border-t border-indigo-200/40">
+                <div className="mt-3 pt-3 border-t border-primary/20/40">
                     <p className="text-[10px] text-slate-500 mb-1.5">What matters for students specifically:</p>
                     <div className="flex flex-wrap gap-1.5">
                         {data.impacts.slice(0, 4).map((imp) => (
@@ -382,7 +382,7 @@ function TrainStations({ lat, lng }) {
     return (
         <div className="bg-white rounded-xl border border-slate-200/60 p-4">
             <div className="flex items-center gap-2 mb-3">
-                <Train size={16} className="text-indigo-600" />
+                <Train size={16} className="text-primary" />
                 <h3 className="text-xs font-bold text-slate-600 uppercase tracking-wider">Nearest Train Stations</h3>
             </div>
             <div className="space-y-3">
@@ -390,15 +390,15 @@ function TrainStations({ lat, lng }) {
                     const walkMin = Math.round(s.distance / 5 * 60) // ~5 km/h walking
                     return (
                         <div key={s.name} className="flex items-start gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center flex-shrink-0">
-                                <Train size={14} className="text-indigo-600" />
+                            <div className="w-8 h-8 rounded-lg bg-primary-100 flex items-center justify-center flex-shrink-0">
+                                <Train size={14} className="text-primary" />
                             </div>
                             <div className="flex-1 min-w-0">
                                 <p className="text-sm font-semibold text-slate-800">{s.name}</p>
                                 <p className="text-xs text-slate-500">{s.lines}</p>
                             </div>
                             <div className="text-right flex-shrink-0">
-                                <p className="text-sm font-bold text-indigo-600">{s.distance.toFixed(1)} km</p>
+                                <p className="text-sm font-bold text-primary">{s.distance.toFixed(1)} km</p>
                                 <p className="text-[10px] text-slate-400">~{walkMin} min walk</p>
                             </div>
                         </div>
@@ -499,13 +499,13 @@ export default function SafetyIntelligence({ postcode, lat, lng }) {
             {/* ── Expandable: Student-specific insights ──────────────────── */}
             <button
                 onClick={() => setExpanded(!expanded)}
-                className="w-full flex items-center justify-between bg-indigo-50/60 hover:bg-indigo-50 rounded-xl px-4 py-3.5 border border-indigo-200/60 transition-colors"
+                className="w-full flex items-center justify-between bg-primary/10/60 hover:bg-primary/10 rounded-xl px-4 py-3.5 border border-primary/20/60 transition-colors"
             >
-                <span className="text-xs font-bold text-indigo-700 uppercase tracking-wider flex items-center gap-1.5">
-                    <GraduationCap size={14} className="text-indigo-500" />
+                <span className="text-xs font-bold text-primary/90 uppercase tracking-wider flex items-center gap-1.5">
+                    <GraduationCap size={14} className="text-primary/80" />
                     Is this area good for students?
                 </span>
-                <ChevronDown size={16} className={`text-indigo-400 transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`} />
+                <ChevronDown size={16} className={`text-primary-400 transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`} />
             </button>
 
             {expanded && (

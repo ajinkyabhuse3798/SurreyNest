@@ -24,7 +24,7 @@ export default function InfoTip({ text, className = '' }) {
         <span ref={ref} className={`relative inline-flex items-center ${className}`}>
             <button
                 onClick={() => setOpen((o) => !o)}
-                className="p-1.5 -m-1 text-gray-400 hover:text-indigo-600 transition-colors"
+                className="p-1.5 -m-1 text-gray-400 hover:text-primary transition-colors"
                 aria-label="More information"
                 type="button"
             >

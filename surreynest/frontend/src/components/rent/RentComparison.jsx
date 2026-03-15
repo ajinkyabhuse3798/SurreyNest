@@ -37,10 +37,10 @@ export default function RentComparison({ predicted, comparison }) {
     return (
         <div className="space-y-4">
             {/* Predicted rent highlight */}
-            <div className="text-center bg-gradient-to-r from-indigo-50 to-violet-50 rounded-xl px-4 py-4 border border-indigo-200/60">
-                <p className="text-xs text-indigo-500 font-medium">Our AI predicts</p>
-                <p className="text-3xl font-black text-indigo-700">£{Math.round(predicted)}<span className="text-base font-medium text-indigo-400">/week</span></p>
-                <p className="text-xs text-indigo-400 mt-1">£{Math.round(predicted * 52 / 12)}/month</p>
+            <div className="text-center bg-gradient-to-r from-primary-50 to-primary-50 rounded-xl px-4 py-4 border border-primary/20/60">
+                <p className="text-xs text-primary/80 font-medium">Our AI predicts</p>
+                <p className="text-3xl font-black text-primary/90">£{Math.round(predicted)}<span className="text-base font-medium text-primary-400">/week</span></p>
+                <p className="text-xs text-primary-400 mt-1">£{Math.round(predicted * 52 / 12)}/month</p>
             </div>
 
             {/* Comparison bars */}

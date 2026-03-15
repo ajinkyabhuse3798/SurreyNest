@@ -183,13 +183,13 @@ function SearchModal({ onSelect, onClose, existingUprns }) {
                             onChange={(e) => setQuery(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && doSearch()}
                             placeholder="Enter postcode (e.g. GU2 7XH)"
-                            className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                             autoFocus
                         />
                         <button
                             onClick={doSearch}
                             disabled={searching}
-                            className="bg-indigo-600 text-white rounded-lg px-3 py-2 text-sm hover:bg-indigo-700 disabled:opacity-50"
+                            className="bg-primary text-white rounded-lg px-3 py-2 text-sm hover:bg-primary/90 disabled:opacity-50"
                         >
                             <Search size={16} />
                         </button>
@@ -199,7 +199,7 @@ function SearchModal({ onSelect, onClose, existingUprns }) {
                 <div className="flex-1 overflow-y-auto px-4 py-2">
                     {searching && (
                         <div className="text-center py-8">
-                            <div className="inline-block w-5 h-5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                            <div className="inline-block w-5 h-5 border-2 border-primary-600 border-t-transparent rounded-full animate-spin" />
                         </div>
                     )}
                     {!searching && results.length === 0 && query && (
@@ -214,13 +214,13 @@ function SearchModal({ onSelect, onClose, existingUprns }) {
                                 disabled={already}
                                 className={`w-full text-left p-3 rounded-lg mb-1 transition-colors ${already
                                     ? 'bg-gray-50 opacity-50 cursor-not-allowed'
-                                    : 'hover:bg-indigo-50 cursor-pointer'
+                                    : 'hover:bg-primary/10 cursor-pointer'
                                     }`}
                             >
                                 <p className="text-sm font-medium text-gray-900 truncate">{p.address}</p>
                                 <p className="text-xs text-gray-500 mt-0.5">
                                     {p.postcode} · {p.property_type || 'Property'} · {p.num_rooms || '?'} bed
-                                    {already && <span className="ml-2 text-indigo-500 font-medium">Already added</span>}
+                                    {already && <span className="ml-2 text-primary/80 font-medium">Already added</span>}
                                 </p>
                             </button>
                         )
@@ -312,7 +312,7 @@ export default function CompareProperties() {
             <main className="min-h-screen bg-white">
                 <Navbar />
                 <div className="max-w-5xl mx-auto px-4 py-12 text-center">
-                    <div className="inline-block w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                    <div className="inline-block w-6 h-6 border-2 border-primary-600 border-t-transparent rounded-full animate-spin" />
                     <p className="text-sm text-gray-400 mt-3">Loading properties…</p>
                 </div>
             </main>
@@ -326,7 +326,7 @@ export default function CompareProperties() {
                 <Navbar />
                 <div className="max-w-5xl mx-auto px-4 py-12">
                     <div className="text-center max-w-md mx-auto">
-                        <ArrowLeftRight size={40} className="mx-auto text-indigo-300 mb-4" />
+                        <ArrowLeftRight size={40} className="mx-auto text-primary-300 mb-4" />
                         <h1 className="text-xl font-semibold text-gray-900 mb-2">Compare Properties</h1>
                         <p className="text-sm text-gray-500 mb-6">
                             Add at least 2 properties to compare side by side.
@@ -334,7 +334,7 @@ export default function CompareProperties() {
                         <div className="flex flex-col sm:flex-row gap-3 justify-center">
                             <Link
                                 to="/search"
-                                className="inline-flex items-center justify-center gap-2 bg-indigo-600 text-white text-sm px-5 py-2.5 rounded-lg hover:bg-indigo-700 transition-colors"
+                                className="inline-flex items-center justify-center gap-2 bg-primary text-white text-sm px-5 py-2.5 rounded-lg hover:bg-primary/90 transition-colors"
                             >
                                 <Search size={16} /> Search Properties
                             </Link>
@@ -387,7 +387,7 @@ export default function CompareProperties() {
                             <ArrowLeft size={12} /> Back to Search
                         </Link>
                         <h1 className="text-xl font-semibold text-gray-900 md:text-2xl flex items-center gap-2">
-                            <ArrowLeftRight size={20} className="text-indigo-600" />
+                            <ArrowLeftRight size={20} className="text-primary" />
                             Compare Properties
                         </h1>
                     </div>
@@ -424,7 +424,7 @@ export default function CompareProperties() {
                                     <th key={p.uprn} className="text-left py-4 px-4 min-w-[180px]">
                                         <Link
                                             to={`/property/${p.uprn}`}
-                                            className="text-sm font-semibold text-indigo-600 hover:text-indigo-800"
+                                            className="text-sm font-semibold text-primary hover:text-primary-800"
                                         >
                                             {shortAddress(p.address)}
                                         </Link>
@@ -442,9 +442,9 @@ export default function CompareProperties() {
                                     <th className="text-center py-4 px-4 min-w-[120px]">
                                         <button
                                             onClick={() => setShowModal(true)}
-                                            className="inline-flex flex-col items-center gap-1 text-gray-400 hover:text-indigo-600 transition-colors group"
+                                            className="inline-flex flex-col items-center gap-1 text-gray-400 hover:text-primary transition-colors group"
                                         >
-                                            <span className="w-10 h-10 rounded-full border-2 border-dashed border-gray-300 group-hover:border-indigo-400 flex items-center justify-center transition-colors">
+                                            <span className="w-10 h-10 rounded-full border-2 border-dashed border-gray-300 group-hover:border-primary-400 flex items-center justify-center transition-colors">
                                                 <Plus size={16} />
                                             </span>
                                             <span className="text-[10px] font-medium">Add property</span>

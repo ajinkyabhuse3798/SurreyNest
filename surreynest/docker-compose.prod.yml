@@ -27,10 +27,11 @@ services:
     image: redis:7-alpine
     container_name: surreynest-redis
     restart: always
+    command: redis-server --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD must be set}
     volumes:
       - redis_data:/data
     healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
+      test: [ "CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -45,7 +46,7 @@ services:
     restart: always
     environment:
       DATABASE_URL: postgresql://surreynest:${POSTGRES_PASSWORD}@postgres:5432/surreynest
-      REDIS_URL: redis://redis:6379/0
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       SECRET_KEY: ${SECRET_KEY}
       ENVIRONMENT: production
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-https://surreynest.com}
@@ -53,13 +54,19 @@ services:
       ML_MODEL_PATH: app/ml/models
       EPC_API_USERNAME: ${EPC_API_USERNAME}
       EPC_API_KEY: ${EPC_API_KEY}
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
     # No volume mounts — code is baked into the Docker image
 

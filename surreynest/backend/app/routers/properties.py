@@ -137,7 +137,9 @@ async def search_properties(
     response_model=PropertyDetail,
     summary="Get full property detail",
 )
+@limiter.limit("60/minute")
 async def get_property(
+    request: Request,
     uprn: str,
     db: Session = Depends(get_db),
 ) -> PropertyDetail:

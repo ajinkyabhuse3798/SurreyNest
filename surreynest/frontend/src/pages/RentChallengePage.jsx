@@ -11,6 +11,7 @@ import ComparablesTable from '../components/rent_challenge/ComparablesTable'
 import TribunalBrief from '../components/rent_challenge/TribunalBrief'
 import { analyseRentIncrease } from '../services/rentChallengeApi'
 import { Scale } from 'lucide-react'
+import ProGate from '../components/ProGate'
 
 export default function RentChallengePage() {
     const [searchParams] = useSearchParams()
@@ -44,8 +45,8 @@ export default function RentChallengePage() {
             <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
                 {/* Header */}
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
-                        <Scale size={20} className="text-indigo-600" />
+                    <div className="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center">
+                        <Scale size={20} className="text-primary" />
                     </div>
                     <div>
                         <h1 className="text-2xl font-extrabold text-slate-900">Challenge a Rent Increase</h1>
@@ -70,15 +71,19 @@ export default function RentChallengePage() {
 
                 {result && (
                     <div ref={resultsRef} className="space-y-5">
-                        <VerdictCard result={result} />
+                        <ProGate feature="Section 13 rent challenge verdict and Tribunal brief">
+                            <div className="space-y-5">
+                                <VerdictCard result={result} />
 
-                        <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
-                            <ComparablesTable comparables={result.comparables} />
-                        </div>
+                                <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
+                                    <ComparablesTable comparables={result.comparables} />
+                                </div>
 
-                        <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
-                            <TribunalBrief brief={result.tribunal_brief} />
-                        </div>
+                                <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
+                                    <TribunalBrief brief={result.tribunal_brief} />
+                                </div>
+                            </div>
+                        </ProGate>
                     </div>
                 )}
 
@@ -86,11 +91,11 @@ export default function RentChallengePage() {
                 <p className="text-xs text-slate-400 text-center border-t border-slate-100 pt-4">
                     This analysis is based on ML predictions and public Land Registry data.
                     It is <strong>not legal advice</strong>. For legal guidance, contact{' '}
-                    <a href="https://www.citizensadvice.org.uk" target="_blank" rel="noopener noreferrer" className="text-indigo-500 hover:underline">
+                    <a href="https://www.citizensadvice.org.uk" target="_blank" rel="noopener noreferrer" className="text-primary/80 hover:underline">
                         Citizens Advice
                     </a>{' '}
                     or{' '}
-                    <a href="https://england.shelter.org.uk" target="_blank" rel="noopener noreferrer" className="text-indigo-500 hover:underline">
+                    <a href="https://england.shelter.org.uk" target="_blank" rel="noopener noreferrer" className="text-primary/80 hover:underline">
                         Shelter
                     </a>.
                 </p>

@@ -46,7 +46,7 @@ export default function AgentDetail() {
 
                 {loading && (
                     <div className="flex items-center justify-center py-20">
-                        <div className="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                        <div className="w-6 h-6 border-2 border-primary-600 border-t-transparent rounded-full animate-spin" />
                     </div>
                 )}
 
@@ -65,7 +65,7 @@ export default function AgentDetail() {
                                 href={agent.website}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center gap-2 text-sm text-indigo-600 hover:text-indigo-700"
+                                className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/90"
                             >
                                 <ExternalLink size={14} />
                                 Visit website

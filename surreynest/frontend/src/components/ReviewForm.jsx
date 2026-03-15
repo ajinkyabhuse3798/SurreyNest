@@ -23,7 +23,7 @@ function RatingSelect({ label, value, onChange }) {
                         type="button"
                         onClick={() => onChange(n)}
                         className={`w-10 h-10 rounded-lg text-sm font-medium transition-colors ${value === n
-                                ? 'bg-indigo-600 text-white'
+                                ? 'bg-primary text-white'
                                 : 'border border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
                             }`}
                     >
@@ -60,7 +60,7 @@ export default function ReviewForm({ uprn, onSubmitted }) {
                 </p>
                 <Link
                     to="/login"
-                    className="text-sm bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition-colors inline-block"
+                    className="text-sm bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary/90 transition-colors inline-block"
                 >
                     Sign in
                 </Link>
@@ -151,7 +151,7 @@ export default function ReviewForm({ uprn, onSubmitted }) {
                     rows={3}
                     maxLength={2000}
                     placeholder="Share your experience..."
-                    className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm placeholder:text-gray-400 focus:outline-none focus:border-indigo-600 transition-colors resize-none"
+                    className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm placeholder:text-gray-400 focus:outline-none focus:border-primary-600 transition-colors resize-none"
                 />
             </div>
 
@@ -167,7 +167,7 @@ export default function ReviewForm({ uprn, onSubmitted }) {
                         min="0"
                         step="0.01"
                         placeholder="e.g. 150"
-                        className="border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-indigo-600 transition-colors"
+                        className="border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-primary-600 transition-colors"
                     />
                 </div>
                 <div className="flex flex-col gap-1.5 flex-1">
@@ -181,7 +181,7 @@ export default function ReviewForm({ uprn, onSubmitted }) {
                         min="2000"
                         max="2030"
                         placeholder="e.g. 2024"
-                        className="border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-indigo-600 transition-colors"
+                        className="border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-primary-600 transition-colors"
                     />
                 </div>
             </div>
@@ -198,7 +198,7 @@ export default function ReviewForm({ uprn, onSubmitted }) {
                     onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
                     placeholder="e.g. Cavenders"
                     autoComplete="off"
-                    className="border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-indigo-600 transition-colors"
+                    className="border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-primary-600 transition-colors"
                 />
                 {showSuggestions && suggestions.length > 0 && (
                     <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-md z-20 mt-1 max-h-48 overflow-y-auto">
@@ -224,7 +224,7 @@ export default function ReviewForm({ uprn, onSubmitted }) {
             <button
                 type="submit"
                 disabled={submitting}
-                className="bg-indigo-600 text-white rounded-lg px-6 py-3 text-sm font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                className="bg-primary text-white rounded-lg px-6 py-3 text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
             >
                 {submitting ? 'Submitting...' : 'Submit review'}
             </button>

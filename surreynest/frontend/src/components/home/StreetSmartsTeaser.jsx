@@ -1,28 +1,27 @@
 /**
  * StreetSmartsTeaser — Leaderboard teaser with mini pillar score bars.
- * Fetches top 3 streets from the leaderboard API (no hardcoded data).
+ * Fetches top 3 streets from the leaderboard API.
+ * Updated for Stitch branding: amber primary palette.
  *
  * API: GET /api/leaderboard/streets?district=GU2&limit=3
  */
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
-import { Trophy, ArrowRight } from 'lucide-react'
 import api from '../../services/api'
-import { AnimatedSection, fadeUp } from '../../utils/homeData'
 
 const RANK_EMOJIS = ['🥇', '🥈', '🥉']
 
 const PILLAR_COLOURS = {
     Safety: 'bg-emerald-400',
-    Value: 'bg-blue-400',
-    Proximity: 'bg-violet-400',
+    Value: 'bg-amber-400',
+    Proximity: 'bg-sky-400',
 }
 
 function PillarBar({ label, score, colour, delay = 0 }) {
     return (
         <div className="flex items-center gap-2">
-            <span className="text-[10px] text-indigo-200/80 font-medium w-14 text-right shrink-0">{label}</span>
+            <span className="text-[10px] text-white/60 font-medium w-14 text-right shrink-0">{label}</span>
             <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
                 <motion.div
                     className={`h-full rounded-full ${colour}`}
@@ -31,10 +30,12 @@ function PillarBar({ label, score, colour, delay = 0 }) {
                     transition={{ duration: 0.8, delay, ease: [0.22, 1, 0.36, 1] }}
                 />
             </div>
-            <span className="text-[10px] text-indigo-200/80 font-semibold w-6 shrink-0">{score}</span>
+            <span className="text-[10px] text-white/60 font-semibold w-6 shrink-0">{score}</span>
         </div>
     )
 }
+
+const fadeUp = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }
 
 export default function StreetSmartsTeaser() {
     const [streets, setStreets] = useState([])
@@ -56,16 +57,13 @@ export default function StreetSmartsTeaser() {
                     )
                 }
             })
-            .catch(() => {
-                // Silently fail — teaser section just won't show rankings
-            })
+            .catch(() => {})
             .finally(() => {
                 if (!cancelled) setLoading(false)
             })
         return () => { cancelled = true }
     }, [])
 
-    // Build pillar data from API or fallback
     function getPillars(street) {
         if (street.pillars && street.pillars.length > 0) {
             return street.pillars.slice(0, 3).map(p => ({
@@ -74,7 +72,6 @@ export default function StreetSmartsTeaser() {
                 colour: PILLAR_COLOURS[p.label] || 'bg-slate-400',
             }))
         }
-        // Fallback — won't normally happen with the real API
         return [
             { label: 'Safety', score: Math.round(street.score * 0.9), colour: PILLAR_COLOURS.Safety },
             { label: 'Value', score: Math.round(street.score * 0.85), colour: PILLAR_COLOURS.Value },
@@ -83,10 +80,16 @@ export default function StreetSmartsTeaser() {
     }
 
     return (
-        <AnimatedSection className="px-4 py-10 lg:py-16">
+        <motion.section
+            className="px-4 py-10 lg:py-16"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: '-60px' }}
+            variants={{ visible: { transition: { staggerChildren: 0.12 } } }}
+        >
             <motion.div
                 variants={fadeUp}
-                className="max-w-lg lg:max-w-5xl mx-auto bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-700 rounded-3xl p-6 md:p-8 lg:p-12 text-white overflow-hidden relative"
+                className="max-w-lg lg:max-w-5xl mx-auto bg-gradient-to-br from-primary via-amber-600 to-orange-600 rounded-3xl p-6 md:p-8 lg:p-12 text-white overflow-hidden relative"
             >
                 {/* Decorative circles */}
                 <div className="absolute -top-12 -right-12 w-36 h-36 lg:w-52 lg:h-52 rounded-full bg-white/5" />
@@ -97,12 +100,12 @@ export default function StreetSmartsTeaser() {
                     {/* Left — Title & Description */}
                     <div>
                         <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 text-white/90 text-xs font-bold mb-3 border border-white/10">
-                            <Trophy size={12} />
+                            <span className="material-symbols-outlined text-sm">emoji_events</span>
                             StreetSmarts
                         </div>
 
                         <h3 className="text-xl md:text-2xl lg:text-3xl font-bold mb-2">Best Streets for Students</h3>
-                        <p className="text-indigo-200 text-sm lg:text-base font-medium leading-relaxed mb-6 lg:mb-0">
+                        <p className="text-white/70 text-sm lg:text-base font-medium leading-relaxed mb-6 lg:mb-0">
                             See top-ranked streets in Guildford based on safety, rent value, and proximity to uni.
                         </p>
                     </div>
@@ -111,7 +114,6 @@ export default function StreetSmartsTeaser() {
                     <div>
                         <div className="flex flex-col gap-3 mb-5">
                             {loading ? (
-                                // Skeleton placeholders
                                 Array.from({ length: 3 }).map((_, i) => (
                                     <div key={i} className="bg-white/10 backdrop-blur-sm rounded-xl px-4 py-3 border border-white/10 animate-pulse">
                                         <div className="flex items-center justify-between mb-2">
@@ -143,7 +145,6 @@ export default function StreetSmartsTeaser() {
                                             </div>
                                             <span className="text-sm lg:text-base font-bold text-emerald-300">{s.score}</span>
                                         </div>
-                                        {/* Mini pillar bars */}
                                         <div className="space-y-1">
                                             {getPillars(s).map((p, pi) => (
                                                 <PillarBar
@@ -158,7 +159,7 @@ export default function StreetSmartsTeaser() {
                                     </motion.div>
                                 ))
                             ) : (
-                                <p className="text-indigo-200 text-sm text-center py-2">
+                                <p className="text-white/60 text-sm text-center py-2">
                                     Rankings loading…
                                 </p>
                             )}
@@ -166,14 +167,14 @@ export default function StreetSmartsTeaser() {
 
                         <Link
                             to="/best-streets"
-                            className="w-full h-11 lg:h-12 bg-white text-indigo-700 font-bold text-sm lg:text-base rounded-xl flex items-center justify-center gap-2 hover:bg-indigo-50 transition-colors shadow-lg"
+                            className="w-full h-11 lg:h-12 bg-white text-primary font-bold text-sm lg:text-base rounded-xl flex items-center justify-center gap-2 hover:bg-amber-50 transition-colors shadow-lg"
                         >
                             View Full Rankings
-                            <ArrowRight size={14} />
+                            <span className="material-symbols-outlined text-sm">arrow_forward</span>
                         </Link>
                     </div>
                 </div>
             </motion.div>
-        </AnimatedSection>
+        </motion.section>
     )
 }

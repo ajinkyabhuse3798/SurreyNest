@@ -35,7 +35,7 @@ export default function HolidayAlert({ risk }) {
                     <h4 className="text-xs font-bold text-slate-500">Before you leave:</h4>
                     {risk.tips.map((tip, i) => (
                         <p key={i} className="text-xs text-slate-600 flex items-start gap-2">
-                            <span className="text-indigo-500">•</span>{tip}
+                            <span className="text-primary/80">•</span>{tip}
                         </p>
                     ))}
                 </div>

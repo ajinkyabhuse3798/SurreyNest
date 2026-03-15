@@ -104,9 +104,9 @@ export default function MarketPulse() {
                 >
                     {/* Header */}
                     <div className="text-center mb-6 md:mb-8">
-                        <div className="inline-flex items-center gap-2 bg-indigo-50 rounded-full px-4 py-1.5 mb-3">
-                            <Clock size={14} className="text-indigo-600" />
-                            <span className="text-xs font-semibold text-indigo-700 uppercase tracking-wider">
+                        <div className="inline-flex items-center gap-2 bg-primary/10 rounded-full px-4 py-1.5 mb-3">
+                            <Clock size={14} className="text-primary" />
+                            <span className="text-xs font-semibold text-primary uppercase tracking-wider">
                                 MarketPulse
                             </span>
                         </div>

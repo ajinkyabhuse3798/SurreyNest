@@ -15,9 +15,9 @@ import {
 
 // ── stat card (local to hero) ────────────────────────────────────────────────
 
-function StatCard({ icon: Icon, label, value, sub, colour = 'text-indigo-600' }) {
+function StatCard({ icon: Icon, label, value, sub, colour = 'text-primary' }) {
     return (
-        <div className="flex-1 min-w-[130px] sm:min-w-[80px] bg-white/60 backdrop-blur-md rounded-2xl p-4 sm:p-5 text-center shadow-glass border border-white hover:shadow-indigo-glow transition-all duration-300">
+        <div className="flex-1 min-w-[130px] sm:min-w-[80px] bg-white/60 backdrop-blur-md rounded-2xl p-4 sm:p-5 text-center shadow-glass border border-white hover:shadow-primary-glow transition-all duration-300">
             <div className="w-10 h-10 rounded-xl bg-white/80 flex items-center justify-center mx-auto mb-3 shadow-sm border border-slate-100/50">
                 <Icon size={18} className={colour} />
             </div>
@@ -34,10 +34,10 @@ export default function PropertyHero({ property: p, weeklyRent, areaCtx, compare
     return (
         <div className="relative">
             {/* Ambient background glows for premium feel */}
-            <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-200/40 rounded-full blur-[80px] -z-10 pointer-events-none translate-x-1/3 -translate-y-1/3" />
+            <div className="absolute top-0 right-0 w-64 h-64 bg-primary-200/40 rounded-full blur-[80px] -z-10 pointer-events-none translate-x-1/3 -translate-y-1/3" />
             <div className="absolute top-10 left-10 w-48 h-48 bg-emerald-200/30 rounded-full blur-[60px] -z-10 pointer-events-none -translate-x-1/2" />
 
-            <button onClick={onGoBack} className="text-sm text-slate-500 hover:text-indigo-600 transition-colors inline-flex items-center gap-1.5 font-bold bg-white/80 backdrop-blur-md rounded-xl px-4 py-2 border border-slate-100/80 hover:border-indigo-200 hover:bg-indigo-50/50 shadow-sm">
+            <button onClick={onGoBack} className="text-sm text-slate-500 hover:text-primary transition-colors inline-flex items-center gap-1.5 font-bold bg-white/80 backdrop-blur-md rounded-xl px-4 py-2 border border-slate-100/80 hover:border-primary/20 hover:bg-primary/10/50 shadow-sm">
                 <ArrowLeft size={16} /> Search Results
             </button>
 
@@ -67,8 +67,8 @@ export default function PropertyHero({ property: p, weeklyRent, areaCtx, compare
                 <button
                     onClick={onToggleCompare}
                     className={`mt-5 lg:mt-0 flex items-center justify-center gap-2 text-sm font-bold py-3 px-6 rounded-xl border-2 transition-all duration-300 ${compared
-                        ? 'bg-indigo-50 border-indigo-300 text-indigo-700 hover:bg-indigo-100 shadow-sm'
-                        : 'bg-white/80 backdrop-blur-sm border-indigo-200 text-indigo-600 hover:bg-indigo-50 hover:border-indigo-300 shadow-glass hover:shadow-indigo-glow'
+                        ? 'bg-primary/10 border-primary-300 text-primary/90 hover:bg-primary-100 shadow-sm'
+                        : 'bg-white/80 backdrop-blur-sm border-primary/20 text-primary hover:bg-primary/10 hover:border-primary-300 shadow-glass hover:shadow-primary-glow'
                         }`}
                 >
                     <ArrowLeftRight size={16} />

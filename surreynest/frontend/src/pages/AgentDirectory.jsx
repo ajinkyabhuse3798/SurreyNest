@@ -6,9 +6,10 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import { listAgents } from '../services/agentApi'
-import { Building2, ShieldCheck, ChevronRight } from 'lucide-react'
+import { Building2, ShieldCheck, ChevronRight, Lock } from 'lucide-react'
+import { useAuth } from '../hooks/useAuth'
 
-function AgentCard({ agent }) {
+function AgentCard({ agent, isPro }) {
     const score = agent.stats.agent_score
     const scoreColour =
         score >= 75 ? 'text-emerald-600' :
@@ -18,16 +19,16 @@ function AgentCard({ agent }) {
     return (
         <Link
             to={`/agent/${agent.name}`}
-            className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all flex items-center gap-4"
+            className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm hover:shadow-md hover:border-primary/20 transition-all flex items-center gap-4"
         >
-            <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center flex-shrink-0">
-                <Building2 size={22} className="text-indigo-600" />
+            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <Building2 size={22} className="text-primary" />
             </div>
             <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-0.5">
                     <h3 className="font-extrabold text-slate-900 truncate">{agent.display_name}</h3>
                     {agent.is_verified && (
-                        <ShieldCheck size={14} className="text-indigo-500 flex-shrink-0" />
+                        <ShieldCheck size={14} className="text-primary/80 flex-shrink-0" />
                     )}
                 </div>
                 <p className="text-xs text-slate-500">
@@ -36,8 +37,19 @@ function AgentCard({ agent }) {
                 </p>
             </div>
             <div className="text-right flex-shrink-0">
-                <p className={`text-2xl font-extrabold ${scoreColour}`}>{score}</p>
-                <p className="text-xs text-slate-400">/ 100</p>
+                {isPro ? (
+                    <>
+                        <p className={`text-2xl font-extrabold ${scoreColour}`}>{score}</p>
+                        <p className="text-xs text-slate-400">/ 100</p>
+                    </>
+                ) : (
+                    <div className="flex flex-col items-center gap-1">
+                        <div className="w-10 h-7 rounded-lg bg-slate-100 flex items-center justify-center">
+                            <Lock size={13} className="text-slate-400" />
+                        </div>
+                        <p className="text-xs text-slate-400">Pro</p>
+                    </div>
+                )}
             </div>
             <ChevronRight size={18} className="text-slate-300 flex-shrink-0" />
         </Link>
@@ -45,6 +57,8 @@ function AgentCard({ agent }) {
 }
 
 export default function AgentDirectory() {
+    const { user } = useAuth()
+    const isPro = user?.is_pro ?? false
     const [agents, setAgents] = useState([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
@@ -69,7 +83,7 @@ export default function AgentDirectory() {
 
                 {loading && (
                     <div className="flex items-center justify-center py-20">
-                        <div className="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                        <div className="w-6 h-6 border-2 border-primary-600 border-t-transparent rounded-full animate-spin" />
                     </div>
                 )}
 
@@ -87,9 +101,17 @@ export default function AgentDirectory() {
                     </div>
                 )}
 
+                {!isPro && agents.length > 0 && (
+                    <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                        <Lock size={15} className="text-amber-600 flex-shrink-0" />
+                        <p className="text-sm text-amber-800">
+                            Reputation scores are visible on <Link to="/pricing" className="font-bold underline underline-offset-2">Pro</Link>.
+                        </p>
+                    </div>
+                )}
                 <div className="space-y-3">
                     {agents.map(agent => (
-                        <AgentCard key={agent.name} agent={agent} />
+                        <AgentCard key={agent.name} agent={agent} isPro={isPro} />
                     ))}
                 </div>
             </div>

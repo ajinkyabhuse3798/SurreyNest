@@ -1,33 +1,89 @@
 /**
- * ExploreSection — Heatmap section with refined styling.
- * API connection preserved: GuildfordHeatmap → fetchHeatmapSectors()
+ * ExploreSection — "Explore the Best Streets" with map image + feature bullets.
+ * Matches Stitch interactive map teaser section.
  */
+import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Map } from 'lucide-react'
-import GuildfordHeatmap from '../GuildfordHeatmap'
-import { AnimatedSection, fadeUp } from '../../utils/homeData'
+
+const fadeUp = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }
 
 export default function ExploreSection() {
     return (
-        <AnimatedSection className="pt-10 pb-8 lg:pt-16 lg:pb-12">
-            <div className="px-4 md:px-6 mb-5 max-w-lg lg:max-w-5xl mx-auto">
-                <motion.div variants={fadeUp} className="flex items-center gap-2 mb-2 text-indigo-600">
-                    <div className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center">
-                        <Map size={14} />
+        <section className="py-16 md:py-24 px-4 md:px-6 overflow-hidden">
+            <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-10 lg:gap-16">
+                {/* Map image */}
+                <motion.div
+                    className="w-full lg:w-1/2"
+                    initial={{ opacity: 0, x: -30 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true, margin: '-60px' }}
+                    transition={{ duration: 0.6 }}
+                >
+                    <div className="relative glass p-2 rounded-[2rem] shadow-2xl rotate-1 lg:rotate-2">
+                        <div className="rounded-[1.5rem] overflow-hidden h-[300px] md:h-[400px] w-full relative">
+                            <div className="absolute inset-0 bg-slate-200 animate-pulse" />
+                            <img
+                                className="w-full h-full object-cover relative z-10"
+                                src="https://lh3.googleusercontent.com/aida-public/AB6AXuBez5e4rXO1U9r-yYOwiQv5Nh-mI8Stem_zk3SLMQ7ZKI8Zs7aZURUA3vOzDGw7x9XKc4aj7FyMtXu1EHOgs-vZWledhHYnjx4XpV51jjkbMtT-Sus3qPm1SQ6LXUTwYsDwNsyyRyCJ5ByovXEX2_jCM8fOxhukreqlq8SBPTALipCX_i2qpq1l1pJ63IWm8qMSUB7QLVIUw2FFpAVkEwwD-lyQ4731kBoTqO8oL1d0uZqBMDkyb140gjx6jQs-a7h_5O20IcOG_qU"
+                                alt="Map view of Guildford streets with quality markers"
+                            />
+                            <div className="absolute top-1/2 left-1/3 z-20 w-8 h-8 bg-primary rounded-full border-4 border-white shadow-lg animate-bounce" />
+                        </div>
                     </div>
-                    <span className="text-xs font-bold uppercase tracking-wider">Local Insights</span>
                 </motion.div>
-                <motion.h2 variants={fadeUp} className="text-[22px] md:text-3xl font-bold text-slate-900 leading-tight mb-1">
-                    Explore Guildford's Neighbourhoods
-                </motion.h2>
-                <motion.p variants={fadeUp} className="text-slate-500 text-sm lg:text-base font-medium max-w-md">
-                    Tap a sector to discover rent, safety, and HMO data for each area.
-                </motion.p>
-            </div>
 
-            <motion.div variants={fadeUp} className="px-4 max-w-lg lg:max-w-5xl mx-auto">
-                <GuildfordHeatmap />
-            </motion.div>
-        </AnimatedSection>
+                {/* Text + bullets */}
+                <motion.div
+                    className="w-full lg:w-1/2 flex flex-col gap-5 md:gap-6"
+                    initial="hidden"
+                    whileInView="visible"
+                    viewport={{ once: true, margin: '-60px' }}
+                    variants={{ visible: { transition: { staggerChildren: 0.1 } } }}
+                >
+                    <motion.h2 variants={fadeUp} className="text-3xl md:text-4xl font-bold text-slate-900">
+                        Explore the Best Streets
+                    </motion.h2>
+                    <motion.p variants={fadeUp} className="text-base md:text-lg text-slate-600">
+                        Discover which neighborhoods are student-friendly and which ones to avoid. See real-time ratings from previous tenants on safety, noise levels, and landlord responsiveness.
+                    </motion.p>
+
+                    <div className="flex flex-col gap-3 md:gap-4">
+                        {[
+                            {
+                                icon: 'analytics',
+                                title: 'Data Visualization',
+                                text: 'Heatmaps of average rent prices across GU1 and GU2.',
+                            },
+                            {
+                                icon: 'diversity_3',
+                                title: 'Verified Reviews',
+                                text: 'Reviews only from verified student university emails.',
+                            },
+                        ].map(({ icon, title, text }) => (
+                            <motion.div
+                                key={title}
+                                variants={fadeUp}
+                                className="flex items-start gap-4 p-4 rounded-xl bg-primary/5 border border-primary/10"
+                            >
+                                <span className="material-symbols-outlined text-primary">{icon}</span>
+                                <div>
+                                    <h4 className="font-bold text-slate-900">{title}</h4>
+                                    <p className="text-sm text-slate-600">{text}</p>
+                                </div>
+                            </motion.div>
+                        ))}
+                    </div>
+
+                    <motion.div variants={fadeUp}>
+                        <Link
+                            to="/best-streets"
+                            className="w-fit mt-2 md:mt-4 px-8 py-4 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-colors shadow-xl inline-flex items-center gap-2"
+                        >
+                            Explore Market Map
+                        </Link>
+                    </motion.div>
+                </motion.div>
+            </div>
+        </section>
     )
 }

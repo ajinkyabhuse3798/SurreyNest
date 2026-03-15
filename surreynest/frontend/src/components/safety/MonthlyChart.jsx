@@ -54,9 +54,9 @@ export default function MonthlyChart({ data, trend }) {
                             style={{ height: '100%' }}
                             title={`${getMonth(d.month)}: ${d.count} crimes`}
                         >
-                            <span className="text-[9px] font-bold text-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity mb-1 bg-white px-1.5 py-0.5 rounded shadow-sm relative bottom-1">{d.count}</span>
+                            <span className="text-[9px] font-bold text-primary/80 opacity-0 group-hover:opacity-100 transition-opacity mb-1 bg-white px-1.5 py-0.5 rounded shadow-sm relative bottom-1">{d.count}</span>
                             <div
-                                className="w-full bg-indigo-500 rounded-t-lg group-hover:bg-indigo-600 shadow-[0_4px_10px_-2px_rgba(99,102,241,0.3)] transition-all duration-300"
+                                className="w-full bg-primary/100 rounded-t-lg group-hover:bg-primary shadow-[0_4px_10px_-2px_rgba(99,102,241,0.3)] transition-all duration-300"
                                 style={{ height: `${hPx}px`, minHeight: '6px' }}
                             />
                             {i % 3 === 0 && (

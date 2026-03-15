@@ -76,7 +76,9 @@ api.interceptors.response.use(
         const { status, data } = error.response
         const detail = data?.detail || ''
 
-        if (import.meta.env.DEV) {
+        // Suppress the expected 401 from the session-restore probe — not an error
+        const isAuthProbe = error.config?.url === '/api/auth/me' && status === 401
+        if (import.meta.env.DEV && !isAuthProbe) {
             console.warn(`← ${status} ${error.config?.url}`, detail)
         }
 

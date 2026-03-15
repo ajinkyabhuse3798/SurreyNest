@@ -5,8 +5,14 @@ export default {
     content: ['./index.html', './src/**/*.{js,jsx}'],
     theme: {
         extend: {
+            colors: {
+                primary: '#ea871d',
+                'background-light': '#f7f6f8',
+                'background-dark': '#211911',
+            },
             fontFamily: {
-                sans: ['Manrope', 'Inter', ...defaultTheme.fontFamily.sans],
+                sans: ['Inter', ...defaultTheme.fontFamily.sans],
+                display: ['Inter', ...defaultTheme.fontFamily.sans],
             },
             keyframes: {
                 'float': {
@@ -28,8 +34,8 @@ export default {
             boxShadow: {
                 'glass': '0 4px 30px rgba(0, 0, 0, 0.06)',
                 'glass-lg': '0 8px 40px rgba(0, 0, 0, 0.08)',
-                'indigo-glow': '0 0 40px rgba(79, 70, 229, 0.15)',
-                'indigo-glow-lg': '0 0 60px rgba(79, 70, 229, 0.2)',
+                'primary-glow': '0 0 40px rgba(234, 135, 29, 0.15)',
+                'primary-glow-lg': '0 0 60px rgba(234, 135, 29, 0.2)',
             },
         },
     },

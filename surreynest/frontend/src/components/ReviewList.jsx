@@ -87,7 +87,7 @@ export default function ReviewList({ uprn }) {
                             Managed by{' '}
                             <Link
                                 to={`/agent/${review.agent_name}`}
-                                className="text-indigo-500 hover:text-indigo-700 font-medium"
+                                className="text-primary/80 hover:text-primary/90 font-medium"
                             >
                                 {review.agent_name.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
                             </Link>

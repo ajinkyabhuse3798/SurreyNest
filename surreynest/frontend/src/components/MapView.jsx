@@ -130,7 +130,7 @@ function PropertyMarker({ marker, isSelected, onMarkerClick }) {
                         )}
                         <Link
                             to={`/property/${marker.id}`}
-                            className="text-indigo-600 text-xs font-medium mt-2 inline-block hover:text-indigo-800"
+                            className="text-primary text-xs font-medium mt-2 inline-block hover:text-primary-800"
                         >
                             View details →
                         </Link>

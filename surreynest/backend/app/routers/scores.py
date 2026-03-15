@@ -6,10 +6,11 @@ Thin route layer — delegates to score_service for all computation.
 import logging
 
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.rate_limit import limiter
 from app.schemas.score import RentFairnessResponse, SafetyScoreResponse
 from app.services import score_service
 from app.services.geocoding_service import _normalise_postcode
@@ -40,7 +41,9 @@ def _extract_postcode_sector(postcode: str) -> str:
     response_model=SafetyScoreResponse,
     summary="Get safety score for a postcode",
 )
+@limiter.limit("60/minute")
 async def get_safety_score(
+    request: Request,
     postcode: str = Query(..., description="Postcode to check", examples=["GU2 7XH"]),
     db: Session = Depends(get_db),
 ) -> SafetyScoreResponse:
@@ -65,7 +68,9 @@ async def get_safety_score(
     response_model=RentFairnessResponse,
     summary="Get rent fairness score",
 )
+@limiter.limit("60/minute")
 async def get_rent_fairness(
+    request: Request,
     uprn: str = Query(..., description="Property UPRN"),
     weekly_rent: float = Query(..., gt=0, description="Weekly rent in £"),
     bedrooms: Optional[int] = Query(None, description="Override the AI bedroom estimate"),

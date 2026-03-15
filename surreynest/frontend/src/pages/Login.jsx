@@ -3,13 +3,15 @@
  * Per design-system.md: max-w-sm, white bg, border inputs.
  */
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import Navbar from '../components/Navbar'
 
 export default function Login() {
     const { login } = useAuth()
     const navigate = useNavigate()
+    const location = useLocation()
+    const returnTo = location.state?.from?.pathname || '/'
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [error, setError] = useState(null)
@@ -21,10 +23,10 @@ export default function Login() {
         setLoading(true)
         try {
             await login(email, password)
-            navigate('/')
+            navigate(returnTo, { replace: true })
+            // Do not setLoading(false) here — navigate() unmounts this component
         } catch (err) {
             setError(err.response?.data?.detail || 'Login failed. Check your credentials.')
-        } finally {
             setLoading(false)
         }
     }
@@ -49,8 +51,9 @@ export default function Login() {
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             required
+                            autoComplete="email"
                             placeholder="you@surrey.ac.uk"
-                            className="border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-indigo-600 transition-colors"
+                            className="border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-primary-600 transition-colors"
                         />
                     </div>
                     <div className="flex flex-col gap-1.5">
@@ -60,14 +63,15 @@ export default function Login() {
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             required
+                            autoComplete="current-password"
                             placeholder="••••••••"
-                            className="border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-indigo-600 transition-colors"
+                            className="border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-primary-600 transition-colors"
                         />
                     </div>
                     <button
                         type="submit"
                         disabled={loading}
-                        className="w-full bg-indigo-600 text-white rounded-lg px-6 py-3 text-sm font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                        className="w-full bg-primary text-white rounded-lg px-6 py-3 text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
                     >
                         {loading ? 'Signing in...' : 'Sign in'}
                     </button>
@@ -75,7 +79,7 @@ export default function Login() {
 
                 <p className="text-sm text-gray-500 mt-6 text-center">
                     Don't have an account?{' '}
-                    <Link to="/register" className="text-indigo-600 font-medium">
+                    <Link to="/register" className="text-primary font-medium">
                         Register
                     </Link>
                 </p>

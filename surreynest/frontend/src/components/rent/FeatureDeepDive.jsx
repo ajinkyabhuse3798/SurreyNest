@@ -40,7 +40,7 @@ export default function FeatureDeepDive({ contributions }) {
                 <>
                     <button
                         onClick={() => setExpanded(!expanded)}
-                        className="flex items-center gap-2 text-xs text-indigo-600 font-medium mt-3 hover:text-indigo-700 transition-colors"
+                        className="flex items-center gap-2 text-xs text-primary font-medium mt-3 hover:text-primary/90 transition-colors"
                     >
                         {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                         {expanded ? 'Hide' : 'Show'} {minor.length} smaller factors

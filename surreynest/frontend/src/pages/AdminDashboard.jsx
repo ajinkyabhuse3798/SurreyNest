@@ -115,7 +115,7 @@ function ModerationQueue() {
                     <div className="flex gap-3 mt-4">
                         <button
                             onClick={() => handleApprove(review.id)}
-                            className="bg-indigo-600 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-indigo-700 transition-colors"
+                            className="bg-primary text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-primary/90 transition-colors"
                         >
                             Approve
                         </button>

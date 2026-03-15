@@ -100,14 +100,14 @@ export default function CheckListing() {
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.5 }}
                         >
-                            <div className="inline-flex items-center gap-2 bg-indigo-50 border border-indigo-100 rounded-full px-4 py-1.5 mb-5">
-                                <LinkIcon size={14} className="text-indigo-600" />
-                                <span className="text-xs font-medium text-indigo-700">Listing Checker</span>
+                            <div className="inline-flex items-center gap-2 bg-primary/10 border border-primary/10 rounded-full px-4 py-1.5 mb-5">
+                                <LinkIcon size={14} className="text-primary" />
+                                <span className="text-xs font-medium text-primary/90">Listing Checker</span>
                             </div>
 
                             <h1 className="text-3xl font-bold text-gray-900 mb-3 md:text-4xl tracking-tight">
                                 Check any{' '}
-                                <span className="bg-gradient-to-r from-indigo-600 to-blue-600 bg-clip-text text-transparent">
+                                <span className="bg-gradient-to-r from-primary-600 to-blue-600 bg-clip-text text-transparent">
                                     rental listing
                                 </span>
                             </h1>
@@ -136,7 +136,7 @@ export default function CheckListing() {
                                             onChange={(e) => { setUrl(e.target.value); if (error) setError('') }}
                                             onPaste={handlePaste}
                                             placeholder="Paste listing URL here..."
-                                            className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-shadow"
+                                            className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-shadow"
                                             id="listing-url-input"
                                         />
                                     </div>
@@ -151,7 +151,7 @@ export default function CheckListing() {
                                             onChange={(e) => { setPostcode(e.target.value.toUpperCase()); if (error) setError('') }}
                                             placeholder="Area e.g. GU1 or GU1 3JT"
                                             maxLength={8}
-                                            className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-shadow uppercase"
+                                            className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-shadow uppercase"
                                             id="listing-postcode-input"
                                         />
                                     </div>
@@ -161,7 +161,7 @@ export default function CheckListing() {
                                     <button
                                         type="submit"
                                         disabled={loading}
-                                        className="sm:ml-auto bg-indigo-600 text-white rounded-xl px-6 py-3 text-sm font-semibold hover:bg-indigo-700 active:scale-[0.98] transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 sm:px-8"
+                                        className="sm:ml-auto bg-primary text-white rounded-xl px-6 py-3 text-sm font-semibold hover:bg-primary/90 active:scale-[0.98] transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 sm:px-8"
                                     >
                                         {loading ? (
                                             <><Loader2 size={16} className="animate-spin" /> Analysing...</>
@@ -215,7 +215,7 @@ export default function CheckListing() {
                                         href={r.original_url}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="flex items-center gap-1.5 text-xs text-indigo-600 font-medium hover:text-indigo-800 bg-indigo-50 rounded-lg px-3 py-2"
+                                        className="flex items-center gap-1.5 text-xs text-primary font-medium hover:text-primary-800 bg-primary/10 rounded-lg px-3 py-2"
                                     >
                                         <ExternalLink size={12} />
                                         Original listing
@@ -246,7 +246,7 @@ export default function CheckListing() {
                                     {/* Properties */}
                                     <ScoreCard
                                         icon={Home}
-                                        iconColor="text-indigo-600"
+                                        iconColor="text-primary"
                                         label="Properties"
                                         value={r.properties_in_area}
                                         subtitle="in this postcode"
@@ -282,7 +282,7 @@ export default function CheckListing() {
                                 {r.nearby_properties?.length > 0 && (
                                     <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6">
                                         <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                                            <MapPin size={16} className="text-indigo-600" />
+                                            <MapPin size={16} className="text-primary" />
                                             Properties at {r.postcode} in our database
                                         </h3>
                                         <div className="space-y-2">
@@ -290,7 +290,7 @@ export default function CheckListing() {
                                                 <Link
                                                     key={p.uprn}
                                                     to={`/property/${p.uprn}`}
-                                                    className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:border-indigo-200 hover:bg-indigo-50/30 transition-colors group"
+                                                    className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:border-primary/20 hover:bg-primary/10/30 transition-colors group"
                                                 >
                                                     <div className="min-w-0">
                                                         <p className="text-sm font-medium text-gray-900 truncate">{p.address}</p>
@@ -307,7 +307,7 @@ export default function CheckListing() {
                                                             )}
                                                         </p>
                                                     </div>
-                                                    <ArrowRight size={14} className="text-gray-300 group-hover:text-indigo-500 transition-colors flex-shrink-0" />
+                                                    <ArrowRight size={14} className="text-gray-300 group-hover:text-primary/80 transition-colors flex-shrink-0" />
                                                 </Link>
                                             ))}
                                         </div>
@@ -318,7 +318,7 @@ export default function CheckListing() {
                                 <div className="text-center">
                                     <Link
                                         to={`/search?postcode=${encodeURIComponent(r.postcode)}&radius=1000`}
-                                        className="inline-flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors"
+                                        className="inline-flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors"
                                     >
                                         View full area analysis
                                         <ArrowRight size={16} />
@@ -346,7 +346,7 @@ export default function CheckListing() {
                                     { step: '3', title: 'Get insights', desc: 'See safety scores, rent fairness, HMO status, and flood risk for the area' },
                                 ].map(s => (
                                     <div key={s.step} className="text-center">
-                                        <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 font-bold text-sm flex items-center justify-center mx-auto mb-3">
+                                        <div className="w-10 h-10 rounded-full bg-primary-100 text-primary font-bold text-sm flex items-center justify-center mx-auto mb-3">
                                             {s.step}
                                         </div>
                                         <h4 className="text-sm font-semibold text-gray-900 mb-1">{s.title}</h4>

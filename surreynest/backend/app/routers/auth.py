@@ -7,7 +7,7 @@ JWT is set as an httpOnly cookie (not localStorage) to prevent XSS theft.
 import logging
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
@@ -15,6 +15,7 @@ from app.config import settings
 from app.database import get_db
 from app.models.review import Review
 from app.models.user import User
+from app.rate_limit import limiter
 from app.schemas.auth import LoginResponse
 from app.schemas.user import UserCreate, UserResponse
 from app.services.auth_service import (
@@ -35,7 +36,9 @@ router = APIRouter()
     status_code=status.HTTP_201_CREATED,
     summary="Register a new user account",
 )
+@limiter.limit("5/minute")
 async def register(
+    request: Request,
     user_data: UserCreate,
     db: Session = Depends(get_db),
 ) -> UserResponse:
@@ -59,7 +62,7 @@ async def register(
     if existing:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="A user with this email already exists",
+            detail="Registration failed. Please check your details and try again.",
         )
 
     # Create user
@@ -82,7 +85,9 @@ async def register(
     response_model=LoginResponse,
     summary="Login and get auth cookie",
 )
+@limiter.limit("10/minute")
 async def login(
+    request: Request,
     response: Response,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),

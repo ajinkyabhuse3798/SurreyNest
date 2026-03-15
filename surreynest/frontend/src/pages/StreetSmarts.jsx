@@ -1,192 +1,174 @@
 /**
- * StreetSmarts 🏆 — Best Streets Leaderboard v2
+ * StreetSmarts — Best Streets & Comparison (Stitch-aligned).
  *
- * Premium gamified leaderboard ranking Guildford streets for students.
- * 3 pillars: Safety, Value, Proximity (HMO removed per user request).
+ * Layout matches Stitch screen "Best Streets & Comparison":
+ *   1. Header: "Guildford Student Living"
+ *   2. View Toggle (List / Map) + Filter Chips
+ *   3. Side-by-Side Comparison (3-col)
+ *   4. Top Rated Streets (4-col card grid)
+ *   5. Map Section (interactive placeholder)
  *
- * Features:
- *   - Top-3 Podium (gold/silver/bronze gradient cards)
- *   - Desktop: 2-column grid for ranks 4–15
- *   - Mobile: single-column with scrollable podium
- *   - Animated score breakdown bars
+ * API: GET /api/leaderboard/streets?district={district}&limit=15
  */
 import { useState, useEffect, useRef } from 'react'
 import { motion, useInView } from 'framer-motion'
 import { Link } from 'react-router-dom'
-import {
-    Trophy, Shield, PoundSterling, MapPin, ArrowLeft,
-    Loader2, AlertCircle, ChevronDown, ChevronUp, Star,
-    Bed, Ruler,
-} from 'lucide-react'
 import Navbar from '../components/Navbar'
-
-const API = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+import api from '../services/api'
 
 const DISTRICTS = ['GU1', 'GU2']
 
-const PILLAR_CONFIG = {
-    Safety: { icon: Shield, colour: 'text-emerald-600', bg: 'bg-emerald-50', gradient: 'linear-gradient(to right, #10B981, #059669)' },
-    Value: { icon: PoundSterling, colour: 'text-blue-600', bg: 'bg-blue-50', gradient: 'linear-gradient(to right, #3B82F6, #2563EB)' },
-    Proximity: { icon: MapPin, colour: 'text-violet-600', bg: 'bg-violet-50', gradient: 'linear-gradient(to right, #8B5CF6, #7C3AED)' },
-}
-
 // ── helpers ──────────────────────────────────────────────────────────────────
-
 function scoreColour(score) {
     if (score >= 70) return 'text-emerald-600'
     if (score >= 50) return 'text-amber-600'
     return 'text-red-500'
 }
 
-function rankBadgeStyle(rank) {
-    if (rank === 1) return 'bg-gradient-to-br from-yellow-300 via-amber-400 to-orange-500 text-white shadow-lg shadow-amber-300/50 border border-amber-200/50'
-    if (rank === 2) return 'bg-gradient-to-br from-slate-200 via-slate-300 to-slate-400 text-slate-800 shadow-lg shadow-slate-300/40 border border-white/50'
-    if (rank === 3) return 'bg-gradient-to-br from-amber-600 via-amber-700 to-orange-800 text-white shadow-lg shadow-amber-700/40 border border-amber-500/50'
-    return 'bg-slate-100 text-slate-600 font-bold'
-}
-
-function podiumCardStyle(rank) {
-    if (rank === 1) return 'border-amber-200/60 bg-gradient-to-b from-amber-50/50 to-white shadow-[0_8px_30px_-4px_rgba(245,158,11,0.25)] ring-4 ring-amber-100/50 relative'
-    if (rank === 2) return 'border-slate-200/80 bg-gradient-to-b from-slate-50/50 to-white shadow-[0_4px_20px_-4px_rgba(100,116,139,0.15)] relative'
-    if (rank === 3) return 'border-amber-200/40 bg-gradient-to-b from-orange-50/30 to-white shadow-[0_4px_20px_-4px_rgba(180,137,59,0.15)] relative'
-    return ''
-}
-
-const fadeUp = {
-    hidden: { opacity: 0, y: 20 },
-    visible: (i) => ({
-        opacity: 1,
-        y: 0,
-        transition: { duration: 0.5, delay: i * 0.08, ease: [0.22, 1, 0.36, 1] },
-    }),
-}
-
-// ── score bar (used in breakdown) ────────────────────────────────────────────
-
-function ScoreBar({ label, score, detail, index }) {
-    const cfg = PILLAR_CONFIG[label] || PILLAR_CONFIG.Safety
-    const Icon = cfg.icon
+// ── Score bar (animated) ─────────────────────────────────────────────────────
+function ScoreBar({ label, score, index = 0 }) {
     const ref = useRef(null)
     const inView = useInView(ref, { once: true })
-
     return (
-        <div ref={ref} className="flex items-center gap-2.5">
-            <div className={`w-7 h-7 rounded-lg ${cfg.bg} flex items-center justify-center flex-shrink-0`}>
-                <Icon size={14} className={cfg.colour} />
+        <div ref={ref}>
+            <div className="flex justify-between items-center mb-1">
+                <span className="text-xs uppercase tracking-wider font-bold text-slate-400">{label}</span>
+                <span className="text-lg font-bold text-primary">{(score / 10).toFixed(1)}/10</span>
             </div>
-            <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between mb-0.5">
-                    <span className="text-[11px] font-semibold text-slate-600">{label}</span>
-                    <span className={`text-[11px] font-bold ${scoreColour(score)}`}>{score}</span>
-                </div>
-                <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                    <motion.div
-                        className="h-full rounded-full"
-                        style={{ background: cfg.gradient }}
-                        initial={{ width: 0 }}
-                        animate={inView ? { width: `${score}%` } : { width: 0 }}
-                        transition={{ duration: 0.8, delay: index * 0.12 }}
-                    />
-                </div>
-                {detail && <p className="text-[9px] text-slate-400 mt-0.5">{detail}</p>}
+            <div className="w-full bg-primary/10 h-1.5 rounded-full overflow-hidden">
+                <motion.div
+                    className="bg-primary h-full rounded-full"
+                    initial={{ width: 0 }}
+                    animate={inView ? { width: `${score}%` } : { width: 0 }}
+                    transition={{ duration: 0.8, delay: index * 0.1 }}
+                />
             </div>
         </div>
     )
 }
 
-// ── mini score bars for podium ────────────────────────────────────────────────
-
-function MiniScoreBars({ pillars }) {
-    const filtered = pillars.filter(p => p.label !== 'HMO')
+// ── ComparisonCard ───────────────────────────────────────────────────────────
+function ComparisonCard({ street, label, badgeClass = 'bg-primary text-white' }) {
+    if (!street) return null
     return (
-        <div className="space-y-2 mt-3">
-            {filtered.map((p, i) => {
-                const cfg = PILLAR_CONFIG[p.label] || PILLAR_CONFIG.Safety
-                return (
-                    <div key={p.label} className="flex items-center gap-2">
-                        <span className="text-[9px] font-semibold text-slate-500 w-14 text-right">{p.label}</span>
-                        <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                            <motion.div
-                                className="h-full rounded-full"
-                                style={{ background: cfg.gradient }}
-                                initial={{ width: 0 }}
-                                whileInView={{ width: `${p.score}%` }}
-                                viewport={{ once: true }}
-                                transition={{ duration: 0.7, delay: i * 0.1 }}
-                            />
-                        </div>
-                        <span className={`text-[10px] font-bold w-6 text-right ${scoreColour(p.score)}`}>{p.score}</span>
+        <div className="space-y-6">
+            {/* Image placeholder */}
+            <div className="relative aspect-video rounded-xl overflow-hidden bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center group">
+                <span className="material-symbols-outlined text-6xl text-primary/20">home</span>
+                <div className={`absolute top-3 left-3 px-3 py-1 ${badgeClass} text-xs font-bold rounded-full`}>
+                    {label}
+                </div>
+            </div>
+            <div>
+                <h4 className="text-lg font-bold">{street.street_name}</h4>
+                <p className="text-sm text-slate-500">{street.district}</p>
+            </div>
+            <div className="space-y-4">
+                {/* Fair Rent Score */}
+                <div className="p-4 bg-primary/5 rounded-xl">
+                    <ScoreBar label="Fair Rent Score" score={street.composite_score} />
+                </div>
+                {/* HMO Status */}
+                <div className="flex items-center justify-between p-4 border border-primary/10 rounded-xl">
+                    <span className="text-sm font-medium">Safety Score</span>
+                    <span className={`flex items-center gap-1 text-sm font-bold ${street.pillars?.find(p => p.label === 'Safety')?.score >= 70 ? 'text-green-500' : 'text-amber-500'}`}>
+                        <span className="material-symbols-outlined text-base">
+                            {street.pillars?.find(p => p.label === 'Safety')?.score >= 70 ? 'check_circle' : 'pending'}
+                        </span>
+                        {street.pillars?.find(p => p.label === 'Safety')?.score || '—'}
+                    </span>
+                </div>
+                {/* Tenant Rating / Properties */}
+                <div className="flex items-center justify-between p-4 border border-primary/10 rounded-xl">
+                    <span className="text-sm font-medium">Properties</span>
+                    <div className="flex items-center gap-1">
+                        <span className="material-symbols-outlined text-primary text-base">apartment</span>
+                        <span className="font-bold">{street.property_count || '—'}</span>
                     </div>
-                )
-            })}
+                </div>
+            </div>
         </div>
     )
 }
 
-// ── podium card ──────────────────────────────────────────────────────────────
+// ── Street Card (Top Rated Streets grid) ─────────────────────────────────────
+function StreetCard({ street, index }) {
+    const iconMap = ['verified', 'apartment', 'directions_walk', 'school', 'home_work', 'location_city']
+    const iconBgMap = [
+        'bg-green-500/10 text-green-600',
+        'bg-primary/10 text-primary',
+        'bg-primary/10 text-primary',
+        'bg-primary/10 text-primary',
+        'bg-primary/10 text-primary',
+        'bg-primary/10 text-primary',
+    ]
 
-function PodiumCard({ street, isGold }) {
     return (
         <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: street.rank * 0.1 }}
-            className={`bg-white rounded-2xl border p-4 sm:p-5 text-center ${podiumCardStyle(street.rank)} ${isGold ? 'lg:scale-105 lg:-mt-2' : ''}`}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.4, delay: index * 0.06 }}
+            className="bg-white border border-primary/10 rounded-xl p-5 hover:shadow-md transition-shadow"
         >
-            {/* Medal */}
-            <div className={`w-12 h-12 rounded-xl mx-auto flex items-center justify-center font-bold text-lg ${rankBadgeStyle(street.rank)}`}>
-                <Trophy size={isGold ? 22 : 18} />
+            <div className="flex justify-between items-start mb-4">
+                <div>
+                    <p className="text-primary font-bold text-lg">#{street.rank} Rank</p>
+                    <h5 className="font-bold text-slate-900">{street.street_name}</h5>
+                </div>
+                <div className={`h-10 w-10 rounded-lg ${iconBgMap[index % iconBgMap.length]} flex items-center justify-center`}>
+                    <span className="material-symbols-outlined">{iconMap[index % iconMap.length]}</span>
+                </div>
             </div>
-
-            {/* Street info */}
-            <h3 className={`font-bold text-slate-900 mt-3 truncate ${isGold ? 'text-base lg:text-lg' : 'text-sm'}`}>
-                {street.street_name}
-            </h3>
-            <p className="text-[10px] text-slate-400 mt-0.5">
-                {street.district} · {street.property_count} properties
-            </p>
-
-            {/* Composite score */}
-            <div className={`mt-3 inline-flex items-baseline gap-1 ${isGold ? 'text-3xl' : 'text-2xl'}`}>
-                <span className={`font-extrabold ${scoreColour(street.composite_score)}`}>
-                    {street.composite_score}
-                </span>
-                <span className="text-[10px] text-slate-400 font-medium">/100</span>
+            <div className="space-y-3">
+                <div className="flex justify-between text-xs">
+                    <span className="text-slate-500">Composite Score</span>
+                    <span className={`font-bold ${scoreColour(street.composite_score)}`}>{street.composite_score}/100</span>
+                </div>
+                {street.avg_weekly_rent && (
+                    <div className="flex justify-between text-xs">
+                        <span className="text-slate-500">Avg. Rent</span>
+                        <span className="font-bold">£{Math.round(street.avg_weekly_rent * 52 / 12)} /mo</span>
+                    </div>
+                )}
+                <div className="flex justify-between text-xs">
+                    <span className="text-slate-500">Distance to Uni</span>
+                    <span className="font-bold">{street.distance_to_uni_km}km</span>
+                </div>
+                <div className="pt-2 border-t border-primary/5 flex items-center gap-2">
+                    <div className="flex -space-x-2">
+                        {[20, 40, 60].slice(0, Math.min(3, Math.ceil((street.property_count || 1) / 3))).map((opacity, i) => (
+                            <div key={i} className={`w-6 h-6 rounded-full border border-white bg-primary/${opacity}`} />
+                        ))}
+                    </div>
+                    <span className="text-[10px] text-slate-400 font-medium">
+                        {street.property_count || 0} properties
+                    </span>
+                </div>
             </div>
-
-            {/* Mini score bars */}
-            <MiniScoreBars pillars={street.pillars} />
         </motion.div>
     )
 }
 
-// ── street card (ranks 4+) ───────────────────────────────────────────────────
-
-function StreetCard({ street, index }) {
+// ── Expanded Row Card (ranks beyond top grid) ────────────────────────────────
+function ExpandableRowCard({ street, index }) {
     const [expanded, setExpanded] = useState(false)
-    const filteredPillars = street.pillars.filter(p => p.label !== 'HMO')
+    const filteredPillars = street.pillars?.filter(p => p.label !== 'HMO') || []
 
     return (
         <motion.div
-            custom={index}
-            variants={fadeUp}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: '-30px' }}
-            className="bg-white/80 backdrop-blur-md rounded-2xl border border-slate-200/50 shadow-[0_2px_12px_-3px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_30px_-4px_rgba(80,72,229,0.12)] hover:border-indigo-200 transition-all duration-300 overflow-hidden"
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.4, delay: index * 0.05 }}
+            className="bg-white border border-primary/10 rounded-xl hover:shadow-md transition-all overflow-hidden"
         >
-            {/* Header */}
-            <div className="px-4 py-3.5 sm:px-5 sm:py-4 flex items-center gap-3">
-                {/* Rank badge */}
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm flex-shrink-0 ${rankBadgeStyle(street.rank)}`}>
+            <div className="px-5 py-4 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center font-bold text-sm text-slate-600 flex-shrink-0">
                     #{street.rank}
                 </div>
-
-                {/* Street info */}
                 <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-bold text-slate-900 truncate">
-                        {street.street_name}
-                    </h3>
+                    <h3 className="text-sm font-bold text-slate-900 truncate">{street.street_name}</h3>
                     <div className="flex items-center gap-1.5 text-[10px] text-slate-400 mt-0.5 flex-wrap">
                         <span>{street.district}</span>
                         <span className="w-0.5 h-0.5 rounded-full bg-slate-300" />
@@ -195,8 +177,6 @@ function StreetCard({ street, index }) {
                         <span>{street.distance_to_uni_km}km to uni</span>
                     </div>
                 </div>
-
-                {/* Composite score */}
                 <div className="flex flex-col items-center flex-shrink-0">
                     <span className={`text-xl font-extrabold ${scoreColour(street.composite_score)}`}>
                         {street.composite_score}
@@ -204,56 +184,63 @@ function StreetCard({ street, index }) {
                     <span className="text-[9px] text-slate-400 font-medium">/100</span>
                 </div>
             </div>
-
-            {/* Quick stats */}
-            <div className="px-4 pb-2 sm:px-5 flex items-center gap-2 flex-wrap">
+            {/* Quick tags */}
+            <div className="px-5 pb-2 flex items-center gap-2 flex-wrap">
                 {street.avg_weekly_rent && (
-                    <span className="inline-flex items-center gap-1 text-[10px] bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full font-semibold border border-blue-100">
-                        <PoundSterling size={10} />
-                        £{Math.round(street.avg_weekly_rent)}/wk avg
+                    <span className="inline-flex items-center gap-1 text-[10px] bg-primary/5 text-primary px-2.5 py-1 rounded-full font-semibold border border-primary/10">
+                        <span className="material-symbols-outlined text-xs">payments</span>
+                        £{Math.round(street.avg_weekly_rent)}/wk
                     </span>
                 )}
                 {street.avg_rooms && (
                     <span className="inline-flex items-center gap-1 text-[10px] bg-slate-50 text-slate-600 px-2.5 py-1 rounded-full font-semibold border border-slate-100">
-                        <Bed size={10} />
-                        {street.avg_rooms} rooms avg
-                    </span>
-                )}
-                {street.distance_to_uni_km && (
-                    <span className="inline-flex items-center gap-1 text-[10px] bg-violet-50 text-violet-600 px-2.5 py-1 rounded-full font-semibold border border-violet-100">
-                        <MapPin size={10} />
-                        {street.distance_to_uni_km}km
+                        <span className="material-symbols-outlined text-xs">bed</span>
+                        {street.avg_rooms} rooms
                     </span>
                 )}
             </div>
-
             {/* Expand toggle */}
             <button
                 onClick={() => setExpanded(!expanded)}
-                className="w-full px-4 py-2.5 sm:px-5 text-[11px] text-indigo-600 font-semibold flex items-center justify-center gap-1 hover:bg-indigo-50/50 transition-colors border-t border-slate-50"
+                className="w-full px-5 py-2.5 text-[11px] text-primary font-semibold flex items-center justify-center gap-1 hover:bg-primary/5 transition-colors border-t border-slate-50"
             >
                 {expanded ? 'Hide' : 'Show'} score breakdown
-                {expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                <span className="material-symbols-outlined text-sm">{expanded ? 'expand_less' : 'expand_more'}</span>
             </button>
-
-            {/* Score breakdown */}
             {expanded && (
                 <motion.div
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
                     transition={{ duration: 0.3 }}
-                    className="px-4 pb-4 sm:px-5 sm:pb-5 border-t border-slate-50 pt-3"
+                    className="px-5 pb-4 border-t border-slate-50 pt-3"
                 >
                     <div className="grid gap-3 sm:grid-cols-3">
-                        {filteredPillars.map((p, i) => (
-                            <ScoreBar
-                                key={p.label}
-                                label={p.label}
-                                score={p.score}
-                                detail={p.detail}
-                                index={i}
-                            />
-                        ))}
+                        {filteredPillars.map((p, i) => {
+                            const gradients = {
+                                Safety: 'bg-emerald-500',
+                                Value: 'bg-blue-500',
+                                Proximity: 'bg-primary/90',
+                            }
+                            return (
+                                <div key={p.label} className="flex items-center gap-2.5">
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center justify-between mb-0.5">
+                                            <span className="text-[11px] font-semibold text-slate-600">{p.label}</span>
+                                            <span className={`text-[11px] font-bold ${scoreColour(p.score)}`}>{p.score}</span>
+                                        </div>
+                                        <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                                            <motion.div
+                                                className={`h-full rounded-full ${gradients[p.label] || 'bg-primary'}`}
+                                                initial={{ width: 0 }}
+                                                animate={{ width: `${p.score}%` }}
+                                                transition={{ duration: 0.8, delay: i * 0.12 }}
+                                            />
+                                        </div>
+                                        {p.detail && <p className="text-[9px] text-slate-400 mt-0.5">{p.detail}</p>}
+                                    </div>
+                                </div>
+                            )
+                        })}
                     </div>
                 </motion.div>
             )}
@@ -261,61 +248,38 @@ function StreetCard({ street, index }) {
     )
 }
 
-// ── skeleton ─────────────────────────────────────────────────────────────────
-
-function LeaderboardSkeleton() {
+// ── Skeleton ─────────────────────────────────────────────────────────────────
+function Skeleton() {
     return (
-        <div className="animate-pulse space-y-6">
-            {/* Podium skeleton */}
-            <div className="flex gap-4 justify-center">
-                {[1, 2, 3].map(i => (
-                    <div key={i} className={`bg-white rounded-2xl border border-slate-100 p-5 text-center flex-1 max-w-[200px] ${i === 1 ? 'h-56' : 'h-48'}`}>
-                        <div className="w-12 h-12 bg-slate-100 rounded-xl mx-auto" />
-                        <div className="h-4 bg-slate-100 rounded mt-3 w-3/4 mx-auto" />
-                        <div className="h-8 bg-slate-100 rounded mt-2 w-1/2 mx-auto" />
-                    </div>
-                ))}
-            </div>
-            {/* Card skeletons */}
-            <div className="grid gap-3 lg:grid-cols-2">
+        <div className="animate-pulse space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {[1, 2, 3, 4].map(i => (
-                    <div key={i} className="bg-white rounded-2xl border border-slate-100 h-24 p-4 flex items-center gap-3">
-                        <div className="w-10 h-10 bg-slate-100 rounded-xl" />
-                        <div className="flex-1 space-y-2">
-                            <div className="h-4 bg-slate-100 rounded w-3/4" />
-                            <div className="h-3 bg-slate-100 rounded w-1/2" />
-                        </div>
-                        <div className="h-8 w-10 bg-slate-100 rounded" />
-                    </div>
+                    <div key={i} className="bg-white border border-primary/10 rounded-xl p-5 h-56" />
                 ))}
             </div>
         </div>
     )
 }
 
-// ── main page ────────────────────────────────────────────────────────────────
-
+// ── Main Page ────────────────────────────────────────────────────────────────
 export default function StreetSmarts() {
     const [district, setDistrict] = useState('GU2')
     const [streets, setStreets] = useState([])
     const [totalStreets, setTotalStreets] = useState(0)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState('')
+    const [viewMode, setViewMode] = useState('list')
 
     useEffect(() => {
         let cancelled = false
         setLoading(true)
         setError('')
 
-        fetch(`${API}/api/leaderboard/streets?district=${district}&limit=15`)
+        api.get(`/api/leaderboard/streets?district=${district}&limit=15`)
             .then((r) => {
-                if (!r.ok) throw new Error(`API error: ${r.status}`)
-                return r.json()
-            })
-            .then((data) => {
                 if (!cancelled) {
-                    setStreets(data.streets || [])
-                    setTotalStreets(data.total_streets || 0)
+                    setStreets(r.data.streets || [])
+                    setTotalStreets(r.data.total_streets || 0)
                     setLoading(false)
                 }
             })
@@ -325,138 +289,209 @@ export default function StreetSmarts() {
                     setLoading(false)
                 }
             })
-
         return () => { cancelled = true }
     }, [district])
 
-    const top3 = streets.slice(0, 3)
-    const rest = streets.slice(3)
+    const top4 = streets.slice(0, 4)
+    const rest = streets.slice(4)
+    // Pick 2 streets for comparison
+    const compareA = streets[0] || null
+    const compareB = streets[1] || null
 
     return (
-        <main className="min-h-screen bg-[#f8f9fc]">
+        <main className="min-h-screen bg-background-light">
             <Navbar />
 
-            {/* ══════════════════════════════════════════════════════════
-                HERO SECTION
-            ══════════════════════════════════════════════════════════ */}
-            <section className="relative px-4 pt-8 pb-10 lg:pt-16 lg:pb-14 overflow-hidden">
-                {/* Dot pattern */}
-                <div className="absolute inset-0 opacity-[0.15]" style={{
-                    backgroundImage: 'radial-gradient(circle, #6366F1 0.8px, transparent 0.8px)',
-                    backgroundSize: '24px 24px',
-                }} />
+            <div className="max-w-7xl mx-auto px-4 lg:px-6 py-8">
 
-                <div className="relative max-w-3xl mx-auto text-center">
-                    <Link
-                        to="/"
-                        className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-indigo-600 transition-colors mb-4 font-medium"
-                    >
-                        <ArrowLeft size={14} /> Home
-                    </Link>
+                {/* Header Section */}
+                <div className="mb-10">
+                    <h2 className="text-3xl font-bold mb-2">Guildford Student Living</h2>
+                    <p className="text-slate-500">Discover the best streets and compare property metrics for your next home.</p>
+                </div>
 
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.6 }}
-                    >
-                        <div className="inline-flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-full px-4 py-1.5 mb-4">
-                            <Trophy size={14} className="text-amber-600" />
-                            <span className="text-xs font-bold text-amber-700">StreetSmarts</span>
-                        </div>
+                {/* View Toggle & Filters */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                    {/* View Toggle */}
+                    <div className="flex p-1 bg-primary/5 rounded-xl self-start">
+                        <button
+                            onClick={() => setViewMode('list')}
+                            className={`px-6 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all ${viewMode === 'list'
+                                ? 'bg-white shadow-sm text-primary'
+                                : 'text-slate-500 hover:text-primary'
+                                }`}
+                        >
+                            <span className="material-symbols-outlined text-lg">format_list_bulleted</span> List View
+                        </button>
+                        <button
+                            onClick={() => setViewMode('map')}
+                            className={`px-6 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all ${viewMode === 'map'
+                                ? 'bg-white shadow-sm text-primary font-bold'
+                                : 'text-slate-500 hover:text-primary'
+                                }`}
+                        >
+                            <span className="material-symbols-outlined text-lg">map</span> Map View
+                        </button>
+                    </div>
 
-                        <h1 className="text-2xl font-bold text-slate-900 mb-2 lg:text-4xl tracking-tight">
-                            Best Streets for{' '}
-                            <span className="bg-gradient-to-r from-indigo-600 to-blue-600 bg-clip-text text-transparent">
-                                Students
-                            </span>
-                        </h1>
-
-                        <p className="text-sm text-slate-500 max-w-lg mx-auto mb-6 lg:text-base leading-relaxed">
-                            Every Guildford street ranked by safety, rent value, and proximity to Surrey uni.
-                        </p>
-                    </motion.div>
-
-                    {/* District toggle */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.2 }}
-                        className="inline-flex items-center gap-1 bg-white/80 backdrop-blur-sm border border-slate-200 rounded-full p-1 shadow-sm"
-                    >
+                    {/* Filters */}
+                    <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0">
                         {DISTRICTS.map((d) => (
                             <button
                                 key={d}
                                 onClick={() => setDistrict(d)}
-                                className={`px-6 py-2 rounded-full text-xs lg:text-sm font-semibold transition-all ${district === d
-                                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200'
-                                    : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors border whitespace-nowrap ${district === d
+                                    ? 'bg-primary text-white border-primary shadow-md shadow-primary/20'
+                                    : 'bg-primary/5 hover:bg-primary/10 border-primary/10'
                                     }`}
                             >
-                                {d}
+                                {d} District
                             </button>
                         ))}
-                    </motion.div>
+                        <button className="flex items-center gap-2 px-4 py-2 bg-primary/5 hover:bg-primary/10 rounded-xl text-sm font-medium transition-colors border border-primary/10 whitespace-nowrap">
+                            Distance to Uni <span className="material-symbols-outlined text-sm">expand_more</span>
+                        </button>
+                    </div>
                 </div>
-            </section>
 
-            {/* ══════════════════════════════════════════════════════════
-                LEADERBOARD
-            ══════════════════════════════════════════════════════════ */}
-            <section className="max-w-5xl mx-auto px-4 pb-16">
-                {loading && <LeaderboardSkeleton />}
-
-                {error && (
-                    <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-xl px-5 py-4 text-sm text-red-700 max-w-md mx-auto">
-                        <AlertCircle size={18} />
-                        {error}
-                    </div>
-                )}
-
-                {!loading && !error && streets.length === 0 && (
-                    <div className="text-center py-20">
-                        <p className="text-slate-400 text-sm">No streets found for {district}.</p>
-                    </div>
-                )}
-
-                {!loading && !error && streets.length > 0 && (
-                    <>
-                        {/* Count + info */}
-                        <div className="flex items-center justify-between mb-6">
-                            <p className="text-xs text-slate-400">
-                                Showing top {streets.length} of {totalStreets} streets in {district}
-                            </p>
-                            <div className="flex items-center gap-1 text-[10px] text-slate-400 bg-white border border-slate-100 rounded-full px-3 py-1.5">
-                                <Star size={10} className="text-amber-500" />
-                                Higher = better for students
-                            </div>
+                {/* ══════════ SIDE-BY-SIDE COMPARISON ══════════ */}
+                {!loading && compareA && compareB && (
+                    <section className="mb-16">
+                        <div className="flex items-center gap-3 mb-6">
+                            <span className="material-symbols-outlined text-primary bg-primary/10 p-2 rounded-lg">compare_arrows</span>
+                            <h3 className="text-xl font-bold">Side-by-Side Comparison</h3>
                         </div>
-
-                        {/* ── Top 3 Podium ─────────────────────────── */}
-                        {top3.length >= 3 && (
-                            <div className="grid grid-cols-3 gap-3 lg:gap-5 mb-8 lg:mb-10">
-                                {/* Show in order: #2, #1, #3 for visual podium effect */}
-                                <PodiumCard street={top3[1]} isGold={false} />
-                                <PodiumCard street={top3[0]} isGold={true} />
-                                <PodiumCard street={top3[2]} isGold={false} />
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-white p-6 rounded-xl border border-primary/10 shadow-sm">
+                            <ComparisonCard street={compareA} label="Street A" badgeClass="bg-primary text-white" />
+                            {/* VS Labels (desktop vertical center) */}
+                            <div className="hidden md:flex flex-col justify-center items-center gap-8 py-20">
+                                <div className="h-12 flex items-center">
+                                    <span className="text-xs font-bold text-slate-300 tracking-widest uppercase">vs</span>
+                                </div>
+                                <div className="text-center">
+                                    <p className="text-sm font-bold text-primary mb-12">Composite Score</p>
+                                    <p className="text-sm font-bold text-primary mb-12">Safety Score</p>
+                                    <p className="text-sm font-bold text-primary">Properties</p>
+                                </div>
                             </div>
-                        )}
+                            <ComparisonCard street={compareB} label="Street B" badgeClass="bg-slate-800 text-white" />
+                        </div>
+                    </section>
+                )}
 
-                        {/* ── Rest of leaderboard ─────────────────── */}
-                        {rest.length > 0 && (
-                            <div className="grid gap-3 lg:grid-cols-2 lg:gap-4">
-                                {rest.map((s, i) => (
+                {/* ══════════ TOP RATED STREETS ══════════ */}
+                <section>
+                    <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center gap-3">
+                            <span className="material-symbols-outlined text-primary bg-primary/10 p-2 rounded-lg">trending_up</span>
+                            <h3 className="text-xl font-bold">Top Rated Streets</h3>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs text-slate-400">
+                                Showing {streets.length} of {totalStreets} streets
+                            </span>
+                        </div>
+                    </div>
+
+                    {loading && <Skeleton />}
+
+                    {error && (
+                        <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-xl px-5 py-4 text-sm text-red-700 max-w-md mx-auto">
+                            <span className="material-symbols-outlined">error</span>
+                            {error}
+                        </div>
+                    )}
+
+                    {!loading && !error && streets.length === 0 && (
+                        <div className="text-center py-20">
+                            <span className="material-symbols-outlined text-4xl text-slate-300 mb-2">search_off</span>
+                            <p className="text-slate-400 text-sm">No streets found for {district}.</p>
+                        </div>
+                    )}
+
+                    {!loading && !error && streets.length > 0 && (
+                        <>
+                            {/* Top 4 card grid */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                                {top4.map((s, i) => (
                                     <StreetCard key={`${s.street_name}-${s.district}`} street={s} index={i} />
                                 ))}
                             </div>
-                        )}
 
-                        {/* Footer */}
-                        <p className="text-center text-[10px] lg:text-xs text-slate-400 mt-8">
-                            Scores based on police.uk crime data and Land Registry pricing. Updated weekly.
-                        </p>
-                    </>
-                )}
-            </section>
+                            {/* Rest of leaderboard */}
+                            {rest.length > 0 && (
+                                <div className="grid gap-3 lg:grid-cols-2 lg:gap-4">
+                                    {rest.map((s, i) => (
+                                        <ExpandableRowCard key={`${s.street_name}-${s.district}`} street={s} index={i} />
+                                    ))}
+                                </div>
+                            )}
+                        </>
+                    )}
+                </section>
+
+                {/* ══════════ MAP SECTION ══════════ */}
+                <section className="mt-16">
+                    <div className="relative w-full h-[400px] rounded-2xl overflow-hidden border border-primary/20 bg-primary/5">
+                        {/* Map legend overlay */}
+                        <div className="absolute top-6 left-6 p-4 bg-white/90 backdrop-blur rounded-xl shadow-xl max-w-xs z-10">
+                            <h6 className="font-bold text-sm mb-2">Guildford Hotspots</h6>
+                            <div className="flex items-center gap-2 mb-2">
+                                <div className="w-3 h-3 rounded-full bg-primary animate-pulse" />
+                                <span className="text-xs">High Demand Areas</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <div className="w-3 h-3 rounded-full bg-green-500" />
+                                <span className="text-xs">High Rent Value Streets</span>
+                            </div>
+                        </div>
+                        {/* Center pin */}
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="flex flex-col items-center">
+                                <div className="bg-primary text-white p-3 rounded-full shadow-lg animate-bounce">
+                                    <span className="material-symbols-outlined">home</span>
+                                </div>
+                                <div className="mt-2 px-3 py-1 bg-white border border-primary/20 rounded-lg shadow-sm text-xs font-bold">
+                                    {district} Area
+                                </div>
+                            </div>
+                        </div>
+                        {/* Zoom controls */}
+                        <div className="absolute bottom-6 right-6 flex flex-col gap-2 z-10">
+                            <button className="w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center text-primary">
+                                <span className="material-symbols-outlined">add</span>
+                            </button>
+                            <button className="w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center text-primary">
+                                <span className="material-symbols-outlined">remove</span>
+                            </button>
+                        </div>
+                        {/* Scatter some pins */}
+                        {!loading && streets.slice(0, 4).map((s, i) => {
+                            const positions = [
+                                { top: '35%', left: '25%' },
+                                { top: '55%', left: '65%' },
+                                { top: '40%', left: '50%' },
+                                { top: '60%', left: '35%' },
+                            ]
+                            return (
+                                <div key={s.street_name} className="absolute group/pin cursor-pointer" style={positions[i]}>
+                                    <div className="bg-primary text-white p-1.5 rounded-full shadow-lg group-hover/pin:scale-110 transition-transform">
+                                        <span className="material-symbols-outlined text-sm">location_on</span>
+                                    </div>
+                                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 opacity-0 group-hover/pin:opacity-100 transition-opacity whitespace-nowrap bg-slate-900 text-white text-[10px] px-2 py-1 rounded z-20">
+                                        {s.street_name}
+                                    </div>
+                                </div>
+                            )
+                        })}
+                    </div>
+                </section>
+
+                {/* Data source note */}
+                <p className="text-center text-[10px] lg:text-xs text-slate-400 mt-8">
+                    Scores based on police.uk crime data and Land Registry pricing. Updated weekly.
+                </p>
+            </div>
         </main>
     )
 }

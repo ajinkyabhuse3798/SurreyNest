@@ -17,8 +17,8 @@ export default function SearchHeader({
             <div className="w-full flex items-center justify-between gap-3">
                 {/* Left: Search summary */}
                 <div className="flex items-center gap-2 min-w-0">
-                    <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center flex-shrink-0">
-                        <MapPin size={14} className="text-indigo-600" />
+                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <MapPin size={14} className="text-primary" />
                     </div>
                     <p className="text-sm text-slate-700 truncate font-medium">
                         {loading ? (
@@ -31,7 +31,7 @@ export default function SearchHeader({
                                 )}{' '}
                                 properties within{' '}
                                 <span className="font-bold">{formatRadius(radius)}</span> of{' '}
-                                <span className="font-bold text-indigo-600">{postcode.toUpperCase()}</span>
+                                <span className="font-bold text-primary">{postcode.toUpperCase()}</span>
                             </>
                         )}
                     </p>
@@ -44,7 +44,7 @@ export default function SearchHeader({
                         <select
                             value={sortKey}
                             onChange={(e) => setSortKey(e.target.value)}
-                            className="appearance-none bg-slate-50 border border-slate-200 rounded-xl pl-3 pr-8 py-2 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent cursor-pointer"
+                            className="appearance-none bg-slate-50 border border-slate-200 rounded-xl pl-3 pr-8 py-2 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer"
                         >
                             {SORT_OPTIONS.map((o) => (
                                 <option key={o.value} value={o.value}>{o.label}</option>
@@ -57,14 +57,14 @@ export default function SearchHeader({
                     <button
                         onClick={() => setShowFilters((s) => !s)}
                         className={`hidden sm:flex items-center gap-1.5 border rounded-xl px-3 py-2 text-xs font-semibold transition-all ${showFilters || activeFilterCount > 0
-                            ? 'border-indigo-200 text-indigo-600 bg-indigo-50'
+                            ? 'border-primary/20 text-primary bg-primary/10'
                             : 'border-slate-200 text-slate-600 bg-slate-50 hover:border-slate-300'
                             }`}
                     >
                         <SlidersHorizontal size={12} />
                         Filters
                         {activeFilterCount > 0 && (
-                            <span className="bg-indigo-600 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center font-bold">
+                            <span className="bg-primary text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center font-bold">
                                 {activeFilterCount}
                             </span>
                         )}
@@ -75,7 +75,7 @@ export default function SearchHeader({
                         <button
                             onClick={() => setShowMap(false)}
                             className={`flex items-center gap-1 px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all ${!showMap
-                                ? 'bg-indigo-600 text-white shadow-sm'
+                                ? 'bg-primary text-white shadow-sm'
                                 : 'text-slate-500 hover:text-slate-700'
                                 }`}
                         >
@@ -85,7 +85,7 @@ export default function SearchHeader({
                         <button
                             onClick={() => setShowMap(true)}
                             className={`flex items-center gap-1 px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all ${showMap
-                                ? 'bg-indigo-600 text-white shadow-sm'
+                                ? 'bg-primary text-white shadow-sm'
                                 : 'text-slate-500 hover:text-slate-700'
                                 }`}
                         >

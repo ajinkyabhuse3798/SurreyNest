@@ -17,7 +17,7 @@ export default function FilterBar({
                     <select
                         value={filterType}
                         onChange={(e) => setFilterType(e.target.value)}
-                        className="appearance-none bg-white border border-slate-200 rounded-xl pl-3 pr-8 py-2 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                        className="appearance-none bg-white border border-slate-200 rounded-xl pl-3 pr-8 py-2 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
                     >
                         <option value="">All types</option>
                         {propertyTypes.map((t) => (
@@ -31,7 +31,7 @@ export default function FilterBar({
                     <select
                         value={filterEpc}
                         onChange={(e) => setFilterEpc(e.target.value)}
-                        className="appearance-none bg-white border border-slate-200 rounded-xl pl-3 pr-8 py-2 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                        className="appearance-none bg-white border border-slate-200 rounded-xl pl-3 pr-8 py-2 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
                     >
                         <option value="">Any EPC</option>
                         {['A', 'B', 'C', 'D', 'E'].map((r) => (

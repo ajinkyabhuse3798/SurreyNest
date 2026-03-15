@@ -25,8 +25,8 @@ function SubSection({ id, icon: Icon, title, infoTip, children }) {
         <section id={id} className={`${CARD} shadow-sm border-slate-100/60`}>
             <div className="flex items-center gap-3 mb-6">
                 {Icon && (
-                    <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center flex-shrink-0 border border-indigo-100/50">
-                        <Icon size={17} className="text-indigo-600" />
+                    <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 border border-primary/10/50">
+                        <Icon size={17} className="text-primary" />
                     </div>
                 )}
                 <h2 className="text-lg font-extrabold text-slate-900 tracking-tight">{title}</h2>
@@ -78,7 +78,7 @@ export default function CostSection({ property: p, weeklyRent, monthlyRent, ener
                                 <span className="text-[10px] font-medium opacity-80">Below market</span>
                                 <span className="font-extrabold">£{Math.round(weeklyRent)}/wk</span>
                             </div>
-                            <div className="flex-[2] flex flex-col items-center justify-center bg-indigo-600 text-white border-r border-white/30 backdrop-blur-sm">
+                            <div className="flex-[2] flex flex-col items-center justify-center bg-primary text-white border-r border-white/30 backdrop-blur-sm">
                                 <span className="text-[10px] font-medium opacity-80">Median estimate</span>
                                 <span className="font-extrabold text-base tracking-tight">
                                     £{Math.round(weeklyRent * 1.08)}/wk
@@ -148,7 +148,7 @@ export default function CostSection({ property: p, weeklyRent, monthlyRent, ener
                             {[
                                 { icon: Zap, colour: 'text-amber-500 bg-amber-50 border-amber-100', label: 'Energy', value: `~£${energyCost}/mo` },
                                 { icon: Droplets, colour: 'text-blue-500 bg-blue-50 border-blue-100', label: 'Water', value: `~£${waterCost}/mo` },
-                                { icon: Wifi, colour: 'text-indigo-500 bg-indigo-50 border-indigo-100', label: 'Internet', value: `~£${internetCost}/mo` },
+                                { icon: Wifi, colour: 'text-primary/80 bg-primary/10 border-primary/10', label: 'Internet', value: `~£${internetCost}/mo` },
                             ].map(b => (
                                 <div key={b.label} className="flex items-center justify-between text-sm group">
                                     <span className="flex items-center gap-3 text-slate-600 font-medium">
@@ -175,18 +175,18 @@ export default function CostSection({ property: p, weeklyRent, monthlyRent, ener
 
                     {/* Total + per-person */}
                     {totalMonthly && (
-                        <div className="relative overflow-hidden bg-gradient-to-br from-indigo-50 to-white rounded-2xl p-6 border border-indigo-100/60 shadow-glass">
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-200/30 rounded-full blur-[40px] pointer-events-none translate-x-1/2 -translate-y-1/2" />
+                        <div className="relative overflow-hidden bg-gradient-to-br from-primary-50 to-white rounded-2xl p-6 border border-primary/10/60 shadow-glass">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-primary-200/30 rounded-full blur-[40px] pointer-events-none translate-x-1/2 -translate-y-1/2" />
 
                             <div className="flex items-end justify-between relative z-10">
                                 <div className="space-y-1">
-                                    <span className="text-xs font-bold text-indigo-500 uppercase tracking-widest">Total Estimated</span>
+                                    <span className="text-xs font-bold text-primary/80 uppercase tracking-widest">Total Estimated</span>
                                     <h4 className="text-3xl font-extrabold text-slate-900">~£{totalMonthly}<span className="text-base text-slate-400 font-medium tracking-normal">/mo</span></h4>
                                 </div>
                                 {perPerson && (
                                     <div className="text-right">
                                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Per Room</p>
-                                        <p className="text-lg text-indigo-700 font-extrabold bg-white/60 backdrop-blur-sm rounded-xl px-3 py-1.5 border border-indigo-100 shadow-sm">
+                                        <p className="text-lg text-primary/90 font-extrabold bg-white/60 backdrop-blur-sm rounded-xl px-3 py-1.5 border border-primary/10 shadow-sm">
                                             ~£{perPerson}
                                         </p>
                                     </div>
@@ -194,7 +194,7 @@ export default function CostSection({ property: p, weeklyRent, monthlyRent, ener
                             </div>
 
                             {annualCost && (
-                                <div className="border-t border-indigo-100/80 mt-5 pt-4 space-y-2 relative z-10">
+                                <div className="border-t border-primary/10/80 mt-5 pt-4 space-y-2 relative z-10">
                                     <div className="flex justify-between items-center text-xs">
                                         <span className="text-slate-500 font-medium">12-month contract:</span>
                                         <span className="font-extrabold text-slate-800 bg-white/80 px-2 py-1 rounded-md border border-slate-100">~£{annualCost.toLocaleString()}</span>

@@ -20,7 +20,7 @@ export default function GlobalImportance({ importance }) {
                             <span className="text-xs text-slate-600 w-36 flex-shrink-0 truncate">{g.label}</span>
                             <div className="flex-1">
                                 <div
-                                    className="h-5 bg-gradient-to-r from-indigo-400 to-violet-400 rounded-lg flex items-center px-2 transition-all duration-700"
+                                    className="h-5 bg-gradient-to-r from-primary-400 to-primary-400 rounded-lg flex items-center px-2 transition-all duration-700"
                                     style={{ width: `${barW}%` }}
                                 >
                                     <span className="text-[10px] font-bold text-white">{g.importance_pct}%</span>

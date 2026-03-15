@@ -40,7 +40,7 @@ export default function AgentReviewCard({ review }) {
                     {review.move_in_year && <span>Moved in {review.move_in_year}</span>}
                     <Link
                         to={`/property/${review.uprn}`}
-                        className="text-indigo-500 hover:text-indigo-700 underline underline-offset-2"
+                        className="text-primary/80 hover:text-primary/90 underline underline-offset-2"
                     >
                         View property
                     </Link>

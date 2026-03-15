@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>SurreyNest | Property Insights Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">tailwind.config = {darkMode: "class", theme: {extend: {colors: {primary: "#ea871d", "background-light": "#f8f7f6", "background-dark": "#211911"}, fontFamily: {display: "Inter"}, borderRadius: {DEFAULT: "0.125rem", lg: "0.25rem", xl: "0.5rem", full: "0.75rem"}}}};</script>
+<style>body { font-family: 'Inter', sans-serif; }
+        .gauge-container {
+            position: relative;
+            width: 160px;
+            height: 80px;
+            overflow: hidden;
+        }
+        .gauge-bg {
+            width: 160px;
+            height: 160px;
+            border-radius: 50%;
+            border: 15px solid #fcf2e8;
+        }
+        .gauge-fill {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 160px;
+            height: 160px;
+            border-radius: 50%;
+            border: 15px solid #ea871d;
+            border-bottom-color: transparent;
+            border-left-color: transparent;
+            transform: rotate(45deg);
+        }</style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 antialiased">
+<div class="relative flex min-h-screen w-full flex-col overflow-x-hidden">
+<!-- Top Navigation Bar -->
+<header class="flex items-center justify-between border-b border-primary/10 bg-white/70 backdrop-blur-md px-6 py-4 sticky top-0 z-50">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-3">
+<div class="bg-primary p-1.5 rounded-lg text-white">
+<span class="material-symbols-outlined text-2xl">auto_awesome</span>
+</div>
+<h2 class="text-xl font-bold tracking-tight text-primary">SurreyNest</h2>
+</div>
+<nav class="hidden md:flex items-center gap-6">
+<a class="text-slate-600 hover:text-primary transition-colors text-sm font-semibold" href="#">Dashboard</a>
+<a class="text-slate-600 hover:text-primary transition-colors text-sm font-semibold" href="#">Market Analysis</a>
+<a class="text-slate-600 hover:text-primary transition-colors text-sm font-semibold" href="#">HMO Portal</a>
+</nav>
+</div>
+<div class="flex flex-1 justify-end gap-4 max-w-xl">
+<div class="relative w-full max-w-xs">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-primary/60">search</span>
+<input class="w-full pl-10 pr-4 py-2 bg-primary/5 border-none rounded-xl focus:ring-2 focus:ring-primary/20 text-sm" placeholder="Search postcode (e.g. GU2 7JP)" value="GU2 7JP"/>
+</div>
+<div class="flex gap-2">
+<button class="p-2 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 transition-all">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<div class="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center border-2 border-white" data-alt="User avatar placeholder with abstract purple pattern">
+<span class="material-symbols-outlined text-primary">person</span>
+</div>
+</div>
+</div>
+</header>
+<main class="flex-1 max-w-7xl mx-auto w-full px-6 py-8">
+<!-- Breadcrumbs & Title -->
+<div class="mb-8">
+<div class="flex items-center gap-2 text-primary/60 text-sm mb-2">
+<span>Surrey</span>
+<span class="material-symbols-outlined text-xs">chevron_right</span>
+<span>Guildford</span>
+<span class="material-symbols-outlined text-xs">chevron_right</span>
+<span class="text-primary font-semibold">GU2 7JP</span>
+</div>
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+<div>
+<h1 class="text-4xl font-black tracking-tight text-slate-900">Property Insights Dashboard</h1>
+<p class="text-slate-500 mt-1">Real-time ML analysis for properties in the University District</p>
+</div>
+<div class="flex gap-3"><button class="px-6 py-2.5 bg-white border border-primary/20 text-primary font-bold rounded-xl hover:bg-primary/5 transition-all flex items-center gap-2">
+<span class="material-symbols-outlined text-lg">gavel</span> Rights
+</button>
+<button class="px-6 py-2.5 bg-white border border-primary/20 text-primary font-bold rounded-xl hover:bg-primary/5 transition-all flex items-center gap-2">
+<span class="material-symbols-outlined text-lg">compare_arrows</span> Compare
+                    </button>
+<button class="px-6 py-2.5 bg-primary text-white font-bold rounded-xl hover:opacity-90 transition-all flex items-center gap-2 shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined text-lg">open_in_new</span> Check Listing
+                    </button>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+<!-- Left Column: Primary Metrics -->
+<div class="lg:col-span-4 space-y-6">
+<!-- Fair Rent Score Card -->
+<div class="bg-white p-6 rounded-xl border border-primary/10 shadow-sm mb-6">
+<div class="flex items-center gap-3 mb-4">
+<span class="material-symbols-outlined text-primary">home_work</span>
+<h3 class="font-bold text-slate-800">Property Specifics</h3>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div class="bg-primary/5 p-3 rounded-lg">
+<p class="text-[10px] font-bold text-primary uppercase">Type</p>
+<p class="text-sm font-bold text-slate-800">Detached House</p>
+</div>
+<div class="bg-primary/5 p-3 rounded-lg">
+<p class="text-[10px] font-bold text-primary uppercase">Rooms</p>
+<p class="text-sm font-bold text-slate-800">5 Bedrooms</p>
+</div>
+<div class="bg-primary/5 p-3 rounded-lg">
+<p class="text-[10px] font-bold text-primary uppercase">Size</p>
+<p class="text-sm font-bold text-slate-800">145 m²</p>
+</div>
+<div class="bg-primary/5 p-3 rounded-lg">
+<p class="text-[10px] font-bold text-primary uppercase">EPC Rating</p>
+<p class="text-sm font-bold text-slate-800">B (82)</p>
+</div>
+</div>
+</div><div class="bg-white p-8 rounded-xl border border-primary/10 shadow-sm flex flex-col items-center text-center">
+<h3 class="text-lg font-bold text-slate-800 mb-6">Fair Rent Score</h3>
+<div class="gauge-container mb-4">
+<div class="gauge-bg"></div>
+<div class="gauge-fill" style="transform: rotate(140deg);"></div> <!-- Adjust degree for score -->
+<div class="absolute bottom-0 left-1/2 -translate-x-1/2 flex flex-col items-center">
+<span class="text-4xl font-black text-primary">88</span>
+<span class="text-xs font-bold text-slate-400 uppercase tracking-widest">Optimal</span>
+</div>
+</div>
+<p class="text-sm text-slate-500 max-w-[200px]">This property is priced 4% below the local AI-predicted market average.</p>
+<div class="mt-6 w-full pt-6 border-t border-slate-100 flex justify-between">
+<div class="text-left">
+<p class="text-xs text-slate-400 font-bold uppercase">Confidence</p>
+<p class="text-xl font-bold text-slate-800">94%</p>
+</div>
+<div class="text-right">
+<p class="text-xs text-slate-400 font-bold uppercase">Market Avg</p>
+<p class="text-xl font-bold text-slate-800">£1,850</p>
+</div>
+</div>
+</div>
+<!-- HMO License Card -->
+<div class="bg-white p-6 rounded-xl border border-primary/10 shadow-sm">
+<div class="flex items-center justify-between mb-4">
+<h3 class="font-bold text-slate-800 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">verified</span>
+                            HMO License Status
+                        </h3>
+<span class="px-2 py-1 bg-green-100 text-green-700 text-[10px] font-bold rounded uppercase">Active</span>
+</div>
+<div class="space-y-3">
+<div class="flex justify-between text-sm py-2 border-b border-slate-50">
+<span class="text-slate-500">License Reference</span>
+<span class="font-semibold text-slate-800">HMO-GU2-2024-089</span>
+</div>
+<div class="flex justify-between text-sm py-2 border-b border-slate-50">
+<span class="text-slate-500">Max Occupants</span>
+<span class="font-semibold text-slate-800">5 Persons</span>
+</div>
+<div class="flex justify-between text-sm py-2">
+<span class="text-slate-500">Expiry Date</span>
+<span class="font-semibold text-slate-800">14 Oct 2028</span>
+</div>
+</div>
+<p class="mt-4 text-[11px] text-slate-400 italic">Data pulled from Guildford Public Register: Updated 12h ago</p>
+</div><div class="bg-white p-6 rounded-xl border border-primary/10 shadow-sm">
+<div class="flex items-center justify-between mb-4">
+<h3 class="font-bold text-slate-800 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">security</span>
+            Area Safety Profile
+        </h3>
+<span class="px-2 py-1 bg-primary/10 text-primary text-[10px] font-bold rounded uppercase">Safe Zone</span>
+</div>
+<div class="flex items-center gap-4 mb-4">
+<div class="text-4xl font-black text-primary">88<span class="text-sm text-slate-400">/100</span></div>
+<div class="text-xs text-slate-500">Safety score based on police.uk data for crime incidents (theft, ASB).</div>
+</div>
+<div class="space-y-2">
+<div class="flex justify-between text-xs">
+<span class="text-slate-500">Low Crime Frequency</span>
+<span class="font-bold text-green-600">High Confidence</span>
+</div>
+<div class="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[88%]"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Details & Map -->
+<div class="lg:col-span-8 space-y-6">
+<!-- Quality & Efficiency -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="bg-white p-6 rounded-xl border border-primary/10 shadow-sm">
+<h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">energy_savings_leaf</span>
+                            Energy Efficiency (EPC)
+                        </h3>
+<div class="flex items-center gap-4 mb-4">
+<div class="w-16 h-16 rounded-lg bg-green-500 flex items-center justify-center text-white text-3xl font-black">B</div>
+<div>
+<p class="text-sm font-bold text-slate-800">Potential Rating: A</p>
+<p class="text-xs text-slate-500">Modern insulation &amp; double glazing installed in 2022.</p>
+</div>
+</div>
+<div class="space-y-2">
+<div class="h-2 bg-slate-100 rounded-full overflow-hidden flex">
+<div class="bg-red-500 w-[10%]"></div>
+<div class="bg-orange-500 w-[15%]"></div>
+<div class="bg-yellow-500 w-[20%]"></div>
+<div class="bg-green-500 w-[40%]"></div>
+<div class="bg-green-700 w-[15%]"></div>
+</div>
+</div>
+</div>
+<div class="bg-white p-6 rounded-xl border border-primary/10 shadow-sm">
+<h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">forum</span>
+                            Tenant Insights
+                        </h3>
+<div class="space-y-3">
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-orange-400">warning</span>
+<div>
+<p class="text-sm font-bold text-slate-800">Historical Damp</p>
+<p class="text-xs text-slate-500">Reported in bathroom (2021). Fixed by landlord.</p>
+</div>
+</div>
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-green-500">check_circle</span>
+<div>
+<p class="text-sm font-bold text-slate-800">Quiet Surroundings</p>
+<p class="text-xs text-slate-500">Consistently noted for minimal street noise.</p>
+</div>
+</div>
+</div><div class="mt-4 pt-4 border-t border-slate-50 flex justify-center">
+<button class="text-xs font-bold text-primary flex items-center gap-1 hover:underline">
+<span class="material-symbols-outlined text-sm">rate_review</span> Write a Review
+    </button>
+</div>
+</div>
+</div>
+<!-- Neighborhood Map View -->
+<div class="bg-white p-6 rounded-xl border border-primary/10 shadow-sm">
+<h3 class="font-bold text-slate-800 mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">payments</span>
+        Estimated Cost Breakdown
+    </h3>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<div class="border-r border-slate-100 pr-6">
+<p class="text-[10px] font-bold text-slate-400 uppercase mb-1">Weekly Rent</p>
+<p class="text-2xl font-bold text-slate-800">£425</p>
+</div>
+<div class="border-r border-slate-100 pr-6">
+<p class="text-[10px] font-bold text-slate-400 uppercase mb-1">Est. Energy / Mo</p>
+<p class="text-2xl font-bold text-slate-800">£115</p>
+<p class="text-[10px] text-green-600 font-bold">-15% vs Avg (EPC B)</p>
+</div>
+<div>
+<p class="text-[10px] font-bold text-primary uppercase mb-1">Total Monthly Cost</p>
+<p class="text-3xl font-black text-primary">£1,965</p>
+</div>
+</div>
+</div><div class="bg-white rounded-xl border border-primary/10 shadow-sm overflow-hidden">
+<div class="p-6 border-b border-slate-50 flex justify-between items-center">
+<h3 class="font-bold text-slate-800 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">map</span>
+                            Location Intelligence
+                        </h3>
+<span class="text-xs font-bold text-primary">University of Surrey: 8 min walk</span>
+</div>
+<div class="h-64 bg-primary/5 flex items-center justify-center relative group" data-location="Guildford, Surrey" style="">
+<div class="absolute inset-0 bg-cover bg-center opacity-40 grayscale" data-alt="Abstract map layout of Guildford area" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDSVcRgmgMjB-Lt3P479HUCrlBs9Chrk4dl5rA7GCE3Vnwogp8-yXaOmM2V1hTvhQ539PR1L_thvUkFE94HHPSS3eUkTbo-iHnMCoWzHUKRSvO_zi4NDwQTZlI89z4yrGQaV3CAwU5R7kxxHENDmpaR5Sa-q4wKGp5yhmhSln2fUu0wvvSLBM3VAM9JfKcHJD71iIOm6J60eiZGzuZhXEae8nCeFwVo__zb04Er1Ozs3XPRyfl6QVeX8VMfzxs4CH-uzL00S07uLRc')"></div>
+<div class="relative flex flex-col items-center">
+<div class="w-12 h-12 bg-primary rounded-full flex items-center justify-center shadow-xl animate-bounce">
+<span class="material-symbols-outlined text-white">home</span>
+</div>
+<div class="mt-2 px-3 py-1 bg-white border border-primary/20 rounded-lg shadow-sm text-xs font-bold">GU2 7JP</div>
+</div>
+</div>
+<div class="p-6 grid grid-cols-3 gap-4">
+<div class="text-center">
+<span class="material-symbols-outlined text-slate-400 mb-1">train</span>
+<p class="text-[10px] font-bold text-slate-400 uppercase">Station</p>
+<p class="text-xs font-bold">12 min</p>
+</div>
+<div class="text-center border-x border-slate-100">
+<span class="material-symbols-outlined text-slate-400 mb-1">local_hospital</span>
+<p class="text-[10px] font-bold text-slate-400 uppercase">Hospital</p>
+<p class="text-xs font-bold">5 min</p>
+</div>
+<div class="text-center">
+<span class="material-symbols-outlined text-slate-400 mb-1">local_grocery_store</span>
+<p class="text-[10px] font-bold text-slate-400 uppercase">Supermarket</p>
+<p class="text-xs font-bold">3 min</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Trend Section -->
+<div class="mt-8 bg-primary/5 rounded-2xl p-8 border border-primary/10">
+<div class="flex items-center justify-between mb-8">
+<div>
+<h3 class="text-xl font-bold text-slate-900">Market Price Trend</h3>
+<p class="text-sm text-slate-500">Postal area GU2 rental yield analysis</p>
+</div>
+<div class="flex gap-2">
+<button class="px-4 py-1.5 rounded-full bg-white text-xs font-bold text-primary border border-primary/20">6 Months</button>
+<button class="px-4 py-1.5 rounded-full bg-primary text-xs font-bold text-white shadow-md">1 Year</button>
+</div>
+</div>
+<div class="h-48 w-full flex items-end gap-3 px-4">
+<div class="flex-1 bg-primary/20 rounded-t-lg h-[40%] hover:bg-primary/40 transition-all cursor-pointer relative group">
+<span class="absolute -top-8 left-1/2 -translate-x-1/2 text-[10px] font-bold text-primary hidden group-hover:block">£1,620</span>
+</div>
+<div class="flex-1 bg-primary/20 rounded-t-lg h-[45%] hover:bg-primary/40 transition-all cursor-pointer relative group"></div>
+<div class="flex-1 bg-primary/20 rounded-t-lg h-[42%] hover:bg-primary/40 transition-all cursor-pointer relative group"></div>
+<div class="flex-1 bg-primary/30 rounded-t-lg h-[55%] hover:bg-primary/40 transition-all cursor-pointer relative group"></div>
+<div class="flex-1 bg-primary/30 rounded-t-lg h-[60%] hover:bg-primary/40 transition-all cursor-pointer relative group"></div>
+<div class="flex-1 bg-primary/40 rounded-t-lg h-[65%] hover:bg-primary/40 transition-all cursor-pointer relative group"></div>
+<div class="flex-1 bg-primary/40 rounded-t-lg h-[70%] hover:bg-primary/40 transition-all cursor-pointer relative group"></div>
+<div class="flex-1 bg-primary/50 rounded-t-lg h-[75%] hover:bg-primary/40 transition-all cursor-pointer relative group"></div>
+<div class="flex-1 bg-primary/60 rounded-t-lg h-[82%] hover:bg-primary/40 transition-all cursor-pointer relative group"></div>
+<div class="flex-1 bg-primary/70 rounded-t-lg h-[88%] hover:bg-primary/40 transition-all cursor-pointer relative group"></div>
+<div class="flex-1 bg-primary/80 rounded-t-lg h-[92%] hover:bg-primary/40 transition-all cursor-pointer relative group"></div>
+<div class="flex-1 bg-primary rounded-t-lg h-[100%] relative group">
+<span class="absolute -top-8 left-1/2 -translate-x-1/2 text-[10px] font-bold text-primary">£1,850</span>
+</div>
+</div>
+<div class="flex justify-between mt-4 px-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+<span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span><span>Jul</span><span>Aug</span><span>Sep</span><span>Oct</span><span>Nov</span><span>Dec</span>
+</div>
+</div>
+</main>
+<footer class="mt-auto py-10 px-6 bg-white border-t border-slate-100">
+<div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
+<div class="flex items-center gap-2">
+<div class="bg-primary/10 p-1.5 rounded text-primary">
+<span class="material-symbols-outlined text-lg">auto_awesome</span>
+</div>
+<span class="font-bold text-slate-800">SurreyNest AI</span>
+</div>
+<p class="text-sm text-slate-400">© 2024 SurreyNest. Empowering tenants with transparent data.</p>
+<div class="flex gap-6 text-sm font-semibold text-slate-500">
+<a class="hover:text-primary" href="#">API Access</a>
+<a class="hover:text-primary" href="#">Data Sources</a>
+<a class="hover:text-primary" href="#">Privacy</a>
+</div>
+</div>
+</footer>
+</div>
+</body></html>

@@ -1,17 +1,12 @@
 /**
- * Home v3 — Premium landing page orchestrator.
- *
- * All 8 visual sections are extracted into focused sub-components
- * under components/home/. This file retains only state and handleSearch.
+ * Home — Landing page orchestrator (Stitch-aligned).
+ * Composes all home sub-components and manages search state.
  */
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import MarketPulse from '../components/MarketPulse'
-import { AnimatedSection, fadeUp, POSTCODE_RE } from '../utils/homeData'
-import { motion } from 'framer-motion'
 
-// ── Sub-components ───────────────────────────────────────────────────────────
 import HeroSection from '../components/home/HeroSection'
 import TrustBar from '../components/home/TrustBar'
 import ExploreSection from '../components/home/ExploreSection'
@@ -20,6 +15,8 @@ import HowItWorks from '../components/home/HowItWorks'
 import StreetSmartsTeaser from '../components/home/StreetSmartsTeaser'
 import CtaSection from '../components/home/CtaSection'
 
+// Accepts full postcodes (GU2 7XH) and area/district codes (GU2, GU1 1)
+const POSTCODE_RE = /^[A-Za-z]{1,2}\d[A-Za-z\d]?(\s*\d[A-Za-z]{2})?$/
 
 export default function Home() {
     const navigate = useNavigate()
@@ -38,10 +35,10 @@ export default function Home() {
     }
 
     return (
-        <main className="min-h-screen bg-[#f8f9fc]">
+        <main className="min-h-screen bg-background-light">
             <Navbar />
 
-            {/* 1. Hero */}
+            {/* Hero */}
             <HeroSection
                 postcode={postcode}
                 setPostcode={setPostcode}
@@ -52,31 +49,28 @@ export default function Home() {
                 handleSearch={handleSearch}
             />
 
-            {/* 2. Trust */}
+            {/* Trust badges */}
             <TrustBar />
 
-            {/* 3. Explore Map */}
-            <ExploreSection />
-
-            {/* 4. Market Pulse */}
-            <AnimatedSection className="px-4 py-6 lg:py-10 max-w-lg lg:max-w-3xl mx-auto">
-                <motion.div variants={fadeUp}>
-                    <MarketPulse />
-                </motion.div>
-            </AnimatedSection>
-
-            {/* 5. Features */}
+            {/* Features — "Everything you need" */}
             <FeaturesSection />
 
-            {/* 6. How It Works */}
+            {/* Explore Best Streets */}
+            <ExploreSection />
+
+            {/* Market timing */}
+            <div className="px-4 py-6 lg:py-10 max-w-lg lg:max-w-3xl mx-auto">
+                <MarketPulse />
+            </div>
+
+            {/* How It Works */}
             <HowItWorks />
 
-            {/* 7. StreetSmarts */}
+            {/* StreetSmarts leaderboard teaser */}
             <StreetSmartsTeaser />
 
-            {/* 8. CTA */}
+            {/* CTA */}
             <CtaSection />
         </main>
     )
 }
-

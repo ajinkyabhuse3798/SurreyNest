@@ -24,9 +24,9 @@ export default function HmoSection({ hmoStatus, hmoDetail, hmoLoading, property:
 
     return (
         <div className="space-y-5">
-            <div className="bg-indigo-50/50 border border-indigo-100/80 rounded-2xl p-4 flex items-start gap-3">
-                <InfoIcon size={18} className="text-indigo-500 flex-shrink-0 mt-0.5 drop-shadow-sm" />
-                <p className="text-xs text-indigo-900 leading-relaxed font-medium">
+            <div className="bg-primary/10/50 border border-primary/10/80 rounded-2xl p-4 flex items-start gap-3">
+                <InfoIcon size={18} className="text-primary/80 flex-shrink-0 mt-0.5 drop-shadow-sm" />
+                <p className="text-xs text-primary-900 leading-relaxed font-medium">
                     An <strong>HMO</strong> (House in Multiple Occupation) is a property rented by 3+ people from different households — like a typical student house share.
                 </p>
             </div>

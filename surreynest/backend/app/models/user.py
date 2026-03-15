@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 from sqlalchemy import Boolean, String, DateTime
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
+from typing import Optional
 
 from app.database import Base
 
@@ -66,6 +67,16 @@ class User(Base):
         server_default="false",
     )
     last_login: Mapped[Optional[datetime]] = mapped_column(
+        DateTime,
+        nullable=True,
+    )
+    is_pro: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="false",
+    )
+    pro_expires_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime,
         nullable=True,
     )

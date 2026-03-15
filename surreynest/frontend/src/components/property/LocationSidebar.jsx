@@ -27,7 +27,7 @@ export default function LocationSidebar({ property: p, distances }) {
                             <div key={d.label} className="bg-slate-50/80 border border-slate-100/80 rounded-xl px-4 py-3 hover:bg-slate-50 transition-colors">
                                 <div className="flex items-center justify-between">
                                     <span className="flex items-center gap-2.5 text-sm text-slate-700 font-semibold">
-                                        <d.icon size={16} className="text-indigo-500" />
+                                        <d.icon size={16} className="text-primary/80" />
                                         {d.label}
                                     </span>
                                     <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full shadow-sm ${badge.colour}`}>

@@ -1,62 +1,82 @@
 /**
- * FeaturesSection — 3-column glassmorphism features grid.
- * Each card has a gradient icon background and mobile left-border accent.
+ * FeaturesSection — "Everything you need" 3-column card grid.
+ * Matches Stitch Benefit Section: icon container, hover border, learn-more links.
  */
-import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
-import { Sparkles, ChevronRight } from 'lucide-react'
-import { AnimatedSection, fadeUp, FEATURES } from '../../utils/homeData'
+import { motion } from 'framer-motion'
+
+const fadeUp = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }
+
+const FEATURES = [
+    {
+        icon: 'trending_up',
+        title: 'Rent Transparency',
+        description: 'Our proprietary ML model analyzes thousands of local listings to give you an accurate fairness score for any property.',
+        link: '/search',
+        linkLabel: 'Learn more',
+    },
+    {
+        icon: 'verified_user',
+        title: 'HMO Licensing',
+        description: 'Instant cross-referencing with local council databases to ensure your house is legally licensed and safety-compliant.',
+        link: '/check-listing',
+        linkLabel: 'Check a license',
+    },
+    {
+        icon: 'menu_book',
+        title: 'Rights Guide',
+        description: "Plain-English legal advice tailored specifically for student renters. Know your rights regarding deposits, repairs, and evictions.",
+        link: '/rights',
+        linkLabel: 'Read the guide',
+    },
+]
 
 export default function FeaturesSection() {
     return (
-        <AnimatedSection className="px-4 py-10 lg:py-16 bg-slate-50/60">
-            <div className="max-w-lg lg:max-w-5xl mx-auto">
-                {/* Section header */}
-                <motion.div variants={fadeUp} className="mb-8 lg:mb-12 px-2 lg:text-center">
-                    <div className="flex items-center gap-2 mb-2 lg:justify-center">
-                        <Sparkles size={16} className="text-indigo-600" />
-                        <span className="text-xs font-bold uppercase tracking-wider text-indigo-600">Features</span>
-                    </div>
-                    <h3 className="text-xl md:text-2xl lg:text-3xl font-bold text-slate-900 mb-1">
-                        Why Students Love SurreyNest
-                    </h3>
-                    <p className="text-slate-500 text-sm lg:text-base mt-1 font-medium">
-                        Smarter tools for stress-free renting.
+        <section className="py-16 md:py-24 border-y border-slate-200 bg-white">
+            <div className="max-w-7xl mx-auto px-4 md:px-6">
+                <motion.div
+                    className="text-center max-w-2xl mx-auto mb-12 md:mb-16"
+                    initial="hidden"
+                    whileInView="visible"
+                    viewport={{ once: true, margin: '-60px' }}
+                    variants={fadeUp}
+                >
+                    <h2 className="text-2xl md:text-3xl font-bold text-slate-900 mb-4">
+                        Everything you need to find the perfect home
+                    </h2>
+                    <p className="text-slate-600">
+                        We bridge the gap between landlords and students using data-driven insights and legal expertise.
                     </p>
                 </motion.div>
 
-                {/* Feature cards */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
-                    {FEATURES.map(({ icon: Icon, title, desc, iconBg, iconText, link, linkLabel }, i) => (
+                <div className="grid md:grid-cols-3 gap-6 md:gap-8">
+                    {FEATURES.map(({ icon, title, description, link, linkLabel }, i) => (
                         <motion.div
                             key={title}
+                            className="group p-6 md:p-8 rounded-2xl border border-slate-200 bg-white hover:border-primary/50 hover:shadow-2xl hover:shadow-primary/5 transition-all duration-300"
+                            initial="hidden"
+                            whileInView="visible"
+                            viewport={{ once: true, margin: '-40px' }}
                             variants={fadeUp}
-                            className={`glass-card rounded-2xl p-5 lg:p-7 flex lg:flex-col gap-4 items-start hover:shadow-glass-lg transition-all duration-300 group ${
-                                /* Mobile: left border accent */
-                                i === 0 ? 'border-l-4 border-l-emerald-400 lg:border-l-0' :
-                                    i === 1 ? 'border-l-4 border-l-indigo-500 lg:border-l-0' :
-                                        'border-l-4 border-l-amber-400 lg:border-l-0'
-                                }`}
+                            transition={{ delay: i * 0.1 }}
                         >
-                            {/* Icon with gradient background */}
-                            <div className={`w-12 h-12 lg:w-14 lg:h-14 rounded-xl ${iconBg} flex items-center justify-center flex-shrink-0 shadow-lg`}>
-                                <Icon size={22} className={iconText || 'text-white'} />
+                            <div className="w-14 h-14 bg-primary/10 rounded-xl flex items-center justify-center mb-6 group-hover:bg-primary group-hover:text-white transition-colors">
+                                <span className="material-symbols-outlined text-3xl">{icon}</span>
                             </div>
-
-                            <div className="flex-1">
-                                <h4 className="font-bold text-slate-900 text-base lg:text-lg mb-1.5">{title}</h4>
-                                <p className="text-slate-500 text-sm leading-relaxed mb-3">{desc}</p>
-                                <Link
-                                    to={link}
-                                    className="text-indigo-600 text-sm font-bold flex items-center gap-1 hover:gap-2 transition-all"
-                                >
-                                    {linkLabel} <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
-                                </Link>
-                            </div>
+                            <h3 className="text-xl font-bold text-slate-900 mb-3">{title}</h3>
+                            <p className="text-slate-600 leading-relaxed mb-6">{description}</p>
+                            <Link
+                                to={link}
+                                className="text-primary font-bold flex items-center gap-1 text-sm hover:gap-2 transition-all"
+                            >
+                                {linkLabel}
+                                <span className="material-symbols-outlined text-sm">chevron_right</span>
+                            </Link>
                         </motion.div>
                     ))}
                 </div>
             </div>
-        </AnimatedSection>
+        </section>
     )
 }

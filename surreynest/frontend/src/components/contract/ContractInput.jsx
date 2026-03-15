@@ -83,7 +83,7 @@ export default function ContractInput({ text, onChange }) {
                         onChange={e => onChange(e.target.value.slice(0, MAX_CHARS))}
                         rows={10}
                         placeholder="Paste your tenancy agreement text here..."
-                        className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 transition-colors resize-none font-mono"
+                        className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm placeholder:text-slate-400 focus:outline-none focus:border-primary transition-colors resize-none font-mono"
                     />
                     <p className={`text-xs text-right ${text.length > MAX_CHARS * 0.9 ? 'text-amber-600' : 'text-slate-400'}`}>
                         {text.length.toLocaleString()}/{MAX_CHARS.toLocaleString()}
@@ -97,7 +97,7 @@ export default function ContractInput({ text, onChange }) {
                     onClick={() => fileRef.current?.click()}
                     className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-colors ${
                         dragOver
-                            ? 'border-indigo-400 bg-indigo-50'
+                            ? 'border-primary-400 bg-primary/10'
                             : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
                     }`}
                 >

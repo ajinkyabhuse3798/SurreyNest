@@ -34,13 +34,14 @@ const AgentDirectory = React.lazy(() => import('./pages/AgentDirectory'))
 const AgentDetail = React.lazy(() => import('./pages/AgentDetail'))
 const RentChallengePage = React.lazy(() => import('./pages/RentChallengePage'))
 const ContractChecker = React.lazy(() => import('./pages/ContractChecker'))
+const Pricing = React.lazy(() => import('./pages/Pricing'))
 
 // ── Route-level loading spinner ──────────────────────────────────────────────
 function RouteLoader() {
     return (
         <div className="min-h-[60vh] flex items-center justify-center">
             <div className="text-center">
-                <div className="inline-block w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                <div className="inline-block w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                 <p className="text-sm text-gray-400 mt-3">Loading…</p>
             </div>
         </div>
@@ -79,7 +80,7 @@ class ErrorBoundary extends Component {
                                 this.setState({ hasError: false, error: null })
                                 window.location.href = '/'
                             }}
-                            className="bg-indigo-600 text-white text-sm px-5 py-2.5 rounded-lg hover:bg-indigo-700 transition-colors"
+                            className="bg-primary text-white text-sm px-5 py-2.5 rounded-lg hover:opacity-90 transition-all"
                         >
                             Back to Home
                         </button>
@@ -97,7 +98,7 @@ export default function App() {
     return (
         <AuthProvider>
             <CompareProvider>
-                <BrowserRouter>
+                <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
                     <div className="flex flex-col min-h-screen">
                         <ErrorBoundary>
                             <Suspense fallback={<RouteLoader />}>
@@ -119,6 +120,7 @@ export default function App() {
                                         <Route path="/agent/:agentName" element={<AgentDetail />} />
                                         <Route path="/challenge-rent-increase" element={<RentChallengePage />} />
                                         <Route path="/check-contract" element={<ContractChecker />} />
+                                        <Route path="/pricing" element={<Pricing />} />
                                         <Route path="/admin" element={<RequireAuth adminOnly><AdminDashboard /></RequireAuth>} />
                                         <Route path="*" element={<NotFound />} />
                                     </Routes>

@@ -19,6 +19,7 @@ import { getSafetyIntelligence, getSafetyRankings } from '../services/safetyApi'
 import api from '../services/api'
 
 // ── Sub-components ───────────────────────────────────────────────────────────
+import ProGate from '../components/ProGate'
 import SafetyHero from '../components/safety/SafetyHero'
 import CrimeDonut from '../components/safety/CrimeDonut'
 import MonthlyChart from '../components/safety/MonthlyChart'
@@ -108,7 +109,7 @@ export default function SafetyDetail() {
             <div className="max-w-3xl mx-auto px-4 pt-4 pb-20">
                 <button
                     onClick={() => navigate(-1)}
-                    className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-indigo-600 transition-colors mb-4 group"
+                    className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-primary transition-colors mb-4 group"
                 >
                     <ArrowLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" />
                     Back to property
@@ -121,7 +122,7 @@ export default function SafetyDetail() {
                         <AlertCircle size={48} className="text-slate-300 mx-auto mb-4" />
                         <h2 className="text-lg font-bold text-slate-700 mb-2">No Data Available</h2>
                         <p className="text-sm text-slate-500">{error}</p>
-                        <button onClick={() => navigate(-1)} className="mt-4 text-sm text-indigo-600 font-medium hover:text-indigo-700">
+                        <button onClick={() => navigate(-1)} className="mt-4 text-sm text-primary font-medium hover:text-primary/90">
                             ← Go back
                         </button>
                     </div>
@@ -143,48 +144,53 @@ export default function SafetyDetail() {
                             </Section>
                         )}
 
-                        {/* 3. Monthly Trend */}
-                        {intel?.crime_trend && (
-                            <Section icon={TrendingUp} title="Crime trend over time" subtitle="Monthly crime count — is it getting better or worse?">
-                                <MonthlyChart data={intel.crime_trend.monthly_data} trend={intel.crime_trend} />
-                            </Section>
-                        )}
-
-                        {/* 4. Guildford Comparison */}
-                        <Section icon={MapPin} title="How does this compare to the rest of Guildford?" subtitle="This area vs the Guildford average">
-                            <GuildfordComparison comparison={intel?.compared_to_average} />
-                        </Section>
-
-                        {/* 5. Area Rankings */}
-                        <Section icon={Award} title="Area rankings in Guildford" subtitle="Top 5 safest areas and top 5 crime hotspots">
-                            <AreaRankings rankings={rankings} currentSector={sector} />
-                        </Section>
-
-                        {/* 6. Train Stations */}
+                        {/* 6. Train Stations — free (practical info, not crime analytics) */}
                         {coords && (
                             <Section icon={Train} title="Nearest train stations" subtitle="Walking distance from this area">
                                 <TrainStations lat={coords.lat} lng={coords.lng} />
                             </Section>
                         )}
 
-                        {/* 7. Student Safety */}
-                        <Section icon={GraduationCap} title="Is this area good for students?" subtitle="Safety analysis focused on student-relevant crime">
-                            <StudentSafety data={intel?.student_vulnerability} />
-                        </Section>
+                        {/* 3–5, 7–9. Detailed analytics — Pro only */}
+                        <ProGate feature="Full safety intelligence — monthly trends, area rankings & student insights">
+                            <div className="space-y-5">
+                                {/* 3. Monthly Trend */}
+                                {intel?.crime_trend && (
+                                    <Section icon={TrendingUp} title="Crime trend over time" subtitle="Monthly crime count — is it getting better or worse?">
+                                        <MonthlyChart data={intel.crime_trend.monthly_data} trend={intel.crime_trend} />
+                                    </Section>
+                                )}
 
-                        {/* 8. Holiday Risk */}
-                        {intel?.holiday_burglary_risk && intel.holiday_burglary_risk.risk_level !== 'low' && (
-                            <Section icon={Home} title="Holiday break-in risk" subtitle="What happens when students go home for holidays?">
-                                <HolidayAlert risk={intel.holiday_burglary_risk} />
-                            </Section>
-                        )}
+                                {/* 4. Guildford Comparison */}
+                                <Section icon={MapPin} title="How does this compare to the rest of Guildford?" subtitle="This area vs the Guildford average">
+                                    <GuildfordComparison comparison={intel?.compared_to_average} />
+                                </Section>
 
-                        {/* 9. Safety Tips */}
-                        {intel?.safety_tips?.length > 0 && (
-                            <Section icon={Lightbulb} title="What we know about this area" subtitle="Data-driven tips based on actual crime patterns">
-                                <SafetyTips tips={intel.safety_tips} />
-                            </Section>
-                        )}
+                                {/* 5. Area Rankings */}
+                                <Section icon={Award} title="Area rankings in Guildford" subtitle="Top 5 safest areas and top 5 crime hotspots">
+                                    <AreaRankings rankings={rankings} currentSector={sector} />
+                                </Section>
+
+                                {/* 7. Student Safety */}
+                                <Section icon={GraduationCap} title="Is this area good for students?" subtitle="Safety analysis focused on student-relevant crime">
+                                    <StudentSafety data={intel?.student_vulnerability} />
+                                </Section>
+
+                                {/* 8. Holiday Risk */}
+                                {intel?.holiday_burglary_risk && intel.holiday_burglary_risk.risk_level !== 'low' && (
+                                    <Section icon={Home} title="Holiday break-in risk" subtitle="What happens when students go home for holidays?">
+                                        <HolidayAlert risk={intel.holiday_burglary_risk} />
+                                    </Section>
+                                )}
+
+                                {/* 9. Safety Tips */}
+                                {intel?.safety_tips?.length > 0 && (
+                                    <Section icon={Lightbulb} title="What we know about this area" subtitle="Data-driven tips based on actual crime patterns">
+                                        <SafetyTips tips={intel.safety_tips} />
+                                    </Section>
+                                )}
+                            </div>
+                        </ProGate>
 
                         {/* Data source */}
                         <div className="text-center text-xs text-slate-400 pt-4 pb-8">

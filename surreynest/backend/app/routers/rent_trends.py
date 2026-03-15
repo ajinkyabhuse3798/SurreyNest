@@ -10,13 +10,14 @@ PropertyDetail pages.
 import logging
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.rent_history import RentHistory
 from app.models.pipeline_config import PipelineConfig
+from app.rate_limit import limiter
 from app.services.geocoding_service import _normalise_postcode
 
 logger = logging.getLogger(__name__)
@@ -77,7 +78,9 @@ def _get_iphrp_growth(db: Session) -> float:
     response_model=RentTrendResponse,
     summary="Historical rent trends + forecast for a postcode sector",
 )
+@limiter.limit("60/minute")
 async def get_rent_trends(
+    request: Request,
     postcode_sector: str,
     db: Session = Depends(get_db),
 ) -> RentTrendResponse:

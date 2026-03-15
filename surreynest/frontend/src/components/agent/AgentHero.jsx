@@ -14,7 +14,7 @@ export default function AgentHero({ agent }) {
         'text-rose-300'
 
     return (
-        <div className="bg-gradient-to-br from-indigo-600 to-violet-700 rounded-2xl p-6 md:p-8 text-white shadow-lg">
+        <div className="bg-gradient-to-br from-primary-600 to-primary-700 rounded-2xl p-6 md:p-8 text-white shadow-lg">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
                     <div className="flex items-center gap-3 mb-2">
@@ -22,13 +22,13 @@ export default function AgentHero({ agent }) {
                             {agent.display_name}
                         </h1>
                         {agent.is_verified && (
-                            <span className="flex items-center gap-1 bg-indigo-500/50 text-white text-xs font-semibold px-3 py-1 rounded-full border border-indigo-400/50">
+                            <span className="flex items-center gap-1 bg-primary/100/50 text-white text-xs font-semibold px-3 py-1 rounded-full border border-primary-400/50">
                                 <ShieldCheck size={12} />
                                 Verified
                             </span>
                         )}
                     </div>
-                    <p className="text-indigo-200 text-sm">
+                    <p className="text-primary-200 text-sm">
                         {agent.stats.review_count} review{agent.stats.review_count !== 1 ? 's' : ''}
                     </p>
 
@@ -48,13 +48,13 @@ export default function AgentHero({ agent }) {
 
                 {/* Composite score */}
                 <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-5 text-center border border-white/20 min-w-[120px]">
-                    <p className="text-xs font-semibold text-indigo-200 uppercase tracking-widest mb-1">
+                    <p className="text-xs font-semibold text-primary-200 uppercase tracking-widest mb-1">
                         Agent Score
                     </p>
                     <p className={`text-4xl font-extrabold ${scoreColour}`}>
                         {score}
                     </p>
-                    <p className="text-xs text-indigo-200 mt-1">out of 100</p>
+                    <p className="text-xs text-primary-200 mt-1">out of 100</p>
                 </div>
             </div>
         </div>

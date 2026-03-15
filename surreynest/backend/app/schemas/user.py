@@ -44,11 +44,13 @@ class UserResponse(BaseModel):
         email: User email.
         role: User role (student, landlord, admin).
         created_at: Account creation timestamp.
+        is_pro: Whether the user has an active Pro subscription.
     """
 
     id: uuid.UUID
     email: str
     role: str
     created_at: datetime
+    is_pro: bool = False
 
     model_config = {"from_attributes": True}

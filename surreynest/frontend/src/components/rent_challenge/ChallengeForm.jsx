@@ -57,7 +57,7 @@ export default function ChallengeForm({ onSubmit, loading, initialPostcode = '',
                         value={postcode}
                         onChange={e => setPostcode(e.target.value)}
                         placeholder="e.g. GU2 7XH"
-                        className="border border-slate-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-indigo-500 transition-colors"
+                        className="border border-slate-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-primary transition-colors"
                     />
                 </div>
 
@@ -70,7 +70,7 @@ export default function ChallengeForm({ onSubmit, loading, initialPostcode = '',
                         min="1"
                         step="0.01"
                         placeholder="e.g. 200"
-                        className="border border-slate-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-indigo-500 transition-colors"
+                        className="border border-slate-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-primary transition-colors"
                     />
                 </div>
 
@@ -83,7 +83,7 @@ export default function ChallengeForm({ onSubmit, loading, initialPostcode = '',
                         min="1"
                         step="0.01"
                         placeholder="e.g. 230"
-                        className="border border-slate-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-indigo-500 transition-colors"
+                        className="border border-slate-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-primary transition-colors"
                     />
                 </div>
 
@@ -96,7 +96,7 @@ export default function ChallengeForm({ onSubmit, loading, initialPostcode = '',
                         min="0"
                         max="15"
                         placeholder="e.g. 3"
-                        className="border border-slate-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-indigo-500 transition-colors"
+                        className="border border-slate-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-primary transition-colors"
                     />
                 </div>
 
@@ -105,7 +105,7 @@ export default function ChallengeForm({ onSubmit, loading, initialPostcode = '',
                     <select
                         value={propertyType}
                         onChange={e => setPropertyType(e.target.value)}
-                        className="border border-slate-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-indigo-500 transition-colors"
+                        className="border border-slate-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-primary transition-colors"
                     >
                         <option value="">Select type</option>
                         <option value="Flat">Flat</option>
@@ -119,7 +119,7 @@ export default function ChallengeForm({ onSubmit, loading, initialPostcode = '',
             <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-indigo-600 text-white rounded-xl px-6 py-3 text-sm font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                className="w-full bg-primary text-white rounded-xl px-6 py-3 text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
             >
                 {loading ? 'Analysing...' : 'Analyse Rent Increase'}
             </button>

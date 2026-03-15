@@ -11,7 +11,7 @@
 
 const AXES = ['Safety', 'Value', 'Size', 'Energy', 'Rooms']
 const COLOURS = [
-    { stroke: '#4F46E5', fill: 'rgba(79,70,229,0.15)' },   // indigo
+    { stroke: '#4F46E5', fill: 'rgba(79,70,229,0.15)' },   // primary
     { stroke: '#059669', fill: 'rgba(5,150,105,0.15)' },    // emerald
     { stroke: '#D97706', fill: 'rgba(217,119,6,0.15)' },    // amber
     { stroke: '#E11D48', fill: 'rgba(225,29,72,0.15)' },    // rose

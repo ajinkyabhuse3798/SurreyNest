@@ -145,7 +145,7 @@ async def trigger_pipeline(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Unknown pipeline: '{pipeline_name}'. "
-            f"Valid names: {list(do_trigger.__code__.co_consts)}",
+            f"Valid names: {KNOWN_PIPELINES}",
         )
 
     return TriggerResponse(

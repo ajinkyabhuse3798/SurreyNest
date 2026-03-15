@@ -6,7 +6,7 @@ export default function TopFactors({ contributions }) {
     if (!top3.length) return null
 
     const cardStyles = [
-        { wrapper: 'bg-white/80 backdrop-blur-md border border-indigo-100 shadow-[0_8px_30px_-4px_rgba(79,70,229,0.15)]', badge: 'bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-md shadow-indigo-200/50' },
+        { wrapper: 'bg-white/80 backdrop-blur-md border border-primary/10 shadow-[0_8px_30px_-4px_rgba(79,70,229,0.15)]', badge: 'bg-gradient-to-br from-primary-500 to-primary-600 text-white shadow-md shadow-primary-200/50' },
         { wrapper: 'bg-white/80 backdrop-blur-md border border-emerald-100 shadow-[0_4px_20px_-4px_rgba(16,185,129,0.1)]', badge: 'bg-gradient-to-br from-emerald-400 to-teal-500 text-white shadow-md shadow-emerald-200/50' },
         { wrapper: 'bg-white/80 backdrop-blur-md border border-amber-100 shadow-[0_4px_20px_-4px_rgba(245,158,11,0.1)]', badge: 'bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-md shadow-amber-200/50' },
     ]

@@ -22,10 +22,10 @@ export default function PropertyDetailsSection({ property: p, areaCtx, epcCtx })
                 ].filter(d => d.value).map(d => (
                     <div key={d.label} className="relative overflow-hidden flex items-center justify-between bg-white/60 backdrop-blur-sm border border-slate-200/60 rounded-2xl px-5 py-4 hover:bg-white hover:shadow-sm transition-all duration-300">
                         {/* Subtle left border accent */}
-                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-indigo-300 to-indigo-100 opacity-50" />
+                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-primary-300 to-primary-100 opacity-50" />
 
                         <span className="flex items-center gap-3 text-xs text-slate-500 font-bold uppercase tracking-wider pl-1">
-                            <d.icon size={16} className="text-indigo-400" />{d.label}
+                            <d.icon size={16} className="text-primary-400" />{d.label}
                         </span>
                         <span className="text-[15px] font-extrabold text-slate-900">{d.value}</span>
                     </div>
@@ -34,7 +34,7 @@ export default function PropertyDetailsSection({ property: p, areaCtx, epcCtx })
 
             {areaCtx && (
                 <div className="flex items-start gap-2.5 bg-slate-50/80 border border-slate-100/80 rounded-xl px-4 py-3">
-                    <InfoIcon size={16} className="text-indigo-400 flex-shrink-0 mt-0.5" />
+                    <InfoIcon size={16} className="text-primary-400 flex-shrink-0 mt-0.5" />
                     <p className="text-xs text-slate-600 font-medium leading-relaxed">
                         {areaCtx}
                     </p>

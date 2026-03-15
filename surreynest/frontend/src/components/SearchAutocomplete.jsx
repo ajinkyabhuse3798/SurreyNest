@@ -114,7 +114,7 @@ export default function SearchAutocomplete({
                     onKeyDown={handleKeyDown}
                     onFocus={() => suggestions.length > 0 && setShowDropdown(true)}
                     placeholder={placeholder}
-                    className="w-full pl-10 pr-10 py-3 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-shadow shadow-sm"
+                    className="w-full pl-10 pr-10 py-3 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-shadow shadow-sm"
                     autoComplete="off"
                     id="search-autocomplete"
                 />
@@ -145,13 +145,13 @@ export default function SearchAutocomplete({
                             }}
                             onMouseEnter={() => setActiveIndex(i)}
                             className={`w-full text-left px-4 py-3 flex items-start gap-3 text-sm transition-colors ${i === activeIndex
-                                    ? 'bg-indigo-50 text-indigo-900'
+                                    ? 'bg-primary/10 text-primary-900'
                                     : 'text-gray-700 hover:bg-gray-50'
                                 }`}
                         >
                             <MapPin
                                 size={14}
-                                className={`mt-0.5 flex-shrink-0 ${i === activeIndex ? 'text-indigo-500' : 'text-gray-400'
+                                className={`mt-0.5 flex-shrink-0 ${i === activeIndex ? 'text-primary/80' : 'text-gray-400'
                                     }`}
                             />
                             <div className="min-w-0">

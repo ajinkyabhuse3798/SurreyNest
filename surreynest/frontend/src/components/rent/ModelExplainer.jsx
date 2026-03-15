@@ -29,8 +29,8 @@ export default function ModelExplainer({ modelInfo }) {
         <div className="space-y-4">
             {steps.map((step, i) => (
                 <div key={i} className="flex gap-4 items-start">
-                    <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center flex-shrink-0">
-                        <step.icon size={16} className="text-indigo-600" />
+                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <step.icon size={16} className="text-primary" />
                     </div>
                     <div className="flex-1">
                         <h3 className="text-sm font-bold text-slate-800">{step.title}</h3>

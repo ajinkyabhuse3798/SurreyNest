@@ -38,7 +38,7 @@ class Settings:
     )
 
     # ── Auth ────────────────────────────────────────────────────────────────
-    secret_key: str = os.getenv("SECRET_KEY", "CHANGE_ME_IN_PRODUCTION")
+    secret_key: str = os.getenv("SECRET_KEY", "")
     algorithm: str = os.getenv("ALGORITHM", "HS256")
     access_token_expire_days: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_DAYS", "30"))
 
@@ -64,11 +64,18 @@ class Settings:
 
     def __init__(self) -> None:
         """Validate critical settings on startup."""
-        if self.environment == "production" and self.secret_key == "CHANGE_ME_IN_PRODUCTION":
-            raise RuntimeError(
-                "SECRET_KEY must be set to a secure value in production. "
-                "Generate one with: python -c \"import secrets; print(secrets.token_hex(32))\""
-            )
+        _insecure_keys = {"", "CHANGE_ME_IN_PRODUCTION", "changeme", "secret", "dev"}
+        if not self.secret_key or self.secret_key.lower() in _insecure_keys:
+            if self.environment == "production":
+                raise RuntimeError(
+                    "SECRET_KEY must be set to a secure value in production. "
+                    "Generate one with: python -c \"import secrets; print(secrets.token_hex(32))\""
+                )
+            else:
+                logger.warning(
+                    "SECRET_KEY is not set or is insecure. "
+                    "Set a strong SECRET_KEY before deploying to production."
+                )
         logger.info("Settings loaded. environment=%s", self.environment)
 
 

@@ -8,8 +8,8 @@ export default function Section({ icon: Icon, title, subtitle, children, id }) {
     return (
         <section id={id} className="bg-white rounded-2xl shadow-sm border border-slate-200/60 overflow-hidden">
             <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center flex-shrink-0">
-                    <Icon size={16} className="text-indigo-600" />
+                <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <Icon size={16} className="text-primary" />
                 </div>
                 <div>
                     <h2 className="text-base font-bold text-slate-800">{title}</h2>

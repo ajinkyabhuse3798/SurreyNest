@@ -9,19 +9,19 @@ const starColors = { 5: 'text-emerald-500', 4: 'text-emerald-400', 3: 'text-ambe
 
 export default function SafetyHero({ sector, decodedPostcode, safetyScore, overallStars, sectorTotal }) {
     return (
-        <div className="relative bg-gradient-to-br from-indigo-800 via-indigo-900 to-violet-900 rounded-3xl p-6 sm:p-10 text-white shadow-[0_8px_30px_-4px_rgba(49,46,129,0.5)] overflow-hidden">
+        <div className="relative bg-gradient-to-br from-primary-800 via-primary-900 to-primary-900 rounded-3xl p-6 sm:p-10 text-white shadow-[0_8px_30px_-4px_rgba(49,46,129,0.5)] overflow-hidden">
             {/* Ambient Background Glows */}
-            <div className="absolute top-0 right-0 -mt-20 -mr-20 w-80 h-80 bg-violet-500 rounded-full mix-blend-screen filter blur-[80px] opacity-40 pointer-events-none" />
-            <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-64 h-64 bg-indigo-500 rounded-full mix-blend-screen filter blur-[60px] opacity-30 pointer-events-none" />
+            <div className="absolute top-0 right-0 -mt-20 -mr-20 w-80 h-80 bg-primary/90 rounded-full mix-blend-screen filter blur-[80px] opacity-40 pointer-events-none" />
+            <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-64 h-64 bg-primary/100 rounded-full mix-blend-screen filter blur-[60px] opacity-30 pointer-events-none" />
 
-            <div className="relative z-10 flex items-center gap-2 text-indigo-300 text-xs font-bold tracking-widest uppercase mb-4">
+            <div className="relative z-10 flex items-center gap-2 text-primary-300 text-xs font-bold tracking-widest uppercase mb-4">
                 <Shield size={14} className="text-emerald-400" />
                 SAFETY REPORT
             </div>
             <h1 className="relative z-10 text-3xl sm:text-4xl font-black mb-2 tracking-tight">
                 {sector || decodedPostcode}
             </h1>
-            <p className="relative z-10 text-indigo-200 text-sm mb-8 font-medium">
+            <p className="relative z-10 text-primary-200 text-sm mb-8 font-medium">
                 Full crime analysis for this postcode sector • Based on police.uk data
             </p>
 
@@ -38,7 +38,7 @@ export default function SafetyHero({ sector, decodedPostcode, safetyScore, overa
                         ))}
                     </div>
                     <p className="text-xl font-bold tracking-tight text-white mb-1">{starLabels[overallStars]}</p>
-                    <p className="text-sm text-indigo-200/80 font-medium">
+                    <p className="text-sm text-primary-200/80 font-medium">
                         {sectorTotal || 0} crimes reported in 12 months
                     </p>
                 </div>

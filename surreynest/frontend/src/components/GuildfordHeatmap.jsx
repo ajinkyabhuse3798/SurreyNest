@@ -50,7 +50,7 @@ function hmoColour(pct) {
     if (pct === null || pct === undefined) return '#9CA3AF'
     if (pct >= 5) return '#16A34A'      // student-friendly → green
     if (pct >= 2) return '#D97706'      // some HMOs → amber
-    return '#6366F1'                    // few HMOs → indigo
+    return '#6366F1'                    // few HMOs → primary
 }
 
 function getColour(layer, sector) {
@@ -141,7 +141,7 @@ function SectorCircle({ sector, layer, isHovered, onHover, onLeave }) {
                     </div>
                     <Link
                         to={`/search?postcode=${encodeURIComponent(sector.postcode_sector + '0AA')}&radius=2000`}
-                        className="text-indigo-600 text-xs font-medium mt-3 inline-block hover:text-indigo-800"
+                        className="text-primary text-xs font-medium mt-3 inline-block hover:text-primary-800"
                     >
                         Search this area →
                     </Link>
@@ -194,7 +194,7 @@ export default function GuildfordHeatmap() {
         return (
             <section className="px-4 py-16 md:py-20">
                 <div className="max-w-6xl mx-auto text-center">
-                    <Loader2 size={24} className="animate-spin text-indigo-500 mx-auto mb-3" />
+                    <Loader2 size={24} className="animate-spin text-primary/80 mx-auto mb-3" />
                     <p className="text-sm text-gray-400">Loading NeighbourhoodPulse map...</p>
                 </div>
             </section>
@@ -215,9 +215,9 @@ export default function GuildfordHeatmap() {
                     transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
                     className="text-center mb-5 md:mb-8"
                 >
-                    <div className="inline-flex items-center gap-2 bg-indigo-50 rounded-full px-4 py-1.5 mb-4">
-                        <Map size={14} className="text-indigo-600" />
-                        <span className="text-xs font-semibold text-indigo-700 uppercase tracking-wider">
+                    <div className="inline-flex items-center gap-2 bg-primary/10 rounded-full px-4 py-1.5 mb-4">
+                        <Map size={14} className="text-primary" />
+                        <span className="text-xs font-semibold text-primary/90 uppercase tracking-wider">
                             NeighbourhoodPulse
                         </span>
                     </div>
@@ -243,7 +243,7 @@ export default function GuildfordHeatmap() {
                                 key={layer.id}
                                 onClick={() => setActiveLayer(layer.id)}
                                 className={`flex items-center gap-1 md:gap-1.5 px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-medium transition-all duration-200 ${activeLayer === layer.id
-                                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20'
+                                    ? 'bg-primary text-white shadow-md shadow-primary-500/20'
                                     : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
                                     }`}
                             >

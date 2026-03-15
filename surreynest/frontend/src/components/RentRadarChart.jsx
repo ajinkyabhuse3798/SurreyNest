@@ -32,10 +32,10 @@ function CustomTooltip({ active, payload, label }) {
             <p className="text-xs font-semibold text-gray-900 mb-1">
                 {label}
                 {isForecast && (
-                    <span className="text-indigo-500 ml-1.5 font-normal">(forecast)</span>
+                    <span className="text-primary/80 ml-1.5 font-normal">(forecast)</span>
                 )}
             </p>
-            <p className="text-lg font-bold text-indigo-600">
+            <p className="text-lg font-bold text-primary">
                 £{Math.round(data.rent)}/wk
             </p>
             {data.transactions && (
@@ -108,7 +108,7 @@ export default function RentRadarChart({ postcodeSector }) {
     if (loading) {
         return (
             <div className="flex items-center justify-center py-8">
-                <Loader2 size={20} className="animate-spin text-indigo-400" />
+                <Loader2 size={20} className="animate-spin text-primary-400" />
                 <span className="text-sm text-gray-400 ml-2">Loading rent trends...</span>
             </div>
         )
@@ -231,11 +231,11 @@ export default function RentRadarChart({ postcodeSector }) {
                 {/* Legend */}
                 <div className="flex items-center justify-center gap-4 mt-3 text-[10px] sm:text-xs text-gray-400">
                     <span className="flex items-center gap-1.5">
-                        <span className="w-5 h-0.5 bg-indigo-500 rounded" />
+                        <span className="w-5 h-0.5 bg-primary/100 rounded" />
                         Historical
                     </span>
                     <span className="flex items-center gap-1.5">
-                        <span className="w-5 h-0.5 bg-indigo-300 rounded" style={{
+                        <span className="w-5 h-0.5 bg-primary-300 rounded" style={{
                             backgroundImage: 'repeating-linear-gradient(90deg, #818CF8 0, #818CF8 4px, transparent 4px, transparent 8px)',
                         }} />
                         Forecast (IPHRP {data.iphrp_growth_pct}%)

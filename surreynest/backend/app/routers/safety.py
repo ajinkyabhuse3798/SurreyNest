@@ -7,10 +7,11 @@ Provides detailed crime analysis beyond basic safety scores:
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.rate_limit import limiter
 from app.services import safety_intelligence as si
 
 logger = logging.getLogger(__name__)
@@ -39,7 +40,9 @@ def _extract_sector(postcode: str) -> str:
     "/safety/intelligence",
     summary="Full safety intelligence for a postcode",
 )
+@limiter.limit("60/minute")
 async def get_safety_intelligence(
+    request: Request,
     postcode: str = Query(..., description="Postcode to analyse", examples=["GU2 7XH"]),
     db: Session = Depends(get_db),
 ):
@@ -64,7 +67,9 @@ async def get_safety_intelligence(
     "/safety/rankings",
     summary="Safest and hotspot areas in Guildford",
 )
+@limiter.limit("30/minute")
 async def get_safety_rankings(
+    request: Request,
     db: Session = Depends(get_db),
 ):
     """Get area rankings: top 5 safest and top 5 hotspot areas."""
