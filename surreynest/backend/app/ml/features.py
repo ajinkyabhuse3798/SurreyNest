@@ -166,6 +166,8 @@ def load_epc_data(db: Session) -> pd.DataFrame:
                 "price_drop_pct": p.price_drop_pct,
                 # v4.1.0 real bedrooms
                 "actual_bedrooms": p.actual_bedrooms,
+                # v5.0.0: university flag — exclude from scraped rent target
+                "is_university": bool(p.is_university),
             }
         )
 
@@ -593,6 +595,45 @@ def build_features(db: Optional[Session] = None) -> pd.DataFrame:
                 df = df.merge(_sector_rent, on="postcode_sector", how="left")
                 _global_median = df["implied_weekly_rent"].median()
                 df["sector_median_rent"] = df["sector_median_rent"].fillna(_global_median)
+                # v5.1.0: Blend scraped market rents into sector anchor.
+                # Land Registry 3.5% yield underestimates actual market rents by 25-30%
+                # in high-demand GU2 sectors. For sectors with ≥5 market-rate scraped
+                # records, blend the scraped median into the implied anchor:
+                #   ≥20 scraped → 80% scraped + 20% implied
+                #   10-19 scraped → 60% scraped + 40% implied
+                #   5-9 scraped  → 40% scraped + 60% implied
+                # Exclude university properties (below-market halls, is_university=True).
+                if "actual_market_rent_weekly" in df.columns:
+                    _uni_cal = df.get("is_university", pd.Series(False, index=df.index)).fillna(False).astype(bool)
+                    _scr_mask = df["actual_market_rent_weekly"].notna() & ~_uni_cal
+                    if _scr_mask.sum() >= 5:
+                        _scr_sectors = (
+                            df.loc[_scr_mask]
+                            .groupby("postcode_sector")["actual_market_rent_weekly"]
+                            .agg(["median", "count"])
+                            .rename(columns={"median": "scraped_median", "count": "scraped_n"})
+                        )
+                        _scr_sectors = _scr_sectors[_scr_sectors["scraped_n"] >= 5]
+                        for sector_idx, scr_row in _scr_sectors.iterrows():
+                            n = scr_row["scraped_n"]
+                            scr_med = scr_row["scraped_median"]
+                            mask_s = df["postcode_sector"] == sector_idx
+                            if not mask_s.any():
+                                continue
+                            impl_med = df.loc[mask_s, "sector_median_rent"].iloc[0]
+                            blend = 0.8 if n >= 20 else (0.6 if n >= 10 else 0.4)
+                            df.loc[mask_s, "sector_median_rent"] = blend * scr_med + (1 - blend) * impl_med
+                        n_updated = len(_scr_sectors)
+                        logger.info(
+                            "sector_median_rent: blended scraped market data into %d sectors "
+                            "(GU2 8 anchor: £%.0f→%.0f/wk)",
+                            n_updated,
+                            _sector_rent.loc[_sector_rent["postcode_sector"] == "GU2 8", "sector_median_rent"].values[0]
+                            if "GU2 8" in _sector_rent["postcode_sector"].values else 0,
+                            df.loc[df["postcode_sector"] == "GU2 8", "sector_median_rent"].iloc[0]
+                            if (df["postcode_sector"] == "GU2 8").any() else 0,
+                        )
+
                 logger.info("sector_median_rent: mean=£%.0f, std=£%.0f", df["sector_median_rent"].mean(), df["sector_median_rent"].std())
             else:
                 df["sector_median_rent"] = df["implied_weekly_rent"].median()
@@ -685,6 +726,8 @@ def build_features(db: Optional[Session] = None) -> pd.DataFrame:
             # ── v4.0.0: Scraped real rents and price drops ─────────────────
             "actual_market_rent_weekly", # ground-truth market targets
             "price_drop_pct",            # % price drops on listings
+            # ── v5.0.0: metadata flags (NOT training features) ─────────────
+            "is_university",             # university-managed property (below-market rents)
             # ── v4.5.0: explicit studio flag ──────────────────────────────
             "is_studio",                 # ptype_Flat AND actual_bedrooms==0
             # ── v4.6.0: new interaction features ──────────────────────────

@@ -607,6 +607,15 @@ def run_evaluation() -> None:
     # scraped ground truth only to measure true production accuracy.
     scraped_mask = df.loc[X_test.index, "actual_market_rent_weekly"].notna() \
         if "actual_market_rent_weekly" in df.columns else pd.Series(False, index=X_test.index)
+    # v5.0.0: Exclude university-managed properties — they have subsidised below-market
+    # rents. Evaluating against them would make the model look worse than it is on
+    # actual private rental market properties.
+    if "is_university" in df.columns:
+        uni_mask = df.loc[X_test.index, "is_university"].fillna(False).astype(bool)
+        n_uni_excluded = int((scraped_mask & uni_mask).sum())
+        if n_uni_excluded > 0:
+            logger.info("Excluding %d university properties from scraped-only evaluation", n_uni_excluded)
+        scraped_mask = scraped_mask & ~uni_mask
     if scraped_mask.sum() >= 10:
         y_scraped_true = y_test[scraped_mask].values
         y_scraped_pred = np.expm1(pipeline.predict(X_test[scraped_mask]))
