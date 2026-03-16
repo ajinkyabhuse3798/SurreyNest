@@ -103,6 +103,22 @@ def compute_real_target(df: pd.DataFrame) -> pd.Series:
         Series of weekly rent targets (~18k rows vs 261 scraped-only).
     """
     target = df["actual_market_rent_weekly"].copy()
+
+    # v5.0.0: Exclude university-managed properties from scraped priority.
+    # University halls (e.g. Millennium House GU2 7JN) are let below market rate.
+    # Using their subsidised rents as training targets would teach the model to
+    # under-predict GU2 flats. Fall through to implied_weekly_rent instead.
+    if "is_university" in df.columns:
+        uni_mask = df["is_university"].fillna(False).astype(bool)
+        n_uni = int(uni_mask.sum())
+        if n_uni > 0:
+            target[uni_mask] = np.nan
+            logger.info(
+                "Excluded %d university properties from scraped rent target "
+                "(below-market halls — using implied_weekly_rent fallback)",
+                n_uni,
+            )
+
     n_scraped = target.notna().sum()
 
     if "implied_weekly_rent" in df.columns:
@@ -391,18 +407,27 @@ def run_training() -> Dict[str, float]:
     df = pd.read_csv(str(FEATURES_PATH))
     logger.info("Loaded feature matrix: shape=%s", df.shape)
 
-    # Save sector rent map (v4.3.0: used by predict.py for sector_median_rent feature)
-    from app.ml.features import load_land_registry_features
-    lr_result = load_land_registry_features()
-    if isinstance(lr_result, tuple) and len(lr_result) == 2:
-        lr_df, sector_medians = lr_result
-        if not sector_medians.empty:
-            sector_rent_map = dict(
-                zip(sector_medians["postcode_sector"], sector_medians["implied_weekly_rent"])
-            )
-            sector_map_path = MODEL_DIR / "sector_rent_map.json"
-            sector_map_path.write_text(json.dumps(sector_rent_map, indent=2))
-            logger.info("Saved sector rent map: %d sectors → %s", len(sector_rent_map), sector_map_path)
+    # Save sector rent map (v5.1.0: derive from feature matrix to capture scraped-blend).
+    # Prior approach (v4.3.0) used raw Land Registry implied_weekly_rent from
+    # load_land_registry_features() — but features.py blends scraped market rents
+    # into sector_median_rent for sectors with ≥5 scraped records.  Saving the raw
+    # implied values caused a systematic train/inference mismatch: model was trained
+    # with blended anchors (e.g. GU2 8 £535, GU1 4 £381) but got raw implied anchors
+    # at inference (GU2 8 £276, GU1 4 £274), causing -£68/wk systematic underprediction.
+    # Fix: derive the map from the feature matrix median per sector — same values the
+    # model actually saw during training.
+    if "postcode_sector" in df.columns and "sector_median_rent" in df.columns:
+        sector_rent_map = (
+            df.groupby("postcode_sector")["sector_median_rent"]
+            .median()
+            .round(4)
+            .to_dict()
+        )
+        sector_map_path = MODEL_DIR / "sector_rent_map.json"
+        sector_map_path.write_text(json.dumps(sector_rent_map, indent=2))
+        logger.info("Saved sector rent map: %d sectors → %s", len(sector_rent_map), sector_map_path)
+    else:
+        logger.warning("postcode_sector/sector_median_rent not in feature matrix — sector_rent_map.json not updated")
 
     # Train
     pipeline, metrics, feature_cols = train_model(df)

@@ -2,7 +2,7 @@
   "model_version": "v4.6.0",
   "log_target": true,
   "outlier_cap": 1000.0,
-  "n_features": 29,
-  "r2": 0.8164,
-  "mae": 41.76
+  "n_features": 28,
+  "r2": 0.8054,
+  "mae": 43.77
 }
