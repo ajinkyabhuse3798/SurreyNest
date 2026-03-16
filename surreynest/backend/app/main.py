@@ -92,9 +92,10 @@ app.add_middleware(
 )
 
 # ── Import and mount routers ─────────────────────────────────────────────────
-from app.routers import admin, agents, auth, contract, heatmap, hmo, leaderboard, listings, pipelines, properties, rent_challenge, rent_explain, rent_trends, reviews, safety, scores  # noqa: E402
+from app.routers import admin, agents, auth, contract, heatmap, hmo, leaderboard, listings, pipelines, properties, rent_challenge, rent_explain, rent_trends, reviews, safety, scores, stats  # noqa: E402
 
 app.include_router(auth.router, prefix="/api", tags=["Auth"])
+app.include_router(stats.router, prefix="/api", tags=["Stats"])
 app.include_router(properties.router, prefix="/api", tags=["Properties"])
 app.include_router(hmo.router, prefix="/api", tags=["HMO"])
 app.include_router(scores.router, prefix="/api", tags=["Scores"])

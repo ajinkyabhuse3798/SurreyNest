@@ -69,20 +69,14 @@ export default function HeroSection({ postcode, setPostcode, radius, setRadius, 
                     {error && <p className="text-sm text-red-500 font-medium mt-2 px-2">{error}</p>}
                 </motion.div>
 
-                {/* Student avatars + trust text */}
-                <motion.div variants={fadeUp} className="flex items-center gap-4 md:gap-6 pt-2 md:pt-4">
-                    <div className="flex -space-x-3">
-                        {[
-                            'https://lh3.googleusercontent.com/aida-public/AB6AXuDRF6nzIwyNYZnkjj7DI5dftFWTJjDUcRq_v9jbS-F5ibAs2WaRa3ODlxFvL2NRTftSaSIUDCVCSrY_y1AbEHXfx9GaWO79A2TtyQ6nPx5b1QKnBLZRxf8tJbg8xPID-8j3-ytlLxts75yOTvNXlBwDaUPfJ7WA57zBrYh2G5FhxjfkP_9xxkKuhlLpgLLKqfw-MfzB0CmP1zWDMUgst5rcFhIiXHbNgwPKv0qarOOCwaDTykaIsE7_RQ4nDIqHVj1lRinl6t1uhc8',
-                            'https://lh3.googleusercontent.com/aida-public/AB6AXuBymYnGhMS1HJg-N2Mt_DRIwkDDxt4-zmSqRAtI8NLIOkz0vVqKCwUjzpZDRmGIm1TE_QHpRyiU95rctcllW_nuf6CHZiaAUi_v1wgAiRD28QL3_vBcPguyEZWnt-n1fengGZK8pFoketUBXDLeCNCDTVDOasvU1tsLt0daF9E9qpXO0DKCppfKuiyA9fKq_vJv8Nqj54uOnmDYTzPu1ZNpTAOxbjdyLLs_iwVDTnjVBNs4zqN8opAz2PbkJBlWALCstOKwkZ9FIMQ',
-                            'https://lh3.googleusercontent.com/aida-public/AB6AXuC2-MhnH_JrKL6YgJP4RHvAzyeVJJ9aUxLdERdQ3x0aR4MQP4BNt-qCZhG3ERcFx8rkFpTg3KWcUGBkbwZYXXm3DIGEym1ErscAMGdoHG6encb8xoKUDGKeXoyM1oZXsQLBBLF1oodGAh0jMp_QGJWcsp9hPP_F8vQeHyy7BgKU4ah5G3TAVa2kSKl7MqU0MCrepWuP2IrIEZoVjK6cr4tgox4_Em4iEYZCfnNDEx46owK2vCDvzlgmhTLGaAPTaLXk6OOrnysCSOk',
-                        ].map((src, i) => (
-                            <img key={i} className="h-9 w-9 md:h-10 md:w-10 rounded-full border-2 border-white object-cover" src={src} alt="Student" />
-                        ))}
-                    </div>
-                    <p className="text-sm text-slate-500 font-medium">
-                        Joined by <span className="text-slate-900 font-bold">2,500+</span> Surrey students this month
-                    </p>
+                {/* Data source trust badges */}
+                <motion.div variants={fadeUp} className="flex items-center gap-3 pt-2 md:pt-4 flex-wrap">
+                    {['police.uk', 'EPC Register', 'Land Registry', 'GBC HMO'].map((src) => (
+                        <span key={src} className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0" />
+                            {src}
+                        </span>
+                    ))}
                 </motion.div>
             </motion.div>
 
