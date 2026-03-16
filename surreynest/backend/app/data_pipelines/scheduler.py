@@ -70,11 +70,11 @@ def _run_flood() -> None:
 
 # ── Map of pipeline name → runner ─────────────────────────────────────────────
 PIPELINE_RUNNERS = {
-    "crime": _run_crime,
-    "hmo": _run_hmo,
-    "epc": _run_epc,
-    "land_registry": _run_land_registry,
-    "flood": _run_flood,
+    "crime_pipeline": _run_crime,
+    "hmo_pipeline": _run_hmo,
+    "epc_pipeline": _run_epc,
+    "land_registry_pipeline": _run_land_registry,
+    "flood_pipeline": _run_flood,
 }
 
 

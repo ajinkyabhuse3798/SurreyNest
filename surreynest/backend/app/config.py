@@ -62,6 +62,16 @@ class Settings:
     # ── AI / Anthropic ────────────────────────────────────────────────────
     anthropic_api_key: str = os.getenv("ANTHROPIC_API_KEY", "")
 
+    # ── Email (SMTP) ──────────────────────────────────────────────────────
+    smtp_host: str = os.getenv("SMTP_HOST", "")
+    smtp_port: int = int(os.getenv("SMTP_PORT", "587"))
+    smtp_user: str = os.getenv("SMTP_USER", "")
+    smtp_password: str = os.getenv("SMTP_PASSWORD", "")
+    smtp_from: str = os.getenv("SMTP_FROM", "SurreyNest <noreply@surreynest.com>")
+
+    # ── Frontend URL (used in email links) ───────────────────────────────
+    frontend_url: str = os.getenv("FRONTEND_URL", "http://localhost:5173")
+
     def __init__(self) -> None:
         """Validate critical settings on startup."""
         _insecure_keys = {"", "CHANGE_ME_IN_PRODUCTION", "changeme", "secret", "dev"}

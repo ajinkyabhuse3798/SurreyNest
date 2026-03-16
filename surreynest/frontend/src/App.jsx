@@ -25,7 +25,13 @@ const About = React.lazy(() => import('./pages/About'))
 const Login = React.lazy(() => import('./pages/Login'))
 const Register = React.lazy(() => import('./pages/Register'))
 const RightsGuide = React.lazy(() => import('./pages/RightsGuide'))
-const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard'))
+const AdminLogin = React.lazy(() => import('./pages/admin/AdminLogin'))
+const AdminLayout = React.lazy(() => import('./pages/admin/AdminLayout'))
+const AdminOverview = React.lazy(() => import('./pages/admin/AdminOverview'))
+const AdminUsers = React.lazy(() => import('./pages/admin/AdminUsers'))
+const AdminSubscriptions = React.lazy(() => import('./pages/admin/AdminSubscriptions'))
+const AdminReviews = React.lazy(() => import('./pages/admin/AdminReviews'))
+const AdminPipelines = React.lazy(() => import('./pages/admin/AdminPipelines'))
 const CheckListing = React.lazy(() => import('./pages/CheckListing'))
 const StreetSmarts = React.lazy(() => import('./pages/StreetSmarts'))
 const SafetyDetail = React.lazy(() => import('./pages/SafetyDetail'))
@@ -35,6 +41,9 @@ const AgentDetail = React.lazy(() => import('./pages/AgentDetail'))
 const RentChallengePage = React.lazy(() => import('./pages/RentChallengePage'))
 const ContractChecker = React.lazy(() => import('./pages/ContractChecker'))
 const Pricing = React.lazy(() => import('./pages/Pricing'))
+const ForgotPassword = React.lazy(() => import('./pages/ForgotPassword'))
+const ResetPassword = React.lazy(() => import('./pages/ResetPassword'))
+const VerifyEmail = React.lazy(() => import('./pages/VerifyEmail'))
 
 // ── Route-level loading spinner ──────────────────────────────────────────────
 function RouteLoader() {
@@ -115,13 +124,24 @@ export default function App() {
                                         <Route path="/rent/:uprn" element={<RentDetail />} />
                                         <Route path="/login" element={<Login />} />
                                         <Route path="/register" element={<Register />} />
+                                        <Route path="/forgot-password" element={<ForgotPassword />} />
+                                        <Route path="/reset-password" element={<ResetPassword />} />
+                                        <Route path="/verify-email" element={<VerifyEmail />} />
                                         <Route path="/rights" element={<RightsGuide />} />
                                         <Route path="/agent" element={<AgentDirectory />} />
                                         <Route path="/agent/:agentName" element={<AgentDetail />} />
                                         <Route path="/challenge-rent-increase" element={<RentChallengePage />} />
                                         <Route path="/check-contract" element={<ContractChecker />} />
                                         <Route path="/pricing" element={<Pricing />} />
-                                        <Route path="/admin" element={<RequireAuth adminOnly><AdminDashboard /></RequireAuth>} />
+                                        <Route path="/admin/login" element={<AdminLogin />} />
+                                        <Route path="/admin" element={<RequireAuth adminOnly><AdminLayout /></RequireAuth>}>
+                                            <Route index element={<AdminOverview />} />
+                                            <Route path="dashboard" element={<AdminOverview />} />
+                                            <Route path="users" element={<AdminUsers />} />
+                                            <Route path="subscriptions" element={<AdminSubscriptions />} />
+                                            <Route path="reviews" element={<AdminReviews />} />
+                                            <Route path="pipelines" element={<AdminPipelines />} />
+                                        </Route>
                                         <Route path="*" element={<NotFound />} />
                                     </Routes>
                                 </div>

@@ -204,14 +204,12 @@ export default function Pricing() {
                         )}
 
                         <ul>
-                            {FREE_FEATURES.map((f) => (
-                                <li key={f.label} className="flex items-start gap-3 py-2.5 border-b border-white/10 last:border-0">
-                                    <span className="mt-0.5 flex-shrink-0 w-5 h-5 rounded-full bg-white/20 flex items-center justify-center">
-                                        <Check size={11} className="text-white" strokeWidth={3} />
-                                    </span>
-                                    <span className="text-sm text-white/80">{f.label}</span>
-                                </li>
-                            ))}
+                            <li className="flex items-center gap-2 py-2.5 border-b border-white/10 mb-1">
+                                <span className="flex-shrink-0 w-5 h-5 rounded-full bg-white/20 flex items-center justify-center">
+                                    <Check size={11} className="text-white" strokeWidth={3} />
+                                </span>
+                                <span className="text-sm text-white/70 italic">Everything in Free, plus:</span>
+                            </li>
                             {PRO_FEATURES.map((f) => (
                                 <li key={f.label} className="flex items-start gap-3 py-2.5 border-b border-white/10 last:border-0">
                                     <span className="mt-0.5 flex-shrink-0 w-5 h-5 rounded-full bg-emerald-400/30 flex items-center justify-center">

@@ -15,7 +15,9 @@ export function sortProperties(list, sortKey) {
     const sorted = [...list]
     switch (sortKey) {
         case 'distance':
-            return sorted.sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity))
+            // The backend already returns properties optimally sorted (exact postcode first, 
+            // then house number, then geographic distance). We preserve the backend order.
+            return sorted
         case 'rooms':
             return sorted.sort((a, b) => (b.num_rooms ?? 0) - (a.num_rooms ?? 0))
         case 'area':

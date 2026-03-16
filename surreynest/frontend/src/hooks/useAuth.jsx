@@ -68,7 +68,17 @@ export function AuthProvider({ children }) {
         setUser(null)
     }, [])
 
-    const value = { user, loading, login, register, logout }
+    // Re-fetch /api/auth/me and update user state (e.g. after email verification)
+    const refreshUser = useCallback(async () => {
+        try {
+            const res = await api.get('/api/auth/me')
+            setUser(res.data)
+        } catch {
+            // Session may have expired — leave user state as-is
+        }
+    }, [])
+
+    const value = { user, loading, login, register, logout, refreshUser }
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
@@ -105,7 +115,8 @@ export function RequireAuth({ children, adminOnly = false }) {
 
     if (!user) {
         // Declarative redirect — preserves React state, passes return URL
-        return <Navigate to="/login" state={{ from: location }} replace />
+        const loginPath = adminOnly ? '/admin/login' : '/login'
+        return <Navigate to={loginPath} state={{ from: location }} replace />
     }
 
     if (adminOnly && user.role !== 'admin') {

@@ -8,6 +8,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Crown } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
+import VerificationBanner from './VerificationBanner'
 
 const NAV_LINKS = [
     { to: '/search', label: 'Search' },
@@ -54,6 +55,8 @@ export default function Navbar() {
     }
 
     return (
+        <>
+        <VerificationBanner />
         <nav className="sticky top-0 z-50 px-4 md:px-6 py-3">
             <div className="max-w-7xl mx-auto glass rounded-xl px-4 md:px-6 py-3 flex items-center justify-between shadow-sm">
                 {/* Logo */}
@@ -290,5 +293,6 @@ export default function Navbar() {
                 )}
             </AnimatePresence>
         </nav>
+        </>
     )
 }

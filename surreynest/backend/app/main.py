@@ -92,7 +92,7 @@ app.add_middleware(
 )
 
 # ── Import and mount routers ─────────────────────────────────────────────────
-from app.routers import agents, auth, contract, heatmap, hmo, leaderboard, listings, pipelines, properties, rent_challenge, rent_explain, rent_trends, reviews, safety, scores  # noqa: E402
+from app.routers import admin, agents, auth, contract, heatmap, hmo, leaderboard, listings, pipelines, properties, rent_challenge, rent_explain, rent_trends, reviews, safety, scores  # noqa: E402
 
 app.include_router(auth.router, prefix="/api", tags=["Auth"])
 app.include_router(properties.router, prefix="/api", tags=["Properties"])
@@ -109,6 +109,7 @@ app.include_router(leaderboard.router, prefix="/api", tags=["Leaderboard"])
 app.include_router(agents.router, prefix="/api", tags=["Agents"])
 app.include_router(rent_challenge.router, prefix="/api", tags=["Rent Challenge"])
 app.include_router(contract.router, prefix="/api", tags=["Contract Checker"])
+app.include_router(admin.router, prefix="/api", tags=["Admin Dashboard"])
 
 
 # ── Global exception handler ─────────────────────────────────────────────────

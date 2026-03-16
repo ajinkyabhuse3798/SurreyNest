@@ -97,7 +97,11 @@ def search_properties(
               ST_SetSRID(ST_Point(:search_lng, :search_lat), 4326)::geography,
               :radius_m
           )
-        ORDER BY distance_m
+        ORDER BY 
+            CASE WHEN REPLACE(postcode, ' ', '') = REPLACE(:search_postcode, ' ', '') THEN 0 ELSE 1 END,
+            CASE WHEN property_type ILIKE '%Flat%' OR address ILIKE '%FLAT%' OR address ILIKE '%APARTMENT%' THEN 1 ELSE 0 END,
+            NULLIF(SUBSTRING(address FROM '[0-9]+'), '')::int NULLS LAST,
+            distance_m
         OFFSET :offset LIMIT :per_page
     """)
 
@@ -106,6 +110,7 @@ def search_properties(
         {
             "search_lat": lat,
             "search_lng": lng,
+            "search_postcode": postcode,
             "radius_m": radius_m,
             "offset": offset,
             "per_page": per_page,

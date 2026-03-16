@@ -1,6 +1,6 @@
 """Pydantic schemas for JWT tokens and authentication."""
 
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 
 from app.schemas.user import UserResponse
 
@@ -39,3 +39,45 @@ class TokenData(BaseModel):
 
     user_id: str
     role: str
+
+
+class ForgotPasswordRequest(BaseModel):
+    """Request body for forgot-password flow.
+
+    Attributes:
+        email: Email address of the account to reset.
+    """
+
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    """Request body for resetting the password with a token.
+
+    Attributes:
+        token: Raw reset token from the email link.
+        new_password: The new password to set.
+    """
+
+    token: str
+    new_password: str
+
+
+class VerifyEmailRequest(BaseModel):
+    """Request body for email verification.
+
+    Attributes:
+        token: Raw verification token from the email link.
+    """
+
+    token: str
+
+
+class MessageResponse(BaseModel):
+    """Generic success message response.
+
+    Attributes:
+        message: Human-readable success message.
+    """
+
+    message: str

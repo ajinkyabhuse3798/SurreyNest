@@ -171,11 +171,16 @@ export default function MapView({
     )
 
     return (
-        <div className={`${height} min-h-[250px] ${className}`}>
+        // Outer div sets the block size via Tailwind classes.
+        // min-h ensures a fallback when h-full resolves to 0 (no definite parent height).
+        // MapContainer uses inline style — CSS height:100% only works with explicit parent
+        // height, but inline style bypasses that restriction.
+        <div className={`${height} min-h-[300px] ${className}`}>
             <MapContainer
                 center={initialCentre}
                 zoom={initialZoom}
-                className="w-full h-full rounded-lg"
+                style={{ height: '100%', width: '100%', minHeight: '300px' }}
+                className="rounded-lg"
                 scrollWheelZoom={true}
                 zoomControl={true}
             >

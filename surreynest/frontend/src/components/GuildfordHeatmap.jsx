@@ -279,7 +279,7 @@ export default function GuildfordHeatmap() {
                     <MapContainer
                         center={GUILDFORD}
                         zoom={12}
-                        className="w-full h-full"
+                        style={{ height: '100%', width: '100%', minHeight: '320px' }}
                         scrollWheelZoom={true}
                         zoomControl={true}
                     >

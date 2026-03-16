@@ -45,6 +45,7 @@ class UserResponse(BaseModel):
         role: User role (student, landlord, admin).
         created_at: Account creation timestamp.
         is_pro: Whether the user has an active Pro subscription.
+        is_verified: Whether the user has verified their email address.
     """
 
     id: uuid.UUID
@@ -52,5 +53,6 @@ class UserResponse(BaseModel):
     role: str
     created_at: datetime
     is_pro: bool = False
+    is_verified: bool = False
 
     model_config = {"from_attributes": True}
