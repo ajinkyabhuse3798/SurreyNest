@@ -14,6 +14,7 @@ import Navbar from '../components/Navbar'
 import ReviewList from '../components/ReviewList'
 import ReviewForm from '../components/ReviewForm'
 import RentRadarChart from '../components/RentRadarChart'
+import LocationMap from '../components/property/LocationMap'
 import { useCompare } from '../hooks/useCompare'
 import api from '../services/api'
 import {
@@ -500,14 +501,12 @@ export default function PropertyDetail() {
                                         <span className="text-xs font-bold text-primary">{distances[0].label}: {distances[0].walkMin} min walk</span>
                                     )}
                                 </div>
-                                <div className="h-64 bg-primary/5 flex items-center justify-center relative">
-                                    <div className="relative flex flex-col items-center">
-                                        <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center shadow-xl animate-bounce">
-                                            <span className="material-symbols-outlined text-white">home</span>
-                                        </div>
-                                        <div className="mt-2 px-3 py-1 bg-white border border-primary/20 rounded-lg shadow-sm text-xs font-bold">{p.postcode}</div>
-                                    </div>
-                                </div>
+                                <LocationMap
+                                    lat={p.lat}
+                                    lng={p.lng}
+                                    postcode={p.postcode}
+                                    distances={distances}
+                                />
                                 <div className="p-6 grid grid-cols-3 gap-4">
                                     {distances.slice(0, 3).map((loc) => (
                                         <div key={loc.label} className="text-center">

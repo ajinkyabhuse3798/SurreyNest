@@ -40,7 +40,7 @@ IPHRP_DIR = DATA_BASE / "raw" / "iphrp"
 # ── Guildford reference points ───────────────────────────────────────────────
 GUILDFORD_TOWN_CENTRE = (51.2362, -0.5704)  # High Street area
 UNIVERSITY_OF_SURREY = (51.2430, -0.5890)   # Stag Hill campus
-GUILDFORD_STATION = (51.2372, -0.5617)       # London Road station forecourt
+GUILDFORD_STATION = (51.2364, -0.5797)       # Guildford Railway Station (main, London Waterloo line)
 
 # ── Energy rating ordinal encoding (from data-dictionary.md) ─────────────────
 ENERGY_RATING_MAP = {"A": 6, "B": 5, "C": 4, "D": 3, "E": 2, "F": 1, "G": 0}

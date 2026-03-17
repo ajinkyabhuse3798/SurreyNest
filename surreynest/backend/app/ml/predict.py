@@ -31,7 +31,7 @@ _sector_rent_map: Dict = {}  # v4.3.0: postcode_sector → sector_median_rent
 # ── Guildford reference points ────────────────────────────────────────────────
 GUILDFORD_TOWN_CENTRE = (51.2362, -0.5704)
 UNIVERSITY_OF_SURREY = (51.2430, -0.5890)
-GUILDFORD_STATION = (51.2372, -0.5617)       # London Road station forecourt
+GUILDFORD_STATION = (51.2364, -0.5797)       # Guildford Railway Station (main, London Waterloo line)
 
 # ── Location score Gaussian bandwidth ────────────────────────────────────────
 _LOCATION_SIGMA_KM = 1.5  # v4.3.0: Gaussian decay σ=1.5km for proximity scores

@@ -12,7 +12,7 @@ import {
 
 export const UNI_SURREY = { lat: 51.2430, lng: -0.5890, label: 'University of Surrey', icon: GraduationCap }
 export const TOWN_CENTRE = { lat: 51.2362, lng: -0.5704, label: 'Town Centre', icon: ShoppingBag }
-export const TRAIN_STATION = { lat: 51.2372, lng: -0.5617, label: 'Train Station', icon: TrainFront }
+export const TRAIN_STATION = { lat: 51.2364, lng: -0.5797, label: 'Train Station', icon: TrainFront }
 export const KEY_LOCATIONS = [UNI_SURREY, TOWN_CENTRE, TRAIN_STATION]
 
 export const GUILDFORD_TRANSIT_FACTS = [
