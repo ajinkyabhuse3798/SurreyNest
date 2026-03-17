@@ -26,6 +26,5 @@
   "ptype_Detached",
   "ptype_Flat",
   "ptype_Semi-Detached",
-  "ptype_Terraced",
-  "ptype_Unknown"
+  "ptype_Terraced"
 ]
