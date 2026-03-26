@@ -6,6 +6,7 @@ and the formula from docs/ml-model.md.
 """
 
 import logging
+from statistics import median
 from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
@@ -19,10 +20,12 @@ from app.models.pipeline_config import PipelineConfig
 from app.models.property import Property
 from app.models.rent_prediction import RentPrediction
 from app.models.area_value import AreaValue
+from app.utils.safety_weights import CATEGORY_WEIGHTS, DEFAULT_WEIGHT
 
 logger = logging.getLogger(__name__)
+_RENT_POSTPROCESS_VERSION = "lc1"
 
-# Default fallback — only used if the pipeline_config table has no row yet
+# Default fallback, only used if the pipeline_config table has no row yet
 _IPHRP_FALLBACK = 6.0
 
 
@@ -51,20 +54,6 @@ def _get_latest_iphrp_growth(db: Session) -> float:
 
     logger.warning("Using fallback IPHRP growth: %.1f%%", _IPHRP_FALLBACK)
     return _IPHRP_FALLBACK
-
-# ── Crime category weights (same as features.py) ─────────────────────────────
-CATEGORY_WEIGHTS: Dict[str, float] = {
-    "violent-crime": 3.0,
-    "robbery": 2.5,
-    "anti-social-behaviour": 2.0,
-    "burglary": 2.0,
-    "drugs": 1.5,
-    "public-order": 1.5,
-    "vehicle-crime": 1.0,
-    "theft-from-the-person": 1.0,
-}
-DEFAULT_WEIGHT = 0.5
-
 
 def _safety_label(score: float) -> str:
     """Convert a numeric safety score to a human-readable label.
@@ -130,7 +119,7 @@ def _get_safety_normaliser(db: Session) -> float:
         logger.warning("Could not read safety_normaliser_p95: %s", e)
 
     # 3. Fallback: compute once on-the-fly (only needed before first pipeline run)
-    logger.warning("safety_normaliser_p95 not in pipeline_config — computing on-the-fly")
+    logger.warning("safety_normaliser_p95 not in pipeline_config, computing on-the-fly")
     all_crime = (
         db.query(
             CrimeData.postcode_sector,
@@ -206,7 +195,7 @@ def get_safety_score(
             "total_count": row.total_count,
         })
 
-    # Read cached normaliser (O(1) — no full-table scan)
+    # Read cached normaliser (O(1), no full-table scan)
     normaliser = _get_safety_normaliser(db)
 
     safety_score = max(0.0, min(100.0, 100.0 - (weighted_sum / normaliser * 100.0)))
@@ -285,6 +274,69 @@ def compute_fairness_score(actual_rent: float, predicted_rent: float) -> Dict:
     }
 
 
+def _is_similar_size(target_area: Optional[float], comp_area: Optional[float]) -> bool:
+    """Return True when a comparable property's size is close to the target."""
+    if target_area is None or comp_area is None:
+        return True
+
+    target = float(target_area)
+    comp = float(comp_area)
+    tolerance = max(10.0, target * 0.15)
+    return abs(target - comp) <= tolerance
+
+
+def _blend_with_local_rent_comps(
+    *,
+    prop: Property,
+    predicted_rent: Optional[float],
+    rent_low: Optional[float],
+    rent_high: Optional[float],
+    db: Session,
+) -> tuple[Optional[float], Optional[float], Optional[float]]:
+    """Ground a model prediction with strong exact-postcode observed-rent comps.
+
+    This only applies when SurreyNest already has real rented comparables at the
+    same postcode, for the same property type, and with matching bedrooms / size.
+    """
+    if predicted_rent is None or not prop.postcode or not prop.property_type:
+        return predicted_rent, rent_low, rent_high
+
+    exact_rows = (
+        db.query(Property)
+        .filter(Property.uprn != prop.uprn)
+        .filter(Property.actual_market_rent_weekly.isnot(None))
+        .filter(Property.property_type == prop.property_type)
+        .filter(Property.postcode == prop.postcode)
+        .all()
+    )
+
+    strong_exact = []
+    for row in exact_rows:
+        if prop.actual_bedrooms is not None and row.actual_bedrooms not in (None, prop.actual_bedrooms):
+            continue
+        if not _is_similar_size(prop.floor_area_m2, row.floor_area_m2):
+            continue
+        strong_exact.append(float(row.actual_market_rent_weekly))
+
+    if not strong_exact:
+        return predicted_rent, rent_low, rent_high
+
+    comp_anchor = float(median(strong_exact))
+    blended_rent = round((float(predicted_rent) * 0.35) + (comp_anchor * 0.65), 2)
+    delta = blended_rent - float(predicted_rent)
+
+    adjusted_low = round(
+        max((float(rent_low) if rent_low is not None else float(predicted_rent)) + delta, 0.0),
+        2,
+    )
+    adjusted_high = round(
+        max((float(rent_high) if rent_high is not None else float(predicted_rent)) + delta, 0.0),
+        2,
+    )
+
+    return blended_rent, adjusted_low, adjusted_high
+
+
 def get_rent_prediction(uprn: str, db: Session, bedrooms_override: Optional[int] = None) -> Optional[Dict]:
     """Get rent prediction for a property, using cache first.
 
@@ -297,19 +349,26 @@ def get_rent_prediction(uprn: str, db: Session, bedrooms_override: Optional[int]
     Returns:
         Dict with predicted_weekly_rent, model_version, computed_at; or None.
     """
+    from app.ml.predict import get_loaded_model_version
+
+    active_model_version = f"{get_loaded_model_version()}+{_RENT_POSTPROCESS_VERSION}"
+
     # Check cache first
     cached = db.query(RentPrediction).filter(
         RentPrediction.uprn == uprn
     ).first()
 
-    if cached is not None and cached.model_version == settings.ml_model_version and bedrooms_override is None:
+    if cached is not None and cached.model_version == active_model_version and bedrooms_override is None:
         return {
             "predicted_weekly_rent": cached.predicted_weekly_rent,
+            "rent_low": cached.confidence_low,
+            "rent_high": cached.confidence_high,
+            "confidence": cached.confidence,
             "model_version": cached.model_version,
             "computed_at": cached.computed_at,
         }
 
-    # Cache miss or stale — run ML model
+    # Cache miss or stale, run ML model
     prop = db.query(Property).filter(Property.uprn == uprn).first()
     if not prop:
         return None
@@ -319,8 +378,8 @@ def get_rent_prediction(uprn: str, db: Session, bedrooms_override: Optional[int]
         return {
             "predicted_weekly_rent": None,
             "is_university_managed": True,
-            "message": "University-managed accommodation — bills included in rent",
-            "model_version": settings.ml_model_version,
+            "message": "University-managed accommodation, bills included in rent",
+            "model_version": active_model_version,
             "computed_at": datetime.now(timezone.utc),
         }
 
@@ -382,13 +441,28 @@ def get_rent_prediction(uprn: str, db: Session, bedrooms_override: Optional[int]
             return None
 
         predicted_rent = result["predicted_weekly_rent"]
+        rent_low = result.get("rent_low")
+        rent_high = result.get("rent_high")
+        confidence = result.get("confidence")
+        result_version = f"{result.get('model_version', active_model_version)}+{_RENT_POSTPROCESS_VERSION}"
+
+        predicted_rent, rent_low, rent_high = _blend_with_local_rent_comps(
+            prop=prop,
+            predicted_rent=predicted_rent,
+            rent_low=rent_low,
+            rent_high=rent_high,
+            db=db,
+        )
 
         # Cache the prediction
         now = datetime.now(timezone.utc)
         prediction = RentPrediction(
             uprn=uprn,
             predicted_weekly_rent=predicted_rent,
-            model_version=settings.ml_model_version,
+            confidence_low=rent_low,
+            confidence_high=rent_high,
+            confidence=confidence,
+            model_version=result_version,
             computed_at=now,
         )
         db.merge(prediction)
@@ -396,7 +470,10 @@ def get_rent_prediction(uprn: str, db: Session, bedrooms_override: Optional[int]
 
         return {
             "predicted_weekly_rent": predicted_rent,
-            "model_version": settings.ml_model_version,
+            "rent_low": rent_low,
+            "rent_high": rent_high,
+            "confidence": confidence,
+            "model_version": result_version,
             "computed_at": now,
         }
 

@@ -1,6 +1,6 @@
 """ORM model for the `pipeline_runs` audit log table.
 
-Records every execution of a data pipeline job — start time, finish time,
+Records every execution of a data pipeline job, start time, finish time,
 row count, and error messages. Used for monitoring and debugging.
 """
 
@@ -22,7 +22,7 @@ class PipelineRun(Base):
         id: Auto-incrementing primary key.
         pipeline_name: Identifier, e.g. "epc_pipeline", "crime_pipeline".
         started_at: When the job started.
-        finished_at: When the job finished — None if still running or crashed.
+        finished_at: When the job finished, None if still running or crashed.
         status: One of "running", "success", "failed".
         rows_processed: Number of rows upserted (None if failed before completion).
         error_message: Full error + stack trace if status is "failed".

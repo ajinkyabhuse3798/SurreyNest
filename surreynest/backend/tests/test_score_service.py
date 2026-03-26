@@ -1,12 +1,13 @@
-"""Unit tests for score_service — pure service layer, no HTTP/routers required.
-
-Tests compute_fairness_score (no DB) and _safety_label (no DB).
-get_safety_score requires a DB session and is tested via integration tests.
-"""
+"""Unit tests for score_service — pure service layer with light DB coverage."""
 
 import pytest
 
-from app.services.score_service import _safety_label, compute_fairness_score
+from app.models.property import Property
+from app.services.score_service import (
+    _safety_label,
+    compute_fairness_score,
+    get_rent_prediction,
+)
 
 
 # ── Fairness score formula ────────────────────────────────────────────────────
@@ -109,3 +110,57 @@ class TestSafetyLabel:
     def test_safety_label_bands(self, score: float, expected: str) -> None:
         """Each score band maps to the correct label."""
         assert _safety_label(score) == expected
+
+
+def test_get_rent_prediction_uses_exact_local_comp_guardrail(db, monkeypatch) -> None:
+    """Exact postcode/type/size comps should pull an over-high prediction down."""
+    target = Property(
+        uprn="TARGET_UPRN_001",
+        address="9A Epsom Road",
+        postcode="GU1 3JT",
+        lat=51.2362,
+        lng=-0.5704,
+        property_type="Flat",
+        floor_area_m2=58.0,
+        num_rooms=3,
+        actual_bedrooms=2,
+        energy_rating="C",
+        potential_rating="C",
+        annual_energy_cost=559.0,
+    )
+    exact_comp = Property(
+        uprn="COMP_UPRN_001",
+        address="Epsom Road, Guildford",
+        postcode="GU1 3JT",
+        lat=51.2362,
+        lng=-0.5704,
+        property_type="Flat",
+        floor_area_m2=58.0,
+        num_rooms=3,
+        actual_bedrooms=2,
+        actual_market_rent_weekly=358.0,
+        energy_rating="C",
+        potential_rating="C",
+    )
+    db.add_all([target, exact_comp])
+    db.flush()
+
+    monkeypatch.setattr("app.ml.predict.get_loaded_model_version", lambda: "test-v1")
+    monkeypatch.setattr(
+        "app.ml.predict.predict_rent",
+        lambda features: {
+            "predicted_weekly_rent": 505.11,
+            "rent_low": 427.29,
+            "rent_high": 582.93,
+            "confidence": 80.0,
+            "model_version": "test-v1",
+        },
+    )
+
+    result = get_rent_prediction(target.uprn, db)
+
+    assert result is not None
+    assert result["model_version"] == "test-v1+lc1"
+    assert result["predicted_weekly_rent"] == 409.49
+    assert result["rent_low"] == 331.67
+    assert result["rent_high"] == 487.31

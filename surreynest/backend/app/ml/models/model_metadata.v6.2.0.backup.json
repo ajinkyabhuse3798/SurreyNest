@@ -1,0 +1,18 @@
+{
+  "model_version": "v6.2.0",
+  "log_target": true,
+  "outlier_cap": 1000.0,
+  "n_features": 27,
+  "train_size": 497,
+  "group_count": 11,
+  "target_column": "actual_market_rent_weekly",
+  "evaluation_method": "GroupKFold(5)",
+  "mae": 54.52,
+  "rmse": 76.61,
+  "r2": 0.8254,
+  "mape": 11.96,
+  "raw_mae": 59.27,
+  "raw_rmse": 83.94,
+  "raw_r2": 0.7904,
+  "interval_coverage": 0.7988
+}

@@ -67,11 +67,14 @@ def test_get_reviews_returns_only_moderated_unflagged(
 # ── POST /reviews ────────────────────────────────────────────────────────────
 
 
-def test_create_review_requires_auth(client, seeded_property):
-    """POST /api/reviews without token returns 401."""
+def test_create_review_allows_anonymous_submission(client, seeded_property):
+    """POST /api/reviews without auth still creates a moderated review."""
     response = client.post("/api/reviews", json=REVIEW_PAYLOAD)
 
-    assert response.status_code == 401
+    assert response.status_code == 201
+    data = response.json()
+    assert data["user_id"] is None
+    assert data["is_moderated"] is False
 
 
 def test_create_review_success(client, test_user, user_token, seeded_property):
@@ -88,6 +91,17 @@ def test_create_review_success(client, test_user, user_token, seeded_property):
     assert data["overall_rating"] == 4
     assert data["is_moderated"] is False
     assert "id" in data
+
+
+def test_anonymous_review_has_no_user_id(client, seeded_property):
+    """Unauthenticated review submissions are stored without a user_id."""
+    response = client.post(
+        "/api/reviews",
+        json=REVIEW_PAYLOAD,
+    )
+
+    assert response.status_code == 201
+    assert response.json()["user_id"] is None
 
 
 def test_create_duplicate_review_returns_400(

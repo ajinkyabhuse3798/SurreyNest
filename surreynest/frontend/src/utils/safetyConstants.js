@@ -17,6 +17,6 @@ export const CAT_META = {
 }
 
 export const TRAIN_STATIONS = [
-    { name: 'Guildford Station', lat: 51.2370, lng: -0.5810, lines: 'South Western Railway — London Waterloo in ~35 min' },
-    { name: 'London Road (Guildford)', lat: 51.2415, lng: -0.5700, lines: 'South Western Railway — local services' },
+    { name: 'Guildford Station', lat: 51.2370, lng: -0.5810, lines: 'South Western Railway, London Waterloo in ~35 min' },
+    { name: 'London Road (Guildford)', lat: 51.2415, lng: -0.5700, lines: 'South Western Railway, local services' },
 ]

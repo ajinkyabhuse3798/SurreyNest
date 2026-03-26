@@ -2,7 +2,7 @@
  * Pure utility functions and constants for property detail pages.
  *
  * Extracted from PropertyDetail.jsx to enable reuse and independent testing.
- * All functions are pure — no React dependencies, no side effects.
+ * All functions are pure, no React dependencies, no side effects.
  */
 import {
     GraduationCap, TrainFront, ShoppingBag,
@@ -19,14 +19,14 @@ export const GUILDFORD_TRANSIT_FACTS = [
     {
         icon: TrainFront,
         title: 'Guildford → London Waterloo',
-        detail: 'Direct service ~35 min · every 15–30 min off-peak · no changes',
+        detail: 'Direct service ~35 min · every 15 to 30 min off-peak · no changes',
         colour: 'text-blue-700',
         bg: 'bg-blue-50',
     },
     {
         icon: GraduationCap,
         title: 'Bus to Surrey campus',
-        detail: 'Arriva routes 5 and X1 — town centre to Stag Hill campus',
+        detail: 'Arriva routes 5 and X1, town centre to Stag Hill campus',
         colour: 'text-indigo-700',
         bg: 'bg-indigo-50',
     },
@@ -77,12 +77,12 @@ export function computeRentFactors(p, distances) {
     else if (stationDist && stationDist.km >= 2.5) factors.push({ text: 'Far from the station', positive: false })
     if (uniDist && uniDist.km <= 1.2) factors.push({ text: 'Walking distance to Surrey', positive: true })
     else if (uniDist && uniDist.km >= 3.0) factors.push({ text: 'Long commute to campus', positive: false })
-    if (epc === 'A' || epc === 'B') factors.push({ text: 'Excellent EPC — low bills', positive: true })
-    else if (epc === 'F' || epc === 'G') factors.push({ text: 'Poor EPC — high bills', positive: false })
+    if (epc === 'A' || epc === 'B') factors.push({ text: 'Excellent EPC, low bills', positive: true })
+    else if (epc === 'F' || epc === 'G') factors.push({ text: 'Poor EPC, high bills', positive: false })
     if (p.safety_score != null && p.safety_score >= 75) factors.push({ text: 'Very safe area', positive: true })
     else if (p.safety_score != null && p.safety_score < 35) factors.push({ text: 'Higher crime area', positive: false })
-    if (p.property_type === 'Detached') factors.push({ text: 'Detached — space premium', positive: true })
-    else if (p.property_type === 'Flat') factors.push({ text: 'Flat — compact pricing', positive: false })
+    if (p.property_type === 'Detached') factors.push({ text: 'Detached, space premium', positive: true })
+    else if (p.property_type === 'Flat') factors.push({ text: 'Flat, compact pricing', positive: false })
     const positive = factors.filter(f => f.positive).slice(0, 2)
     const negative = factors.filter(f => !f.positive).slice(0, 2)
     return [...positive, ...negative]
@@ -95,18 +95,18 @@ export function estimateEnergy(epc) {
 
 export function epcImpact(epc) {
     const r = epc?.toUpperCase()
-    if (r === 'A' || r === 'B') return { text: 'Great rating — expect low energy bills', colour: 'text-emerald-700' }
-    if (r === 'C') return { text: 'Decent rating — average energy costs', colour: 'text-slate-600' }
-    if (r === 'D') return { text: 'Below average — heating could be pricey in winter', colour: 'text-amber-700' }
-    return { text: 'Poor rating — expect high energy bills', colour: 'text-red-700' }
+    if (r === 'A' || r === 'B') return { text: 'Great rating, expect low energy bills', colour: 'text-emerald-700' }
+    if (r === 'C') return { text: 'Decent rating, average energy costs', colour: 'text-slate-600' }
+    if (r === 'D') return { text: 'Below average, heating could be pricey in winter', colour: 'text-amber-700' }
+    return { text: 'Poor rating, expect high energy bills', colour: 'text-red-700' }
 }
 
 export function safetyVerdict(score) {
     if (score == null) return null
-    if (score >= 80) return { text: 'This area has very low crime — great for walking home at night', colour: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200' }
+    if (score >= 80) return { text: 'This area has very low crime, great for walking home at night', colour: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200' }
     if (score >= 60) return { text: 'This area is above average for safety in Guildford', colour: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200' }
-    if (score >= 40) return { text: 'Average safety — stick to well-lit routes at night', colour: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200' }
-    return { text: 'Higher than average crime — walk in groups at night', colour: 'text-red-700', bg: 'bg-red-50', border: 'border-red-200' }
+    if (score >= 40) return { text: 'Average safety, stick to well-lit routes at night', colour: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200' }
+    return { text: 'Higher than average crime, walk in groups at night', colour: 'text-red-700', bg: 'bg-red-50', border: 'border-red-200' }
 }
 
 export function floorAreaContext(area, rooms) {
@@ -115,5 +115,5 @@ export function floorAreaContext(area, rooms) {
     if (perRoom > 20) return 'Spacious for a student house'
     if (perRoom >= 15) return 'Good-sized rooms'
     if (perRoom >= 10) return 'Average size'
-    return 'Compact — check room sizes before signing'
+    return 'Compact, check room sizes before signing'
 }

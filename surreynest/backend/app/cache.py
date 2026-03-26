@@ -5,7 +5,7 @@ module instead of module-level dicts, so cached data is shared across
 all Uvicorn workers.
 
 Graceful degradation: if Redis is unavailable, every function returns
-None (cache miss). The app still works — it just hits the DB directly,
+None (cache miss). The app still works, it just hits the DB directly,
 identical to the pre-Redis behaviour.
 """
 
@@ -48,7 +48,7 @@ def _get_redis() -> Optional[redis.Redis]:
         logger.info("Redis connected: %s", settings.redis_url)
         return _redis
     except Exception as e:
-        logger.warning("Redis unavailable (%s) — caching disabled, falling back to DB", e)
+        logger.warning("Redis unavailable (%s), caching disabled, falling back to DB", e)
         _redis = None
         return None
 
@@ -97,6 +97,7 @@ def set_json(key: str, data: Any, ttl_seconds: int = 600) -> None:
 def delete_pattern(pattern: str) -> int:
     """Delete all keys matching a glob pattern (e.g. 'leaderboard:*').
 
+    Uses SCAN instead of KEYS to avoid blocking Redis on large key spaces.
     Useful for cache invalidation when pipelines refresh data.
 
     Args:
@@ -110,9 +111,11 @@ def delete_pattern(pattern: str) -> int:
         return 0
 
     try:
-        keys = client.keys(pattern)
-        if keys:
-            return client.delete(*keys)
+        deleted = 0
+        for key in client.scan_iter(match=pattern, count=100):
+            client.delete(key)
+            deleted += 1
+        return deleted
     except Exception as e:
         logger.warning("Redis DELETE failed for pattern '%s': %s", pattern, e)
 

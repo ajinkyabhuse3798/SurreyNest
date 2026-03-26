@@ -2,7 +2,7 @@
 
 Caches Postcodes.io API results to avoid repeat calls.
 Always check this table before hitting the external API.
-If is_valid=False, do not retry — postcode is terminated or invalid.
+If is_valid=False, do not retry, postcode is terminated or invalid.
 """
 
 
@@ -20,7 +20,7 @@ class PostcodeCache(Base):
     """Cached geocoding result from Postcodes.io.
 
     Attributes:
-        postcode: Primary key — normalised uppercase (e.g. "GU2 7XH").
+        postcode: Primary key, normalised uppercase (e.g. "GU2 7XH").
         lat: Latitude.
         lng: Longitude.
         ward: Electoral ward name (optional).

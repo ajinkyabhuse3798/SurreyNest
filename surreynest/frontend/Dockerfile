@@ -4,12 +4,14 @@ FROM node:20-alpine AS build
 WORKDIR /app
 
 # Accept build-time API URL
-ARG VITE_API_URL=http://localhost:8000
+ARG VITE_API_URL=
 ENV VITE_API_URL=${VITE_API_URL}
 
-# Install dependencies first (layer caching)
+# Install dependencies first (layer caching).
+# The current lockfile was generated with a peer-conflict override, so
+# Docker must use the same install mode to reproduce the working tree.
 COPY package.json package-lock.json ./
-RUN npm ci --production=false
+RUN npm ci --production=false --legacy-peer-deps
 
 # Copy source and build
 COPY . .

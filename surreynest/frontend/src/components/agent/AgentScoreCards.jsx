@@ -1,5 +1,5 @@
 /**
- * AgentScoreCards — 4 cards showing rating breakdowns.
+ * AgentScoreCards, 4 cards showing rating breakdowns.
  *
  * @param {{ stats: import('../../services/agentApi').AgentReviewSummary }} props
  */

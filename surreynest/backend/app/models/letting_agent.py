@@ -1,7 +1,7 @@
 """ORM model for the `letting_agents` table.
 
 Stores verified letting agent profiles. Agent reputation is built from
-reviews (via agent_name on reviews table) — not from this table.
+reviews (via agent_name on reviews table), not from this table.
 This table is only for verified/premium agent profiles.
 """
 
@@ -21,7 +21,7 @@ class LettingAgent(Base):
 
     Attributes:
         id: Integer primary key.
-        name: Normalised slug (e.g. "cavenders-guildford") — lowercase, unique.
+        name: Normalised slug (e.g. "cavenders-guildford"), lowercase, unique.
         display_name: Human-readable name (e.g. "Cavenders Guildford").
         postcode_sectors: JSON list of postcode sectors the agent operates in.
         website: Agent website URL (optional).

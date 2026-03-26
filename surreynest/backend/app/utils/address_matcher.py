@@ -2,7 +2,7 @@
 
 Normalises addresses from both HMO register and EPC/properties tables,
 then matches on postcode + house number + street name. No external
-dependencies — uses only regex and string operations.
+dependencies, uses only regex and string operations.
 
 HMO format:  '75 Denzil Road, GUILDFORD, Surrey, GU2 7NG'
 EPC format:  '11, Denzil Road'  or  'Flat 1, 146, London Road'

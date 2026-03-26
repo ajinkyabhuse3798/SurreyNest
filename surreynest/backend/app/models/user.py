@@ -24,7 +24,7 @@ class User(Base):
     Attributes:
         id: UUID primary key.
         email: Unique, lowercased on insert.
-        hashed_password: bcrypt hash — never the plain text.
+        hashed_password: bcrypt hash, never the plain text.
         role: One of "student", "landlord", "admin". Default "student".
         created_at: UTC timestamp of account creation.
         is_verified: Email verification flag (post-MVP; defaults False).

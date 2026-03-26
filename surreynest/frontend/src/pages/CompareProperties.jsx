@@ -1,5 +1,5 @@
 /**
- * CompareProperties — side-by-side property comparison page.
+ * CompareProperties, side-by-side property comparison page.
  *
  * Reads UPRNs from CompareContext (or ?uprns= URL params as fallback).
  * Parallel-fetches PropertyDetail for each, displays:
@@ -14,7 +14,7 @@ import { useSearchParams, Link } from 'react-router-dom'
 import {
     ArrowLeftRight, Plus, X, Search, ArrowLeft,
     PoundSterling, Shield, Bed, Ruler, Zap, Home,
-    GraduationCap, MapPin, CheckCircle2, AlertTriangle,
+    GraduationCap, MapPin,
 } from 'lucide-react'
 import Navbar from '../components/Navbar'
 import RadarChart from '../components/RadarChart'
@@ -53,38 +53,38 @@ const ATTRIBUTES = [
     {
         key: 'rent', label: 'Rent (weekly)', icon: PoundSterling,
         extract: (p) => p.rent_prediction?.predicted_weekly_rent,
-        format: (v) => v != null ? `£${Math.round(v)}` : '—',
+        format: (v) => v != null ? `£${Math.round(v)}` : 'N/A',
         best: 'lowest',
     },
     {
         key: 'safety', label: 'Safety score', icon: Shield,
         extract: (p) => p.safety_score,
-        format: (v) => v != null ? `${Math.round(v)}/100` : '—',
+        format: (v) => v != null ? `${Math.round(v)}/100` : 'N/A',
         best: 'highest',
     },
     {
         key: 'rooms', label: 'Bedrooms', icon: Bed,
         extract: (p) => p.num_rooms,
-        format: (v) => v ?? '—',
+        format: (v) => v ?? 'N/A',
         best: 'highest',
     },
     {
         key: 'area', label: 'Floor area', icon: Ruler,
         extract: (p) => p.floor_area_m2,
-        format: (v) => v ? `${v} m²` : '—',
+        format: (v) => v ? `${v} m²` : 'N/A',
         best: 'highest',
     },
     {
         key: 'epc', label: 'Energy rating', icon: Zap,
         extract: (p) => p.energy_rating,
-        format: (v) => v || '—',
+        format: (v) => v || 'N/A',
         best: 'epc',
     },
     {
         key: 'hmo', label: 'HMO status', icon: Home,
         extract: (p) => p.hmo,
         format: (v) => {
-            if (!v) return '—'
+            if (!v) return 'N/A'
             if (v.is_hmo && v.is_active) return 'Licensed ✓'
             if (v.is_hmo && !v.is_active) return 'Expired ⚠'
             return 'Not found'
@@ -94,19 +94,19 @@ const ATTRIBUTES = [
     {
         key: 'type', label: 'Property type', icon: Home,
         extract: (p) => p.property_type,
-        format: (v) => v || '—',
+        format: (v) => v || 'N/A',
         best: null,
     },
     {
         key: 'postcode', label: 'Postcode', icon: MapPin,
         extract: (p) => p.postcode,
-        format: (v) => v || '—',
+        format: (v) => v || 'N/A',
         best: null,
     },
     {
         key: 'distance', label: 'Distance to uni', icon: GraduationCap,
         extract: (p) => distToUni(p),
-        format: (v) => v != null ? `${v.toFixed(1)} km` : '—',
+        format: (v) => v != null ? `${v.toFixed(1)} km` : 'N/A',
         best: 'lowest',
     },
 ]
@@ -248,7 +248,7 @@ export default function CompareProperties() {
         if (urlUprns.length > 0 && compareList.length === 0) {
             urlUprns.forEach((u) => addToCompare(u))
         }
-    }, [])
+    }, [searchParams, compareList.length, addToCompare])
 
     // Fetch property data whenever compareList changes
     useEffect(() => {
@@ -269,7 +269,7 @@ export default function CompareProperties() {
             })
             .catch(() => setError('Failed to load properties'))
             .finally(() => setLoading(false))
-    }, [compareList])
+    }, [compareList, setSearchParams])
 
     // Handle add from modal
     const handleAddProperty = useCallback((uprn) => {
@@ -297,11 +297,11 @@ export default function CompareProperties() {
         return properties.map((p) => ({
             label: shortAddress(p.address),
             values: [
-                p.safety_score ?? 0,                                             // Safety (already 0-100)
+                p.safety_score ?? 0,                                            // Safety (already 0-100)
                 rents.length > 0 ? 100 - ((p.rent_prediction?.predicted_weekly_rent ?? maxRent) / maxRent * 100) + 10 : 50, // Value (inverted: lower rent = higher score)
-                (p.floor_area_m2 ?? 0) / maxArea * 100,                          // Size
-                EPC_SCORE[p.energy_rating?.toUpperCase()] ?? 50,                 // Energy
-                (p.num_rooms ?? 0) / maxRooms * 100,                             // Rooms
+                (p.floor_area_m2 ?? 0) / maxArea * 100,                         // Size
+                EPC_SCORE[p.energy_rating?.toUpperCase()] ?? 50,                // Energy
+                (p.num_rooms ?? 0) / maxRooms * 100,                            // Rooms
             ],
         }))
     }, [properties])

@@ -15,6 +15,7 @@ import math
 from typing import Dict, List, Optional
 
 import numpy as np
+import pandas as pd
 import xgboost as xgb_lib
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
@@ -62,7 +63,7 @@ FEATURE_META = {
         "label": "Room density",
         "unit": "ratio",
         "icon": "📊",
-        "explain_up": "Many rooms packed into a smaller space — typical of shared houses.",
+        "explain_up": "Many rooms packed into a smaller space, typical of shared houses.",
         "explain_down": "Spacious rooms with generous floor area per room.",
         "explain_neutral": "Average room density for this type of property.",
     },
@@ -86,7 +87,7 @@ FEATURE_META = {
         "label": "Distance to town centre",
         "unit": "km",
         "icon": "🏙️",
-        "explain_up": "Very close to Guildford town centre — walkable to shops and nightlife.",
+        "explain_up": "Very close to Guildford town centre, walkable to shops and nightlife.",
         "explain_down": "Further from town, which reduces demand and lowers rent.",
         "explain_neutral": "Average distance to Guildford town centre.",
     },
@@ -94,7 +95,7 @@ FEATURE_META = {
         "label": "Distance to University of Surrey",
         "unit": "km",
         "icon": "🎓",
-        "explain_up": "Very close to campus — highly desirable for students, pushing rent up.",
+        "explain_up": "Very close to campus, highly desirable for students, pushing rent up.",
         "explain_down": "Further from uni, which means less student demand.",
         "explain_neutral": "Moderate distance to the University of Surrey.",
     },
@@ -102,7 +103,7 @@ FEATURE_META = {
         "label": "Distance to train station",
         "unit": "km",
         "icon": "🚂",
-        "explain_up": "Close to Guildford or London Road station — great for commuters.",
+        "explain_up": "Close to Guildford or London Road station, great for commuters.",
         "explain_down": "Further from train stations, so less convenient for commuters.",
         "explain_neutral": "Average distance to the nearest train station.",
     },
@@ -118,8 +119,8 @@ FEATURE_META = {
         "label": "Market activity nearby",
         "unit": "sales",
         "icon": "📈",
-        "explain_up": "Lots of property sales in this area — an active, in-demand market.",
-        "explain_down": "Fewer sales nearby — a quieter property market.",
+        "explain_up": "Lots of property sales in this area, an active, in-demand market.",
+        "explain_down": "Fewer sales nearby, a quieter property market.",
         "explain_neutral": "Average market activity for this area.",
     },
     "ptype_Flat": {
@@ -127,7 +128,7 @@ FEATURE_META = {
         "unit": "",
         "icon": "🏢",
         "explain_up": "Flats make up the majority of student rental properties in Guildford.",
-        "explain_down": "Not a flat — houses tend to have different pricing patterns.",
+        "explain_down": "Not a flat, houses tend to have different pricing patterns.",
         "explain_neutral": "Property type factored into the prediction.",
     },
     "ptype_Detached": {
@@ -212,7 +213,11 @@ async def explain_rent_prediction(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
 
     # ── 3. Build features (shared with predict_rent) ──────────────────
-    from app.ml.predict import get_model_internals, build_prediction_features
+    from app.ml.predict import (
+        build_prediction_features,
+        get_model_internals,
+        prepare_explainability_input,
+    )
 
     internals = get_model_internals()
     if internals is None:
@@ -221,11 +226,14 @@ async def explain_rent_prediction(
             detail="ML model not loaded",
         )
 
-    scaler = internals["scaler"]
+    model_pipeline = internals["model"]
     xgb_model = internals["xgb_model"]
     feature_columns = internals["feature_columns"]
     log_target = internals["log_target"]
     feature_defaults = internals["feature_defaults"]
+    calibration_artifact = internals.get("calibration_artifact")
+    loaded_model_version = internals.get("loaded_model_version", settings.ml_model_version)
+    model_metadata = internals.get("model_metadata", {})
 
     floor_area = prop.floor_area_m2
     if floor_area is None:
@@ -262,22 +270,48 @@ async def explain_rent_prediction(
     if computed is None:
         raise HTTPException(status_code=400, detail="Property missing floor area")
 
-    est_beds = int(computed.get("estimated_bedrooms", 0))
+    est_beds = int(computed.get("actual_bedrooms", 0))
 
     # ── 4. Assemble feature vector ─────────────────────────────────────
     feature_values = []
     for col in feature_columns:
         feature_values.append(float(computed.get(col, feature_defaults.get(col, 0.0))))
 
-    features_array = np.array([feature_values])
+    features_frame = pd.DataFrame([feature_values], columns=feature_columns)
+    model_input = prepare_explainability_input(features_frame, model_pipeline)
+
+    if xgb_model is None or not hasattr(xgb_model, "get_booster"):
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Rent explainability is unavailable for the loaded ML artifact",
+        )
 
     # ── 5. Get prediction ──────────────────────────────────────────────
-    scaled = scaler.transform(features_array)
-    pred_log = xgb_model.predict(scaled)[0]
-    predicted_rent = round(float(np.expm1(pred_log)), 2) if log_target else round(float(pred_log), 2)
+    pred_log = model_pipeline.predict(features_frame)[0]
+    raw_predicted_rent = (
+        round(float(np.expm1(pred_log)), 2)
+        if log_target
+        else round(float(pred_log), 2)
+    )
+    from app.ml.calibration import apply_prediction_calibration
+
+    postcode_parts = str(prop.postcode or "").strip().split()
+    postcode_sector = (
+        f"{postcode_parts[0]} {postcode_parts[1][0]}"
+        if len(postcode_parts) >= 2 and postcode_parts[1]
+        else ""
+    )
+
+    predicted_rent = apply_prediction_calibration(
+        raw_predicted_rent,
+        property_type,
+        calibration_artifact,
+        postcode_sector,
+        prop.postcode,
+    )
 
     # ── 6. Get SHAP contributions ──────────────────────────────────────
-    dmat = xgb_lib.DMatrix(scaled, feature_names=feature_columns)
+    dmat = xgb_lib.DMatrix(model_input, feature_names=feature_columns)
     contribs = xgb_model.get_booster().predict(dmat, pred_contribs=True)[0]
 
     # contribs has len(features) + 1 entries (last = bias)
@@ -338,7 +372,7 @@ async def explain_rent_prediction(
         .join(Property, Property.uprn == RentPrediction.uprn)
         .filter(
             Property.postcode.ilike(f"{sector_str}%"),
-            RentPrediction.model_version == settings.ml_model_version,
+            RentPrediction.model_version == loaded_model_version,
         )
         .all()
     )
@@ -348,7 +382,7 @@ async def explain_rent_prediction(
     # Guildford median
     all_preds = (
         db.query(RentPrediction.predicted_weekly_rent)
-        .filter(RentPrediction.model_version == settings.ml_model_version)
+        .filter(RentPrediction.model_version == loaded_model_version)
         .all()
     )
     all_rents = [p[0] for p in all_preds if p[0]]
@@ -368,7 +402,7 @@ async def explain_rent_prediction(
 
     return {
         "predicted_weekly_rent": predicted_rent,
-        "model_version": settings.ml_model_version,
+        "model_version": loaded_model_version,
         "property": {
             "uprn": prop.uprn,
             "address": prop.address or "",
@@ -384,7 +418,7 @@ async def explain_rent_prediction(
         "rent_comparison": rent_comparison,
         "model_info": {
             "algorithm": "XGBoost (Gradient Boosted Trees)",
-            "training_properties": 18235,
+            "training_properties": model_metadata.get("train_size"),
             "log_transform": log_target,
             "feature_count": len(feature_columns),
         },

@@ -1,13 +1,13 @@
 /**
- * ScoreGauge — circular SVG score gauge with animated arc.
+ * ScoreGauge, circular SVG score gauge with animated arc.
  *
  * Displays a 0-100 score as a coloured circular progress arc with the number
  * centred. Colour transitions: red (0-40) → amber (40-70) → green (70-100).
  *
  * Sizes:
- *   - "sm"  (48px)  — for PropertyCard in search results
- *   - "md"  (80px)  — for list views
- *   - "lg"  (160px) — for PropertyDetail header
+ *   - "sm"  (48px) , for PropertyCard in search results
+ *   - "md"  (80px) , for list views
+ *   - "lg"  (160px), for PropertyDetail header
  *
  * @param {{
  *   score: number | null,
@@ -104,7 +104,7 @@ export default function ScoreGauge({
             clearTimeout(timeout)
             if (animRef.current) cancelAnimationFrame(animRef.current)
         }
-    }, [safeScore])
+    }, [animated, safeScore, targetOffset])
 
     const colour = scoreColour(safeScore)
     const ariaLabel = safeScore !== null
@@ -159,7 +159,7 @@ export default function ScoreGauge({
                     className={`${fontSize} font-semibold leading-none`}
                     style={{ color: safeScore !== null ? colour : '#9CA3AF' }}
                 >
-                    {safeScore !== null ? displayScore : '—'}
+                    {safeScore !== null ? displayScore : 'N/A'}
                 </span>
                 {showLabel && (
                     <span className={`${labelSize} text-gray-400 mt-0.5 leading-none`}>

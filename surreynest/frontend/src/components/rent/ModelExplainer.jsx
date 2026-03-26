@@ -1,5 +1,5 @@
 /**
- * ModelExplainer — 3-step explanation of how the rent model works.
+ * ModelExplainer, 3-step explanation of how the rent model works.
  */
 import { Database, GitBranch, Brain } from 'lucide-react'
 
@@ -14,7 +14,7 @@ export default function ModelExplainer({ modelInfo }) {
         {
             icon: GitBranch,
             title: `Step 2: Extract ${modelInfo?.feature_count || 15} features`,
-            description: 'For each property, we compute features like floor area, room count, distance to university, local crime rate, and property type — the same factors that affect real rents.',
+            description: 'For each property, we compute features like floor area, room count, distance to university, local crime rate, and property type, the same factors that affect real rents.',
             detail: 'Each feature is scaled and normalised before being fed to the model',
         },
         {

@@ -1,10 +1,7 @@
-/**
- * ResetPassword — set a new password using the token from the email link.
- * Route: /reset-password?token=xxx
- */
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { KeyRound, CheckCircle2, XCircle, Eye, EyeOff } from 'lucide-react'
+import { CheckCircle2, Eye, EyeOff, KeyRound, XCircle } from 'lucide-react'
+
 import Navbar from '../components/Navbar'
 import api from '../services/api'
 
@@ -14,8 +11,8 @@ export default function ResetPassword() {
     const navigate = useNavigate()
 
     const [password, setPassword] = useState('')
-    const [confirm, setConfirm] = useState('')
-    const [showPw, setShowPw] = useState(false)
+    const [confirmPassword, setConfirmPassword] = useState('')
+    const [showPassword, setShowPassword] = useState(false)
     const [loading, setLoading] = useState(false)
     const [success, setSuccess] = useState(false)
     const [error, setError] = useState('')
@@ -38,26 +35,28 @@ export default function ResetPassword() {
         )
     }
 
-    async function handleSubmit(e) {
-        e.preventDefault()
+    async function handleSubmit(event) {
+        event.preventDefault()
         setError('')
 
-        if (password !== confirm) {
+        if (password !== confirmPassword) {
             setError('Passwords do not match.')
             return
         }
+
         if (password.length < 8) {
             setError('Password must be at least 8 characters.')
             return
         }
 
         setLoading(true)
+
         try {
             await api.post('/api/auth/reset-password', { token, new_password: password })
             setSuccess(true)
             setTimeout(() => navigate('/login'), 3000)
         } catch (err) {
-            setError(err?.response?.data?.detail || 'Something went wrong. Please try again.')
+            setError(err.detail || err.response?.data?.detail || 'Something went wrong. Please try again.')
         } finally {
             setLoading(false)
         }
@@ -73,9 +72,7 @@ export default function ResetPassword() {
                             <CheckCircle2 size={28} className="text-emerald-500" />
                         </div>
                         <h1 className="text-2xl font-bold text-slate-900 mb-2">Password updated!</h1>
-                        <p className="text-sm text-slate-500 mb-6">
-                            Your password has been changed. Redirecting you to sign in…
-                        </p>
+                        <p className="text-sm text-slate-500 mb-6">Your password has been changed. Redirecting you to sign in…</p>
                         <Link to="/login" className="text-primary font-semibold text-sm hover:underline">
                             Sign in now
                         </Link>
@@ -86,21 +83,11 @@ export default function ResetPassword() {
                             <KeyRound size={22} className="text-primary" />
                         </div>
                         <h1 className="text-2xl font-bold text-slate-900 mb-1">Set new password</h1>
-                        <p className="text-sm text-slate-500 mb-7">
-                            Choose a strong password for your SurreyNest account.
-                        </p>
+                        <p className="text-sm text-slate-500 mb-7">Choose a strong password for your SurreyNest account.</p>
 
                         {error && (
                             <div className="border border-red-200 bg-red-50 rounded-lg px-4 py-3 text-sm text-red-700 mb-4">
                                 {error}
-                                {error.toLowerCase().includes('expired') && (
-                                    <span>
-                                        {' '}
-                                        <Link to="/forgot-password" className="font-semibold underline">
-                                            Request a new link.
-                                        </Link>
-                                    </span>
-                                )}
                             </div>
                         )}
 
@@ -109,9 +96,9 @@ export default function ResetPassword() {
                                 <label className="text-xs font-medium text-gray-700">New password</label>
                                 <div className="relative">
                                     <input
-                                        type={showPw ? 'text' : 'password'}
+                                        type={showPassword ? 'text' : 'password'}
                                         value={password}
-                                        onChange={(e) => setPassword(e.target.value)}
+                                        onChange={(event) => setPassword(event.target.value)}
                                         required
                                         autoComplete="new-password"
                                         placeholder="Min 8 chars, 1 letter, 1 number"
@@ -119,11 +106,11 @@ export default function ResetPassword() {
                                     />
                                     <button
                                         type="button"
-                                        onClick={() => setShowPw(s => !s)}
+                                        onClick={() => setShowPassword((value) => !value)}
                                         className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                                         tabIndex={-1}
                                     >
-                                        {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                                     </button>
                                 </div>
                             </div>
@@ -131,8 +118,8 @@ export default function ResetPassword() {
                                 <label className="text-xs font-medium text-gray-700">Confirm password</label>
                                 <input
                                     type="password"
-                                    value={confirm}
-                                    onChange={(e) => setConfirm(e.target.value)}
+                                    value={confirmPassword}
+                                    onChange={(event) => setConfirmPassword(event.target.value)}
                                     required
                                     autoComplete="new-password"
                                     placeholder="••••••••"

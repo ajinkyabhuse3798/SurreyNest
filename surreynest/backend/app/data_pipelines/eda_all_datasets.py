@@ -156,7 +156,7 @@ def eda_hpi() -> pd.DataFrame:
     for f in files:
         print(f"    • {Path(f).name}")
 
-    # Load and merge — the 2025 file extends the 2024 file
+    # Load and merge, the 2025 file extends the 2024 file
     dfs = []
     for f in files:
         df = pd.read_csv(f, low_memory=False)
@@ -201,7 +201,7 @@ def eda_hpi() -> pd.DataFrame:
 # ═════════════════════════════════════════════════════════════════════════════
 def eda_iphrp() -> pd.DataFrame:
     """Load IPHRP XLSX and extract South East rental index."""
-    _hr("3. IPHRP — INDEX OF PRIVATE HOUSING RENTAL PRICES")
+    _hr("3. IPHRP, INDEX OF PRIVATE HOUSING RENTAL PRICES")
 
     xlsx_files = list(IPHRP_DIR.glob("*.xlsx"))
     if not xlsx_files:
@@ -371,9 +371,9 @@ def eda_consistency(pp_df: pd.DataFrame) -> None:
         print(f"  PP-only (no EPC data):     {len(pp_only):,}")
 
         if len(overlap) / max(len(epc_postcodes), 1) < 0.5:
-            print("  ⚠️  Low overlap — many EPC properties have no sale price data")
+            print("  ⚠️  Low overlap, many EPC properties have no sale price data")
         else:
-            print("  ✅ Good overlap — most EPC postcodes have sale data")
+            print("  ✅ Good overlap, most EPC postcodes have sale data")
 
     finally:
         db.close()
@@ -384,7 +384,7 @@ def eda_consistency(pp_df: pd.DataFrame) -> None:
 # ═════════════════════════════════════════════════════════════════════════════
 def main():
     print("\n" + "█" * 70)
-    print("  SURREYNEST — COMPREHENSIVE DATA AUDIT")
+    print("  SURREYNEST, COMPREHENSIVE DATA AUDIT")
     print("  " + "─" * 40)
     print("  Guildford focus: GU1, GU2, GU3, GU4, GU5, GU7")
     print("█" * 70)

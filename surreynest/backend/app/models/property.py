@@ -19,17 +19,17 @@ class Property(Base):
     """EPC-sourced property record.
 
     Attributes:
-        uprn: Unique Property Reference Number — primary key from EPC.
+        uprn: Unique Property Reference Number, primary key from EPC.
         address: Full street address as in EPC.
         postcode: Normalised uppercase with single space, e.g. "GU2 7XH".
-        lat: Latitude — populated by geocoding pipeline.
-        lng: Longitude — populated by geocoding pipeline.
+        lat: Latitude, populated by geocoding pipeline.
+        lng: Longitude, populated by geocoding pipeline.
         property_type: Normalised to Flat / Terraced / Semi-Detached / Detached / Other.
         built_form: Raw EPC built form description.
         floor_area_m2: Total floor area in m² (TOTAL-FLOOR-AREA from EPC).
         num_rooms: Habitable room count (NUMBER-HABITABLE-ROOMS from EPC).
-        energy_rating: Current EPC rating A–G.
-        potential_rating: Potential EPC rating A–G if improvements made.
+        energy_rating: Current EPC rating A to G.
+        potential_rating: Potential EPC rating A to G if improvements made.
         epc_date: Date the EPC was lodged.
         tenure: Tenure description from EPC.
         created_at: UTC timestamp of first insert.
@@ -62,7 +62,7 @@ class Property(Base):
     potential_rating: Mapped[Optional[str]] = mapped_column(String(1), nullable=True)
     epc_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     tenure: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
-    # v3.3.0 ML features — populated by EPC pipeline from raw certificates.csv
+    # v3.3.0 ML features, populated by EPC pipeline from raw certificates.csv
     construction_age_band: Mapped[Optional[str]] = mapped_column(
         String(50), nullable=True
     )
@@ -70,7 +70,7 @@ class Property(Base):
     floor_level: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     annual_energy_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     
-    # v4.0.0 Scraped features — populated by scraped_rent_pipeline.py
+    # v4.0.0 Scraped features, populated by scraped_rent_pipeline.py
     actual_market_rent_weekly: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     price_drop_pct: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
 
@@ -97,7 +97,7 @@ class Property(Base):
         onupdate=lambda: datetime.now(timezone.utc),
     )
 
-    # PostGIS GIST spatial index — enables ST_DWithin radius queries.
+    # PostGIS GIST spatial index, enables ST_DWithin radius queries.
     # Note: a plain composite index is defined here; the DBA step
     # `CREATE INDEX ... USING GIST (ST_Point(lng, lat))` is handled in
     # the Alembic migration for full spatial support.

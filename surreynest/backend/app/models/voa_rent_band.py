@@ -21,9 +21,9 @@ class VoaRentBand(Base):
         id: Auto-incrementing primary key.
         local_authority_code: ONS LA code, e.g. ``"E07000209"``.
         local_authority_name: Human-readable name, e.g. ``"Guildford"``.
-        bedroom_count: Number of bedrooms (1–5; 5 represents 5+ bedrooms).
+        bedroom_count: Number of bedrooms (1 to 5; 5 represents 5+ bedrooms).
         monthly_rent: Median monthly rent in £ as published by ONS.
-        weekly_rent: ``monthly_rent / 4.333`` — derived weekly equivalent.
+        weekly_rent: ``monthly_rent / 4.333``, derived weekly equivalent.
         source_sheet: XLS sheet name for audit trail, e.g. ``"Table 2.7"``.
         updated_at: Last pipeline update timestamp (UTC).
     """

@@ -1,5 +1,5 @@
 /**
- * HMO API — check HMO licensing status.
+ * HMO API, check HMO licensing status.
  *
  * Endpoint:
  *   GET /api/hmo/check?uprn=&postcode=

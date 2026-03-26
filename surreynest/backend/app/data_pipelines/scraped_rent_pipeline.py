@@ -7,12 +7,12 @@ v5.0.0 improvements over v4.0.0:
   1. JSON format support (new 2026-03 scraper output)
   2. Two-layer room detection:
        - Property type: House Share / HMO / Flat Share / Parking
-       - Description keywords: "ROOM TO LET", "ROOM TO RENT" — catches
+       - Description keywords: "ROOM TO LET", "ROOM TO RENT", catches
          rooms disguised as Terraced/Semi listings (confirmed at Guildford Park
          Avenue GU2 7NN: 8 individual rooms listed as "1-bed Terraced" at
          exactly the same coordinates)
   3. Coordinate-based deduplication (round to 4dp ≈ 11m) per
-     (lat, lng, bedrooms, mapped_type) — correctly collapses re-listed
+     (lat, lng, bedrooms, mapped_type), correctly collapses re-listed
      duplicates while keeping genuinely different properties on same street
   4. Real lat/lng stored → features.py computes accurate distance_to_town_km,
      distance_to_uni_km, station_proximity_score at training time
@@ -81,11 +81,11 @@ TYPE_REMAP = {
     "Ground Flat": "Flat",
     "Penthouse": "Flat",
     "Maisonette": "Flat",
-    "Studio": "Flat",           # Studio → Flat with actual_bedrooms=0
+    "Studio": "Flat",          # Studio → Flat with actual_bedrooms=0
     "Terraced": "Terraced",
     "End of Terrace": "Terraced",
     "Semi-Detached": "Semi-Detached",
-    "House": "Semi-Detached",   # Generic 'House' maps to most common type
+    "House": "Semi-Detached",  # Generic 'House' maps to most common type
     "Detached": "Detached",
     "Bungalow": "Detached",
     "Barn Conversion": "Detached",
@@ -99,7 +99,7 @@ MAX_RENT_WEEKLY = 1200  # matches train.py OUTLIER_CAP_WEEKLY (1000) with margin
 # Derived from EDA of existing 18,496 EPC properties in DB.
 # Used when postcode match fails and DB median query returns no rows.
 FALLBACK_FLOOR_AREA: dict[tuple[str, int], float] = {
-    ("Flat", 0): 32.0,   # Studio
+    ("Flat", 0): 32.0,  # Studio
     ("Flat", 1): 48.0,
     ("Flat", 2): 65.0,
     ("Flat", 3): 85.0,
@@ -309,7 +309,7 @@ def load_all_rightmove_files() -> list[dict[str, Any]]:
                     if norm and norm["listing_id"] != "RM_":
                         all_records[norm["listing_id"]] = norm
         except Exception:
-            logger.exception("Failed to load %s — skipping", path.name)
+            logger.exception("Failed to load %s, skipping", path.name)
 
     logger.info("Total unique listing IDs across all files: %d", len(all_records))
     return list(all_records.values())
@@ -358,7 +358,7 @@ def clean_and_classify(records: list[dict[str, Any]]) -> pd.DataFrame:
     df = df[df["weekly_rent"].notna()]
     df["weekly_rent"] = pd.to_numeric(df["weekly_rent"], errors="coerce")
     df = df[(df["weekly_rent"] >= 100) & (df["weekly_rent"] <= MAX_RENT_WEEKLY)].copy()
-    logger.info("After rent filter [£100–£%d/wk]: %d", MAX_RENT_WEEKLY, len(df))
+    logger.info("After rent filter [£100 to £%d/wk]: %d", MAX_RENT_WEEKLY, len(df))
 
     # 5. Exclude extreme bedroom outliers
     beds_numeric = pd.to_numeric(df["bedrooms_raw"], errors="coerce")
@@ -530,9 +530,9 @@ def impute_epc_features(
     """Impute EPC-derived features for each scraped listing.
 
     Priority order (most → least specific):
-      1. (postcode, mapped_type, est_num_rooms) exact — beds < 4 only
-      2. (postcode, mapped_type, est_num_rooms ± 1/2) — beds < 4 only
-      3. (mapped_type, est_num_rooms) global DB median — PRIMARY for beds ≥ 4
+      1. (postcode, mapped_type, est_num_rooms) exact, beds < 4 only
+      2. (postcode, mapped_type, est_num_rooms ± 1/2), beds < 4 only
+      3. (mapped_type, est_num_rooms) global DB median, PRIMARY for beds ≥ 4
       4. FALLBACK_FLOOR_AREA hardcoded table
       5. Absolute fallback
 
@@ -583,7 +583,7 @@ def impute_epc_features(
         # Fix: skip postcode lookup for large properties → use global DB median.
         use_postcode_lookup = (beds < 4)
 
-        # 1. Exact: (postcode, type, num_rooms) — small properties only
+        # 1. Exact: (postcode, type, num_rooms), small properties only
         if use_postcode_lookup:
             exact_key = (postcode, mapped_type, est_num_rooms)
             if exact_key in postcode_epc_map:
@@ -594,7 +594,7 @@ def impute_epc_features(
                 energy_cost = epc.get("annual_energy_cost", 1200.0)
                 source = "postcode_exact"
 
-        # 2. Near: (postcode, type, num_rooms ± offset) — small properties only
+        # 2. Near: (postcode, type, num_rooms ± offset), small properties only
         if floor_area is None and use_postcode_lookup:
             for delta in (1, -1, 2, -2):
                 near_key = (postcode, mapped_type, est_num_rooms + delta)
@@ -607,7 +607,7 @@ def impute_epc_features(
                     source = "postcode_near"
                     break
 
-        # 3. Global DB median (type × num_rooms) — bedroom-specific, not postcode-specific.
+        # 3. Global DB median (type × num_rooms), bedroom-specific, not postcode-specific.
         # For 4+ bed properties this is the PRIMARY source (step 1/2 skipped above).
         if floor_area is None:
             db_key = (mapped_type, est_num_rooms)
@@ -686,9 +686,9 @@ def upsert_scraped_properties(df: pd.DataFrame, db: Session) -> tuple[int, int]:
             floor_area_m2=float(row["floor_area_m2"]),
             num_rooms=estimate_num_rooms(row["mapped_type"], beds),
             energy_rating=str(row["energy_rating"]),
-            potential_rating="C",   # Conservative default
+            potential_rating="C",  # Conservative default
             construction_age_band=str(row["construction_age_band"]),
-            mains_gas_flag=1,       # Most Guildford properties have mains gas
+            mains_gas_flag=1,      # Most Guildford properties have mains gas
             annual_energy_cost=float(row["annual_energy_cost"]),
             actual_market_rent_weekly=float(row["weekly_rent"]),
             price_drop_pct=float(row["price_drop_pct"]),
@@ -715,7 +715,7 @@ def upsert_scraped_properties(df: pd.DataFrame, db: Session) -> tuple[int, int]:
 
     db.commit()
     logger.info("Upserted %d scraped property records", records_upserted)
-    return records_upserted, 0  # (total_upserted, 0) — upsert handles insert/update
+    return records_upserted, 0  # (total_upserted, 0), upsert handles insert/update
 
 
 # ── Pipeline entry point ───────────────────────────────────────────────────────
@@ -735,7 +735,7 @@ def run_pipeline() -> dict[str, int]:
         Dict with pipeline statistics.
     """
     logger.info("=" * 60)
-    logger.info("Scraped Rent Pipeline v5.0.0 — starting")
+    logger.info("Scraped Rent Pipeline v5.0.0, starting")
     logger.info("=" * 60)
 
     # Step 1: Load all files
@@ -779,7 +779,7 @@ def run_pipeline() -> dict[str, int]:
 
     except Exception:
         db.rollback()
-        logger.exception("Pipeline failed — rolled back")
+        logger.exception("Pipeline failed, rolled back")
         raise
     finally:
         db.close()

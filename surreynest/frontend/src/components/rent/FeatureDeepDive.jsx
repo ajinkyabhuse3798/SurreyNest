@@ -1,5 +1,5 @@
 /**
- * FeatureDeepDive — Expandable list of ALL features with contributions.
+ * FeatureDeepDive, Expandable list of ALL features with contributions.
  */
 import { useState } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'

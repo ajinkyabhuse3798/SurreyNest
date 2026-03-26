@@ -1,5 +1,5 @@
 /**
- * ExploreSection — "Explore the Best Streets" with map image + feature bullets.
+ * ExploreSection, "Explore the Best Streets" with map image + feature bullets.
  * Matches Stitch interactive map teaser section.
  */
 import { Link } from 'react-router-dom'
@@ -41,18 +41,18 @@ export default function ExploreSection() {
                     variants={{ visible: { transition: { staggerChildren: 0.1 } } }}
                 >
                     <motion.h2 variants={fadeUp} className="text-3xl md:text-4xl font-bold text-slate-900">
-                        Explore the Best Streets
+                        Explore safety before you choose a street
                     </motion.h2>
                     <motion.p variants={fadeUp} className="text-base md:text-lg text-slate-600">
-                        Discover which neighborhoods are student-friendly and which ones to avoid. See real-time ratings from previous tenants on safety, noise levels, and landlord responsiveness.
+                        Start broad, understand the local pattern, then open the exact postcode you are considering for a clearer read.
                     </motion.p>
 
                     <div className="flex flex-col gap-3 md:gap-4">
                         {[
                             {
                                 icon: 'analytics',
-                                title: 'Data Visualization',
-                                text: 'Heatmaps of average rent prices across GU1 and GU2.',
+                                title: 'City View First',
+                                text: 'See how different parts of Guildford compare before zooming into one area.',
                             },
                             {
                                 icon: 'diversity_3',
@@ -76,10 +76,10 @@ export default function ExploreSection() {
 
                     <motion.div variants={fadeUp}>
                         <Link
-                            to="/best-streets"
+                            to="/safety"
                             className="w-fit mt-2 md:mt-4 px-8 py-4 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-colors shadow-xl inline-flex items-center gap-2"
                         >
-                            Explore Market Map
+                            Explore Guildford Safety
                         </Link>
                     </motion.div>
                 </motion.div>

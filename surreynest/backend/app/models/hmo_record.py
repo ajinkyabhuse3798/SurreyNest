@@ -2,7 +2,7 @@
 
 Houses in Multiple Occupation from Guildford Borough Council public register.
 A property can appear here with is_active=False (expired licence) or not at all
-(potentially unlicensed — both cases are flagged in the UI).
+(potentially unlicensed, both cases are flagged in the UI).
 """
 
 
@@ -21,7 +21,7 @@ class HmoRecord(Base):
 
     Attributes:
         id: Auto-incrementing integer primary key.
-        uprn: Optional FK to properties.uprn — populated if a match is found.
+        uprn: Optional FK to properties.uprn, populated if a match is found.
         raw_address: Original address string from the HMO register.
         postcode: Extracted from raw_address via regex (r'GU\\d{1,2}\\s?\\d[A-Z]{2}').
         lat: Geocoded latitude via Postcodes.io.

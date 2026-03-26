@@ -1,4 +1,4 @@
-"""Admin dashboard routes: stats, user management, subscription analytics.
+"""Admin dashboard routes: stats and user management.
 
 All endpoints require admin role via the `require_admin` dependency.
 """
@@ -21,11 +21,8 @@ from app.schemas.admin_schemas import (
     AdminUserListResponse,
     AdminUserRow,
     OverviewStats,
-    ProUserRow,
     SignupChartResponse,
     SignupDataPoint,
-    SubscriptionListResponse,
-    SubscriptionStats,
     UserUpdateRequest,
 )
 from app.services.auth_service import require_admin
@@ -33,8 +30,6 @@ from app.services.auth_service import require_admin
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-
-MONTHLY_PRO_PRICE = 5.99  # £/month — keep in sync with frontend Pricing.jsx
 
 
 # ── Overview Stats ────────────────────────────────────────────────────────────
@@ -51,9 +46,7 @@ async def get_overview_stats(
 ) -> OverviewStats:
     """Return high-level KPIs for the admin dashboard."""
     total_users = db.query(func.count(User.id)).scalar() or 0
-    pro_users = (
-        db.query(func.count(User.id)).filter(User.is_pro == True).scalar() or 0  # noqa: E712
-    )
+    registered_users = total_users
     total_properties = db.query(func.count(Property.uprn)).scalar() or 0
     reviews_pending = (
         db.query(func.count(Review.id))
@@ -76,7 +69,8 @@ async def get_overview_stats(
 
     return OverviewStats(
         total_users=total_users,
-        pro_users=pro_users,
+        registered_users=registered_users,
+        guest_users=0,
         total_properties=total_properties,
         reviews_pending=reviews_pending,
         reviews_approved=reviews_approved,
@@ -124,79 +118,6 @@ async def get_signup_trends(
     return SignupChartResponse(data=data, total_period=total)
 
 
-# ── Subscription Analytics ───────────────────────────────────────────────────
-
-
-@router.get(
-    "/admin/stats/subscriptions",
-    response_model=SubscriptionStats,
-    summary="Pro subscription analytics (admin)",
-)
-async def get_subscription_stats(
-    db: Session = Depends(get_db),
-    _admin=Depends(require_admin),
-) -> SubscriptionStats:
-    """Return Pro subscription analytics."""
-    now = datetime.now(timezone.utc)
-
-    active_pro = (
-        db.query(func.count(User.id)).filter(User.is_pro == True).scalar() or 0  # noqa: E712
-    )
-    expiring_soon = (
-        db.query(func.count(User.id))
-        .filter(
-            User.is_pro == True,  # noqa: E712
-            User.pro_expires_at != None,  # noqa: E711
-            User.pro_expires_at <= now + timedelta(days=7),
-        )
-        .scalar()
-        or 0
-    )
-    # Users who became pro in the last 30 days —
-    # we approximate by checking pro_expires_at > now and created_at or last_login recent
-    recent_conversions = (
-        db.query(func.count(User.id))
-        .filter(
-            User.is_pro == True,  # noqa: E712
-            User.last_login >= now - timedelta(days=30),
-        )
-        .scalar()
-        or 0
-    )
-
-    return SubscriptionStats(
-        active_pro=active_pro,
-        expiring_soon=expiring_soon,
-        total_revenue_monthly=round(active_pro * MONTHLY_PRO_PRICE, 2),
-        recent_conversions=recent_conversions,
-    )
-
-
-@router.get(
-    "/admin/subscriptions",
-    response_model=SubscriptionListResponse,
-    summary="List Pro subscribers (admin)",
-)
-async def list_subscribers(
-    page: int = Query(default=1, ge=1),
-    per_page: int = Query(default=20, ge=1, le=100),
-    db: Session = Depends(get_db),
-    _admin=Depends(require_admin),
-) -> SubscriptionListResponse:
-    """Return paginated list of Pro subscribers."""
-    query = db.query(User).filter(User.is_pro == True)  # noqa: E712
-    total = query.count()
-    offset = (page - 1) * per_page
-    users = query.order_by(User.created_at.desc()).offset(offset).limit(per_page).all()
-
-    return SubscriptionListResponse(
-        subscribers=[ProUserRow.model_validate(u) for u in users],
-        total=total,
-        page=page,
-        pages=math.ceil(total / per_page) if total > 0 else 0,
-    )
-
-
 # ── User Management ──────────────────────────────────────────────────────────
 
 
@@ -210,7 +131,6 @@ async def list_users(
     per_page: int = Query(default=20, ge=1, le=100),
     search: Optional[str] = Query(default=None, description="Search by email"),
     role: Optional[str] = Query(default=None, description="Filter by role"),
-    is_pro: Optional[bool] = Query(default=None, description="Filter by pro status"),
     sort_by: str = Query(default="created_at", description="Sort field"),
     sort_order: str = Query(default="desc", description="asc or desc"),
     db: Session = Depends(get_db),
@@ -224,8 +144,6 @@ async def list_users(
         query = query.filter(User.email.ilike(f"%{search}%"))
     if role:
         query = query.filter(User.role == role)
-    if is_pro is not None:
-        query = query.filter(User.is_pro == is_pro)
 
     total = query.count()
 
@@ -258,7 +176,7 @@ async def update_user(
     db: Session = Depends(get_db),
     _admin=Depends(require_admin),
 ) -> AdminUserRow:
-    """Update a user's role, pro status, or pro expiry.
+    """Update a user's role.
 
     Only the fields provided in the request body are updated.
     """
@@ -278,14 +196,8 @@ async def update_user(
             )
         user.role = update.role
 
-    if update.is_pro is not None:
-        user.is_pro = update.is_pro
-
-    if update.pro_expires_at is not None:
-        user.pro_expires_at = update.pro_expires_at
-
     db.commit()
     db.refresh(user)
 
-    logger.info("Admin updated user %s: role=%s, is_pro=%s", user_id, user.role, user.is_pro)
+    logger.info("Admin updated user %s: role=%s", user_id, user.role)
     return AdminUserRow.model_validate(user)

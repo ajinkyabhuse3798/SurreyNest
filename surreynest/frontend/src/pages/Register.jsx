@@ -1,45 +1,46 @@
-/**
- * Register page — centred form, email + password + confirm.
- * Per design-system.md: max-w-sm, white bg, border inputs.
- */
 import { useState } from 'react'
-import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { useAuth } from '../hooks/useAuth'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+
 import Navbar from '../components/Navbar'
+import { useAuth } from '../hooks/useAuth'
 
 export default function Register() {
-    const { register, login } = useAuth()
+    const { register } = useAuth()
     const navigate = useNavigate()
     const location = useLocation()
     const returnTo = location.state?.from?.pathname || '/'
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
-    const [confirm, setConfirm] = useState('')
-    const [error, setError] = useState(null)
+    const [confirmPassword, setConfirmPassword] = useState('')
+    const [error, setError] = useState('')
     const [loading, setLoading] = useState(false)
 
-    async function handleSubmit(e) {
-        e.preventDefault()
-        setError(null)
+    async function handleSubmit(event) {
+        event.preventDefault()
+        setError('')
 
-        if (password !== confirm) {
+        if (password !== confirmPassword) {
             setError('Passwords do not match.')
             return
         }
+
         if (password.length < 8) {
             setError('Password must be at least 8 characters.')
             return
         }
 
         setLoading(true)
+
         try {
-            await register(email, password)
-            // Auto-login after registration
-            await login(email, password)
+            const result = await register(email, password)
+            if (result.requires_verification) {
+                navigate(`/verify-email?email=${encodeURIComponent(email.trim().toLowerCase())}`, { replace: true })
+                return
+            }
+
             navigate(returnTo, { replace: true })
-            // Do not setLoading(false) here — navigate() unmounts this component
         } catch (err) {
-            setError(err.response?.data?.detail || 'Registration failed. Please try again.')
+            setError(err.detail || err.response?.data?.detail || 'Registration failed. Please try again.')
             setLoading(false)
         }
     }
@@ -48,9 +49,7 @@ export default function Register() {
         <main className="min-h-screen bg-white">
             <Navbar />
             <div className="max-w-sm mx-auto px-4 py-12">
-                <h1 className="text-2xl font-semibold text-[#0A0A0A] mb-6">
-                    Create account
-                </h1>
+                <h1 className="text-2xl font-semibold text-[#0A0A0A] mb-6">Create account</h1>
 
                 {error && (
                     <div className="border border-red-200 bg-red-50 rounded-lg px-4 py-3 text-sm text-red-700 mb-4">
@@ -64,7 +63,7 @@ export default function Register() {
                         <input
                             type="email"
                             value={email}
-                            onChange={(e) => setEmail(e.target.value)}
+                            onChange={(event) => setEmail(event.target.value)}
                             required
                             autoComplete="email"
                             placeholder="you@surrey.ac.uk"
@@ -76,7 +75,7 @@ export default function Register() {
                         <input
                             type="password"
                             value={password}
-                            onChange={(e) => setPassword(e.target.value)}
+                            onChange={(event) => setPassword(event.target.value)}
                             required
                             autoComplete="new-password"
                             placeholder="At least 8 characters"
@@ -84,13 +83,11 @@ export default function Register() {
                         />
                     </div>
                     <div className="flex flex-col gap-1.5">
-                        <label className="text-xs font-medium text-gray-700">
-                            Confirm password
-                        </label>
+                        <label className="text-xs font-medium text-gray-700">Confirm password</label>
                         <input
                             type="password"
-                            value={confirm}
-                            onChange={(e) => setConfirm(e.target.value)}
+                            value={confirmPassword}
+                            onChange={(event) => setConfirmPassword(event.target.value)}
                             required
                             autoComplete="new-password"
                             placeholder="••••••••"

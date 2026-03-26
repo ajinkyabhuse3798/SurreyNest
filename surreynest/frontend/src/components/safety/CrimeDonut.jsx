@@ -1,5 +1,5 @@
 /**
- * CrimeDonut — SVG donut chart showing crime category breakdown.
+ * CrimeDonut, SVG donut chart showing crime category breakdown.
  */
 import { CAT_META } from '../../utils/safetyConstants'
 

@@ -1,13 +1,13 @@
 /**
- * RentRadarChart — Interactive rent trend chart with historical data + forecast.
+ * RentRadarChart, Interactive rent trend chart with historical data + forecast.
  *
  * Shows a Recharts AreaChart with:
- *   - Solid gradient fill for historical data (2021–2025)
+ *   - Solid gradient fill for historical data (2021 to 2025)
  *   - Dashed line for 2-year forecast using IPHRP growth
  *   - Tooltips, trend badge, and source attribution
  *
  * Props:
- *   @param {string} postcodeSector — e.g. "GU2 7"
+ *   @param {string} postcodeSector, e.g. "GU2 7"
  */
 import { useState, useEffect } from 'react'
 import {
@@ -89,7 +89,7 @@ export default function RentRadarChart({ postcodeSector }) {
             })
             .catch((err) => {
                 if (!cancelled) {
-                    // Silently fail — not all sectors have data
+                    // Silently fail, not all sectors have data
                     if (err.response?.status === 404) {
                         setData(null)
                     } else {
@@ -119,8 +119,6 @@ export default function RentRadarChart({ postcodeSector }) {
     // Build unified chart data with separate keys for historical/forecast
     // The overlap point (last historical year) has BOTH keys so lines connect
     const lastHistoricalYear = data.historical[data.historical.length - 1]?.year
-    const lastHistoricalRent = data.historical[data.historical.length - 1]?.median_weekly_rent
-
     const chartData = [
         ...data.historical.map((h) => ({
             year: h.year,

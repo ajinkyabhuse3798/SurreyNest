@@ -1,5 +1,5 @@
 /**
- * RentHero — Green gradient hero with rent prediction.
+ * RentHero, Green gradient hero with rent prediction.
  */
 import { PoundSterling } from 'lucide-react'
 

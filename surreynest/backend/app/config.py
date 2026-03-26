@@ -1,7 +1,7 @@
 """Environment variable loading and application configuration.
 
 All secrets and environment-specific settings are read here via python-dotenv.
-No other module should read env vars directly — import `settings` from this module.
+No other module should read env vars directly, import `settings` from this module.
 """
 
 import logging
@@ -10,7 +10,9 @@ from functools import lru_cache
 
 from dotenv import load_dotenv
 
-load_dotenv(override=True)  # Override Docker env vars so .env always wins
+# Keep real environment variables authoritative so Docker / hosting config
+# is never silently overridden by a local .env file.
+load_dotenv(override=False)
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +22,7 @@ class Settings:
 
     Attributes:
         database_url: PostgreSQL connection string including PostGIS-capable DB.
-        secret_key: 64-char hex secret for JWT signing — never hardcode.
+        secret_key: 64-char hex secret for JWT signing, never hardcode.
         algorithm: JWT signing algorithm (HS256).
         access_token_expire_days: JWT lifetime in days.
         environment: One of "development", "staging", "production".
@@ -36,6 +38,10 @@ class Settings:
         "TEST_DATABASE_URL",
         "postgresql://surreynest:surreynest_dev_password@localhost:5432/surreynest_test",
     )
+    # Keep pool_size × worker_count ≤ PostgreSQL max_connections (default 100).
+    # With --workers 4: pool_size=5 → 20 connections, max_overflow=5 → burst to 40.
+    db_pool_size: int = int(os.getenv("DB_POOL_SIZE", "5"))
+    db_max_overflow: int = int(os.getenv("DB_MAX_OVERFLOW", "5"))
 
     # ── Auth ────────────────────────────────────────────────────────────────
     secret_key: str = os.getenv("SECRET_KEY", "")
@@ -49,7 +55,7 @@ class Settings:
     ).split(",")
 
     # ── ML Model ───────────────────────────────────────────────────────────
-    ml_model_version: str = os.getenv("ML_MODEL_VERSION", "v4.4.0")
+    ml_model_version: str = os.getenv("ML_MODEL_VERSION", "v7.0.0")
     ml_model_path: str = os.getenv("ML_MODEL_PATH", "app/ml/models")
 
     # ── Rate Limiting ──────────────────────────────────────────────────────
@@ -99,5 +105,5 @@ def get_settings() -> Settings:
     return Settings()
 
 
-# Module-level singleton — import this everywhere instead of calling get_settings()
+# Module-level singleton, import this everywhere instead of calling get_settings()
 settings: Settings = get_settings()

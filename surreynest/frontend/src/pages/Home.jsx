@@ -1,5 +1,5 @@
 /**
- * Home — Landing page orchestrator (Stitch-aligned).
+ * Home, Landing page orchestrator (Stitch-aligned).
  * Composes all home sub-components and manages search state.
  */
 import { useState } from 'react'
@@ -12,7 +12,7 @@ import TrustBar from '../components/home/TrustBar'
 import ExploreSection from '../components/home/ExploreSection'
 import FeaturesSection from '../components/home/FeaturesSection'
 import HowItWorks from '../components/home/HowItWorks'
-import StreetSmartsTeaser from '../components/home/StreetSmartsTeaser'
+import GuildfordSafetySection from '../components/home/GuildfordSafetySection'
 import CtaSection from '../components/home/CtaSection'
 
 // Accepts full postcodes (GU2 7XH) and area/district codes (GU2, GU1 1)
@@ -52,7 +52,7 @@ export default function Home() {
             {/* Trust badges */}
             <TrustBar />
 
-            {/* Features — "Everything you need" */}
+            {/* Features, "Everything you need" */}
             <FeaturesSection />
 
             {/* Explore Best Streets */}
@@ -66,8 +66,8 @@ export default function Home() {
             {/* How It Works */}
             <HowItWorks />
 
-            {/* StreetSmarts leaderboard teaser */}
-            <StreetSmartsTeaser />
+            {/* Guildford Safety teaser */}
+            <GuildfordSafetySection />
 
             {/* CTA */}
             <CtaSection />

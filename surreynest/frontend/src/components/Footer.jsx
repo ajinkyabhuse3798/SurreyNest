@@ -1,5 +1,5 @@
 /**
- * Footer — Stitch-aligned 4-column footer with brand, links, and copyright.
+ * Footer, Stitch-aligned 4-column footer with brand, links, and copyright.
  */
 import { Link } from 'react-router-dom'
 
@@ -7,7 +7,7 @@ const PLATFORM = [
     { to: '/search', label: 'Search Listings' },
     { to: '/search', label: 'Fairness Scores' },
     { to: '/best-streets', label: 'Street Ratings' },
-    { to: '/check-listing', label: 'HMO Checker' },
+    { to: '/check-listing', label: 'Listing Checker' },
 ]
 
 const RESOURCES = [

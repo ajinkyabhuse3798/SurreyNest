@@ -1,5 +1,5 @@
 /**
- * ComparablesTable — responsive table of comparable properties.
+ * ComparablesTable, responsive table of comparable properties.
  *
  * @param {{ comparables: Array }} props
  */
@@ -38,7 +38,7 @@ export default function ComparablesTable({ comparables }) {
                                 £{c.implied_weekly_rent}/wk
                             </td>
                             <td className="py-2.5 text-right text-slate-600">
-                                {c.bedrooms ?? '—'}
+                                {c.bedrooms ?? 'N/A'}
                             </td>
                             <td className="py-2.5 pl-4 text-slate-500">{c.distance_label}</td>
                             <td className="py-2.5 pl-4 text-slate-400 text-xs">{c.source}</td>

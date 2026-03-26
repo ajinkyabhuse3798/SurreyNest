@@ -1,15 +1,15 @@
 /**
- * HeroSection — Stitch-aligned hero with search bar, student avatars, and hero image card.
+ * HeroSection, Stitch-aligned hero with search bar, student avatars, and hero image card.
  * Receives search state + handler from Home page.
  */
 import { motion } from 'framer-motion'
 
 const fadeUp = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }
 
-export default function HeroSection({ postcode, setPostcode, radius, setRadius, error, loading, handleSearch }) {
+export default function HeroSection({ postcode, setPostcode, error, loading, handleSearch }) {
     return (
         <section className="flex-1 max-w-7xl mx-auto px-4 md:px-6 pt-8 md:pt-12 pb-16 md:pb-24 grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
-            {/* Left — Copy + Search */}
+            {/* Left, Copy + Search */}
             <motion.div
                 className="flex flex-col gap-6 md:gap-8"
                 initial="hidden"
@@ -80,7 +80,7 @@ export default function HeroSection({ postcode, setPostcode, radius, setRadius, 
                 </motion.div>
             </motion.div>
 
-            {/* Right — Hero image card (desktop) */}
+            {/* Right, Hero image card (desktop) */}
             <motion.div
                 className="relative hidden lg:block"
                 initial={{ opacity: 0, scale: 0.95 }}

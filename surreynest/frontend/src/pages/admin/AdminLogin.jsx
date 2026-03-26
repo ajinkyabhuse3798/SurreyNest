@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { Lock } from 'lucide-react'
 
 export default function AdminLogin() {
-    const { login, user } = useAuth()
+    const { login, logout, user } = useAuth()
     const navigate = useNavigate()
     const location = useLocation()
     const returnTo = location.state?.from?.pathname || '/admin/dashboard'
@@ -13,11 +13,11 @@ export default function AdminLogin() {
     const [error, setError] = useState(null)
     const [loading, setLoading] = useState(false)
 
-    // Wait! Let's check if there's already an active session
-    if (user && user.role === 'admin') {
-        navigate(returnTo, { replace: true })
-        return null
-    }
+    useEffect(() => {
+        if (user?.role === 'admin') {
+            navigate(returnTo, { replace: true })
+        }
+    }, [user, navigate, returnTo])
 
     async function handleSubmit(e) {
         e.preventDefault()
@@ -27,13 +27,14 @@ export default function AdminLogin() {
         try {
             const res = await login(email, password)
             if (res.user.role !== 'admin') {
+                await logout()
                 setError('Access denied. You do not have admin privileges.')
                 setLoading(false)
                 return
             }
             navigate(returnTo, { replace: true })
         } catch (err) {
-            setError(err.response?.data?.detail || 'Login failed. Check your credentials.')
+            setError(err.detail || err.response?.data?.detail || 'Login failed. Check your credentials.')
             setLoading(false)
         }
     }

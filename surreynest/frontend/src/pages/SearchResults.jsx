@@ -1,5 +1,5 @@
 /**
- * SearchResults v2 — Thin orchestrator for the search results page.
+ * SearchResults v2, Thin orchestrator for the search results page.
  *
  * Route: /search?postcode=...&radius=...
  *
@@ -177,7 +177,7 @@ export default function SearchResults() {
                     showMap={showMap}
                 />
 
-                {/* Right: Map — must have an explicit pixel height so Leaflet's height:100% resolves correctly */}
+                {/* Right: Map, must have an explicit pixel height so Leaflet's height:100% resolves correctly */}
                 <div className={`${showMap ? 'block' : 'hidden'} md:block md:w-[60%] md:sticky md:top-16 h-[60vh] md:h-[calc(100vh-117px)]`}>
                     <MapView
                         markers={markers}

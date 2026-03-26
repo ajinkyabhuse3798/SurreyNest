@@ -2,7 +2,7 @@
 
 Standalone pipeline that queries the properties table for rows missing
 lat/lng, batch-geocodes their postcodes via Postcodes.io, and bulk-updates
-the properties table. Fully idempotent — re-running skips already-geocoded
+the properties table. Fully idempotent, re-running skips already-geocoded
 properties.
 
 Usage:
@@ -37,7 +37,7 @@ def run_geocoding_pipeline(db: Optional[Session] = None) -> int:
     Returns:
         Number of properties updated with coordinates.
     """
-    logger.info("Starting geocoding pipeline — backfilling NULL lat/lng")
+    logger.info("Starting geocoding pipeline, backfilling NULL lat/lng")
 
     own_session = db is None
     if own_session:
@@ -60,7 +60,7 @@ def run_geocoding_pipeline(db: Optional[Session] = None) -> int:
         )
 
         if null_count_before == 0:
-            logger.info("All properties already have coordinates — nothing to do")
+            logger.info("All properties already have coordinates, nothing to do")
             return 0
 
         # ── Step 2: get unique postcodes needing geocoding ───────────────

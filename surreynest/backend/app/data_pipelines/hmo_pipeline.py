@@ -95,7 +95,7 @@ def load_hmo_register(raw_path: Optional[Path] = None) -> pd.DataFrame:
     path = raw_path or RAW_PATH
     logger.info("Loading HMO register from %s", path)
 
-    # File is HTML table disguised as .xls — use read_html
+    # File is HTML table disguised as .xls, use read_html
     dfs = pd.read_html(str(path))
     if not dfs:
         raise ValueError(f"No tables found in {path}")
@@ -213,7 +213,7 @@ def run_hmo_pipeline(db: Optional[Session] = None) -> int:
             )
         except Exception:
             logger.error(
-                "UPRN matching failed — HMO records saved without UPRNs",
+                "UPRN matching failed, HMO records saved without UPRNs",
                 exc_info=True,
             )
 

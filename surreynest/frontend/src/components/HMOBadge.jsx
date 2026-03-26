@@ -1,5 +1,5 @@
 /**
- * HMOBadge — licensed/expired/unknown pill indicator.
+ * HMOBadge, licensed/expired/unknown pill indicator.
  * Per design-system.md: coloured pill with border, rounded-full.
  *
  * @param {{ status: 'licensed'|'expired'|'not_found' }} props
@@ -13,7 +13,7 @@ const styles = {
 const labels = {
     licensed: '✓ HMO Licensed',
     expired: '⚠ HMO Expired',
-    not_found: '— HMO Unknown',
+    not_found: 'HMO Unknown',
 }
 
 export default function HMOBadge({ status = 'not_found' }) {

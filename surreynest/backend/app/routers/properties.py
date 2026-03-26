@@ -1,6 +1,6 @@
 """Property routes: GET /properties, GET /properties/{uprn}, GET /properties/suggest.
 
-Thin route layer — delegates to property_service for all business logic.
+Thin route layer, delegates to property_service for all business logic.
 """
 
 import logging
@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database import get_db
-from app.rate_limit import limiter  # shared singleton — no circular import
+from app.rate_limit import limiter  # shared singleton, no circular import
 from app.models.property import Property
 from app.schemas.property import (
     PropertyDetail,
@@ -34,7 +34,7 @@ def _escape_like(value: str) -> str:
     """
     return value.replace("%", "\\%").replace("_", "\\_")
 
-# UK postcode regex — allows optional space between outward and inward parts
+# UK postcode regex, allows optional space between outward and inward parts
 POSTCODE_RE = re.compile(
     r"^[A-Z]{1,2}[0-9][0-9A-Z]?\s*[0-9][A-Z]{2}$", re.IGNORECASE
 )

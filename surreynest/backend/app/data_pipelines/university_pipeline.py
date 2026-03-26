@@ -27,13 +27,13 @@ logger = logging.getLogger(__name__)
 # bills_incl_min / bills_incl_max: weekly rent range, ALL bills included
 UNIVERSITY_POSTCODES: Dict[str, Dict] = {
     "GU2 7JG": {"band": "C1/C2", "bills_incl_min": 137.50, "bills_incl_max": 147.50},
-    "GU2 7JQ": {"band": "C2",    "bills_incl_min": 147.50, "bills_incl_max": 147.50},
-    "GU2 7JH": {"band": "C1",    "bills_incl_min": 137.50, "bills_incl_max": 147.50},
-    "GU2 7JW": {"band": "C2",    "bills_incl_min": 147.50, "bills_incl_max": 147.50},
-    "GU2 7JP": {"band": "D3",    "bills_incl_min": 147.50, "bills_incl_max": 217.00},
+    "GU2 7JQ": {"band": "C2",   "bills_incl_min": 147.50, "bills_incl_max": 147.50},
+    "GU2 7JH": {"band": "C1",   "bills_incl_min": 137.50, "bills_incl_max": 147.50},
+    "GU2 7JW": {"band": "C2",   "bills_incl_min": 147.50, "bills_incl_max": 147.50},
+    "GU2 7JP": {"band": "D3",   "bills_incl_min": 147.50, "bills_incl_max": 217.00},
     "GU2 7JN": {"band": "D2/D3", "bills_incl_min": 208.50, "bills_incl_max": 217.00},
-    "GU2 7XR": {"band": "D2",    "bills_incl_min": 208.50, "bills_incl_max": 208.50},
-    "GU2 7JL": {"band": "E",     "bills_incl_min": 242.00, "bills_incl_max": 247.00},
+    "GU2 7XR": {"band": "D2",   "bills_incl_min": 208.50, "bills_incl_max": 208.50},
+    "GU2 7JL": {"band": "E",    "bills_incl_min": 242.00, "bills_incl_max": 247.00},
     "GU2 7YW": {"band": "D3/E/F","bills_incl_min": 200.00, "bills_incl_max": 394.00},
 }
 

@@ -27,13 +27,13 @@ def _compute_agent_score(
     Weights: overall×40%, landlord×30%, condition×15%, value×15%.
 
     Args:
-        avg_overall: Average overall rating (1–5).
-        avg_landlord: Average landlord rating (1–5).
-        avg_condition: Average condition rating (1–5).
-        avg_value: Average value rating (1–5).
+        avg_overall: Average overall rating (1 to 5).
+        avg_landlord: Average landlord rating (1 to 5).
+        avg_condition: Average condition rating (1 to 5).
+        avg_value: Average value rating (1 to 5).
 
     Returns:
-        Composite score 0–100.
+        Composite score 0 to 100.
     """
     weighted = (
         avg_overall * 0.40

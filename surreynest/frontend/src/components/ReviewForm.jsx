@@ -1,13 +1,11 @@
 /**
- * ReviewForm — submit a review for a property.
+ * ReviewForm, submit a review for a property.
  * 4 rating selectors (1-5) + text + optional rent.
- * Requires auth — shows prompt if not logged in.
+ * Open submission with moderation before publication.
  *
  * @param {{ uprn: string, onSubmitted?: Function }} props
  */
 import { useState, useRef } from 'react'
-import { Link } from 'react-router-dom'
-import { useAuth } from '../hooks/useAuth'
 import api from '../services/api'
 import { suggestAgents } from '../services/agentApi'
 
@@ -36,7 +34,6 @@ function RatingSelect({ label, value, onChange }) {
 }
 
 export default function ReviewForm({ uprn, onSubmitted }) {
-    const { user } = useAuth()
     const [overall, setOverall] = useState(0)
     const [landlord, setLandlord] = useState(0)
     const [condition, setCondition] = useState(0)
@@ -51,22 +48,6 @@ export default function ReviewForm({ uprn, onSubmitted }) {
     const [submitting, setSubmitting] = useState(false)
     const [error, setError] = useState(null)
     const [success, setSuccess] = useState(false)
-
-    if (!user) {
-        return (
-            <div className="border border-gray-200 rounded-xl p-5 text-center">
-                <p className="text-sm text-gray-700 mb-3">
-                    Sign in to leave a review
-                </p>
-                <Link
-                    to="/login"
-                    className="text-sm bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary/90 transition-colors inline-block"
-                >
-                    Sign in
-                </Link>
-            </div>
-        )
-    }
 
     if (success) {
         return (
@@ -117,7 +98,7 @@ export default function ReviewForm({ uprn, onSubmitted }) {
             if (onSubmitted) onSubmitted()
         } catch (err) {
             setError(
-                err.response?.data?.detail || 'Failed to submit review. Please try again.'
+                err.detail || err.message || 'Failed to submit review. Please try again.'
             )
         } finally {
             setSubmitting(false)
@@ -127,6 +108,9 @@ export default function ReviewForm({ uprn, onSubmitted }) {
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             <h3 className="text-base font-semibold text-[#0A0A0A]">Write a review</h3>
+            <p className="text-sm text-slate-500">
+                You can submit a review without an account. Every review is moderated before it appears publicly.
+            </p>
 
             {error && (
                 <div className="border border-red-200 bg-red-50 rounded-lg px-4 py-3 text-sm text-red-700">

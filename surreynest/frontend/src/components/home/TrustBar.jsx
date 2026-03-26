@@ -1,5 +1,5 @@
 /**
- * TrustBar — real platform statistics fetched live from /api/stats.
+ * TrustBar, real platform statistics fetched live from /api/stats.
  * Shows skeleton placeholders while loading, real numbers once ready.
  */
 import { useEffect, useState } from 'react'
@@ -17,14 +17,13 @@ export default function TrustBar() {
     useEffect(() => {
         api.get('/api/stats')
             .then(r => setStats(r.data))
-            .catch(() => setStats(null)) // fail silently — don't break the page
+            .catch(() => setStats(null)) // fail silently, don't break the page
     }, [])
 
     const items = stats ? [
-        { icon: 'home_work',   label: fmt(stats.properties_indexed), desc: 'Properties indexed' },
-        { icon: 'verified',    label: fmt(stats.hmo_licensed),        desc: 'Licensed HMOs verified' },
-        { icon: 'map',         label: `${stats.districts_covered} districts`, desc: 'Guildford areas covered' },
-        { icon: 'source',      label: `${stats.data_sources} sources`,  desc: 'Official UK data sources' },
+        { icon: 'home_work',  label: fmt(stats.properties_indexed), desc: 'Properties indexed' },
+        { icon: 'map',        label: `${stats.districts_covered} districts`, desc: 'Guildford areas covered' },
+        { icon: 'source',     label: `${stats.data_sources} sources`, desc: 'Official UK data sources' },
     ] : null
 
     return (
@@ -49,7 +48,7 @@ export default function TrustBar() {
                         </motion.div>
                     )) : (
                         // Skeleton while loading
-                        Array.from({ length: 4 }).map((_, i) => (
+                        Array.from({ length: 3 }).map((_, i) => (
                             <div key={i} className="flex items-center gap-2.5 lg:gap-3 flex-shrink-0">
                                 <div className="w-9 h-9 lg:w-11 lg:h-11 rounded-xl bg-slate-100 animate-pulse" />
                                 <div className="space-y-1.5">

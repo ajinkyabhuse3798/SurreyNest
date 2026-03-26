@@ -5,7 +5,7 @@ import { useRef } from 'react'
 import { motion, useInView } from 'framer-motion'
 import {
     Search, BarChart3, Shield, Home as HomeIcon, CheckCircle2,
-    Zap, Database, Star, Clock, PoundSterling, Brain,
+    Database, PoundSterling, Brain,
 } from 'lucide-react'
 
 // ── Animation variants ──────────────────────────────────────────────────────
@@ -49,11 +49,11 @@ export const FEATURES = [
     {
         icon: Shield,
         title: 'Safety Intelligence',
-        desc: 'Crime breakdown, trend analysis, student vulnerability index, and holiday burglary risk — powered by police.uk data.',
+        desc: 'Crime breakdown, trend analysis, student vulnerability index, and holiday burglary risk, powered by police.uk data.',
         colour: 'bg-emerald-50 text-emerald-600',
         iconBg: 'bg-gradient-to-br from-emerald-400 to-emerald-600',
         iconText: 'text-white',
-        link: '/safety/GU2 7',
+        link: '/safety',
         linkLabel: 'Explore safety data',
     },
     {

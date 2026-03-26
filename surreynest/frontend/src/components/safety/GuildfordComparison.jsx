@@ -1,10 +1,10 @@
 /**
- * GuildfordComparison — Area vs Guildford average comparison.
+ * GuildfordComparison, Area vs Guildford average comparison.
  */
 import { TrendingDown, TrendingUp, Minus } from 'lucide-react'
 
 export default function GuildfordComparison({ comparison }) {
-    if (!comparison) return <p className="text-sm text-slate-400">No comparison data available.</p>
+    if (!comparison) return <p className="text-sm text-slate-400">No comparison data available for this area.</p>
 
     const diff = comparison.difference_percent ?? 0
     const isBelow = diff < 0
@@ -14,14 +14,14 @@ export default function GuildfordComparison({ comparison }) {
         <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
                 <div className="bg-slate-50 rounded-xl p-4 text-center">
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">This area</p>
-                    <p className="text-2xl font-black text-slate-900 mt-1">{comparison.sector_total ?? '—'}</p>
-                    <p className="text-xs text-slate-500 mt-0.5">crimes / 12 months</p>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Here</p>
+                    <p className="text-2xl font-black text-slate-900 mt-1">{comparison.sector_total ?? 'N/A'}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">incidents last year</p>
                 </div>
                 <div className="bg-slate-50 rounded-xl p-4 text-center">
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Guildford avg</p>
-                    <p className="text-2xl font-black text-slate-900 mt-1">{comparison.guildford_average != null ? Math.round(comparison.guildford_average) : '—'}</p>
-                    <p className="text-xs text-slate-500 mt-0.5">crimes / 12 months</p>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Guildford average</p>
+                    <p className="text-2xl font-black text-slate-900 mt-1">{comparison.guildford_average != null ? Math.round(comparison.guildford_average) : 'N/A'}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">incidents last year</p>
                 </div>
             </div>
 
@@ -33,13 +33,13 @@ export default function GuildfordComparison({ comparison }) {
                     isAbove ? <TrendingUp size={16} className="text-red-600" /> :
                         <Minus size={16} className="text-slate-500" />}
                 <p className={`text-sm font-bold ${isBelow ? 'text-emerald-700' : isAbove ? 'text-red-700' : 'text-slate-600'}`}>
-                    {Math.abs(Math.round(diff))}% {isBelow ? 'below' : isAbove ? 'above' : 'at'} the Guildford average
+                    {Math.abs(Math.round(diff))}% {isBelow ? 'below' : isAbove ? 'above' : 'around'} the Guildford average
                 </p>
             </div>
 
-            {comparison.sentence && (
-                <p className="text-sm text-slate-600 leading-relaxed">{comparison.sentence}</p>
-            )}
+            <p className="text-sm text-slate-600 leading-relaxed">
+                {comparison.sentence || comparison.comparison_label || 'No summary available for this area.'}
+            </p>
         </div>
     )
 }

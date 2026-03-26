@@ -1,5 +1,5 @@
 /**
- * GlobalImportance — Bar chart of global feature importance across all Guildford properties.
+ * GlobalImportance, Bar chart of global feature importance across all Guildford properties.
  */
 export default function GlobalImportance({ importance }) {
     if (!importance?.length) return null

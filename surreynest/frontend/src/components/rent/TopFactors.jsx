@@ -1,5 +1,5 @@
 /**
- * TopFactors — Top 3 factors with explanation cards.
+ * TopFactors, Top 3 factors with explanation cards.
  */
 export default function TopFactors({ contributions }) {
     const top3 = contributions?.slice(0, 3) || []

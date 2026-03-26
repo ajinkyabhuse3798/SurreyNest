@@ -2,13 +2,13 @@
 
 Aggregated crime counts from police.uk API, grouped by postcode sector
 (e.g. "GU2 7") and month. Safety scores are computed on-the-fly in
-score_service.py — they are not stored here.
+score_service.py, they are not stored here.
 """
 
 
 from datetime import date, datetime, timezone
 
-from sqlalchemy import Date, DateTime, Integer, String, UniqueConstraint
+from sqlalchemy import Date, DateTime, Index, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -44,13 +44,18 @@ class CrimeData(Base):
         onupdate=lambda: datetime.now(timezone.utc),
     )
 
-    # Composite unique constraint — enables ON CONFLICT DO UPDATE
+    # Composite unique constraint, enables ON CONFLICT DO UPDATE
     # and prevents duplicate rows for same sector+category+month
     __table_args__ = (
         UniqueConstraint(
             "postcode_sector", "category", "month",
             name="uq_crime_sector_category_month",
         ),
+        # Composite index for the common query pattern: WHERE postcode_sector = X
+        # grouped/filtered by category (used in score_service and safety_intelligence).
+        # The unique constraint covers (sector, category, month) but a dedicated 2-column
+        # index avoids scanning the full 3-column index when month is not in the predicate.
+        Index("ix_crime_data_sector_category", "postcode_sector", "category"),
     )
 
     def __repr__(self) -> str:

@@ -1,7 +1,7 @@
 """Land Registry pipeline: multi-year Price Paid Data + HPI time-adjustment.
 
 Loads Price Paid CSVs (pp-*.csv) from data/raw/land_registry/,
-filters to Guildford core (GU1–GU5, GU7), removes outliers,
+filters to Guildford core (GU1 to GU5, GU7), removes outliers,
 time-adjusts prices using UK HPI Guildford series, and computes
 both area_value_index and implied weekly rent per postcode.
 
@@ -48,10 +48,16 @@ PROPERTY_TYPE_MAP = {
     "O": "Other",
 }
 
-# Guildford gross rental yield (GU1 town-centre typical: 3–3.5%, not 4%)
-# Using 3.5% corrects the systematic over-estimation of implied_weekly_rent
-# that caused the v2.0.0 model to underpredict rent for expensive GU1 postcodes.
-GROSS_YIELD = 0.035
+# Real-world gross rental yields by property type (Guildford, 2025).
+# Families and academics pay a yield premium on houses vs flats.
+# Sources: Zoopla rental yield data, VOA statistics, local agent benchmarks.
+YIELD_BY_TYPE = {
+    "F": 0.035,  # Flat, unchanged; student/professional demand is well-captured
+    "T": 0.040,  # Terraced, +0.5%; popular HMO/family rental type
+    "S": 0.043,  # Semi-Detached, +0.8%; strong family demand near university
+    "D": 0.038,  # Detached, +0.3%; higher sale price means lower % yield
+    "O": 0.038,  # Other, safe mid-range fallback
+}
 
 # Forward projection: annualised growth rate used when projecting from latest HPI date to today.
 # UK HPI has ~2 month lag; fallback covers periods where trailing 12-month data is absent.
@@ -92,7 +98,7 @@ def load_hpi_guildford() -> Optional[pd.DataFrame]:
     """
     files = sorted(glob(str(HPI_DIR / "UK-HPI*.csv")))
     if not files:
-        logger.warning("No HPI files found in %s — skipping time-adjustment", HPI_DIR)
+        logger.warning("No HPI files found in %s, skipping time-adjustment", HPI_DIR)
         return None
 
     dfs = []
@@ -214,7 +220,7 @@ def compute_forward_growth_rate(hpi_df: pd.DataFrame) -> float:
     """
     if len(hpi_df) < 13:
         logger.info(
-            "Fewer than 13 HPI months (%d rows) — using fallback growth %.1f%%",
+            "Fewer than 13 HPI months (%d rows), using fallback growth %.1f%%",
             len(hpi_df), ANNUAL_FORWARD_GROWTH_FALLBACK * 100,
         )
         return ANNUAL_FORWARD_GROWTH_FALLBACK
@@ -223,7 +229,7 @@ def compute_forward_growth_rate(hpi_df: pd.DataFrame) -> float:
     idx_12m_ago = hpi_df["Index"].iloc[-13]
 
     if pd.isna(idx_now) or pd.isna(idx_12m_ago) or idx_12m_ago == 0:
-        logger.warning("HPI index invalid for growth calc — using fallback")
+        logger.warning("HPI index invalid for growth calc, using fallback")
         return ANNUAL_FORWARD_GROWTH_FALLBACK
 
     raw_growth = (idx_now / idx_12m_ago) - 1.0
@@ -316,7 +322,7 @@ def clean_land_registry_data() -> pd.DataFrame:
         )
     else:
         df["adjusted_price"] = df["price"]
-        logger.warning("No HPI data — using raw prices (no time-adjustment)")
+        logger.warning("No HPI data, using raw prices (no time-adjustment)")
 
     # ── Forward projection: HPI latest date → today ───────────────────────
     if hpi_df is not None:
@@ -335,12 +341,17 @@ def clean_land_registry_data() -> pd.DataFrame:
                 years_forward, annual_growth * 100, forward_factor,
             )
         elif years_forward < 0:
-            logger.warning("HPI date %s is future — skipping forward projection", latest_hpi_date)
+            logger.warning("HPI date %s is future, skipping forward projection", latest_hpi_date)
         else:
-            logger.info("HPI data is current (gap=%.3f yrs) — no projection needed", years_forward)
+            logger.info("HPI data is current (gap=%.3f yrs), no projection needed", years_forward)
 
-    # ── Compute implied weekly rent ──────────────────────────────────────
-    df["implied_weekly_rent"] = (df["adjusted_price"] * GROSS_YIELD / 52).round(2)
+    # ── Compute implied weekly rent (tiered by property type) ────────────
+    df["implied_weekly_rent"] = df.apply(
+        lambda row: round(
+            row["adjusted_price"] * YIELD_BY_TYPE.get(row["property_type"], 0.038) / 52, 2
+        ),
+        axis=1,
+    )
 
     logger.info(
         "Implied rent stats: mean=£%.0f/wk, median=£%.0f/wk, min=£%.0f/wk, max=£%.0f/wk",
@@ -359,7 +370,7 @@ def clean_land_registry_data() -> pd.DataFrame:
         mean_weekly_rent=("implied_weekly_rent", "mean"),
     ).reset_index()
 
-    # ── Normalise to 0–1 area_value_index ────────────────────────────────
+    # ── Normalise to 0 to 1 area_value_index ────────────────────────────────
     min_price = agg_df["median_sale_price"].min()
     max_price = agg_df["median_sale_price"].max()
     price_range = max_price - min_price if max_price > min_price else 1.0
@@ -369,7 +380,7 @@ def clean_land_registry_data() -> pd.DataFrame:
     ).round(4)
 
     logger.info(
-        "Aggregated to %d postcodes. Area value index range: £%d – £%d",
+        "Aggregated to %d postcodes. Area value index range: £%d  to  £%d",
         len(agg_df), int(min_price), int(max_price),
     )
 
@@ -451,7 +462,7 @@ def run_land_registry_pipeline(db: Optional[Session] = None) -> int:
 
     pp_files = glob(str(PP_DIR / "pp-*.csv"))
     if not pp_files:
-        logger.info("No Price Paid files in %s — skipping pipeline.", PP_DIR)
+        logger.info("No Price Paid files in %s, skipping pipeline.", PP_DIR)
         return 0
 
     own_session = db is None
@@ -469,7 +480,7 @@ def run_land_registry_pipeline(db: Optional[Session] = None) -> int:
                 len(df), rows,
             )
         except Exception:
-            logger.error("DB upsert failed — CSV was saved", exc_info=True)
+            logger.error("DB upsert failed, CSV was saved", exc_info=True)
 
         return len(df)
     except FileNotFoundError:

@@ -1,5 +1,5 @@
 /**
- * SearchHeader — Sticky header: summary, sort, filter toggle, mobile tabs.
+ * SearchHeader, Sticky header: summary, sort, filter toggle, mobile tabs.
  */
 import {
     MapPin, SlidersHorizontal, List, Map as MapIcon, ChevronDown,
@@ -39,7 +39,7 @@ export default function SearchHeader({
 
                 {/* Right: Controls */}
                 <div className="flex items-center gap-2 flex-shrink-0">
-                    {/* Sort — desktop */}
+                    {/* Sort, desktop */}
                     <div className="hidden sm:flex items-center relative">
                         <select
                             value={sortKey}
@@ -53,7 +53,7 @@ export default function SearchHeader({
                         <ChevronDown size={12} className="absolute right-2.5 text-slate-400 pointer-events-none" />
                     </div>
 
-                    {/* Filter toggle — desktop */}
+                    {/* Filter toggle, desktop */}
                     <button
                         onClick={() => setShowFilters((s) => !s)}
                         className={`hidden sm:flex items-center gap-1.5 border rounded-xl px-3 py-2 text-xs font-semibold transition-all ${showFilters || activeFilterCount > 0

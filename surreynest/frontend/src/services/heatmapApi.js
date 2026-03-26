@@ -1,5 +1,5 @@
 /**
- * Heatmap API service — fetches aggregated sector data for NeighbourhoodPulse.
+ * Heatmap API service, fetches aggregated sector data for NeighbourhoodPulse.
  */
 import api from './api'
 

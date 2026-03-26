@@ -1,5 +1,5 @@
 /**
- * LocationMap — Interactive Leaflet map for property detail pages.
+ * LocationMap, Interactive Leaflet map for property detail pages.
  *
  * Features:
  *   - Real OpenStreetMap tiles
@@ -10,16 +10,15 @@
  *   - Click anywhere on map to measure straight-line distance from property
  *
  * Props:
- *   lat       — property latitude
- *   lng       — property longitude
- *   postcode  — displayed in property popup
- *   distances — array of { label, km, walkMin, cycleMin, proximityType }
+ *   lat      , property latitude
+ *   lng      , property longitude
+ *   postcode , displayed in property popup
+ *   distances, array of { label, km, walkMin, cycleMin, proximityType }
  */
 import { useState, useCallback } from 'react'
 import {
     MapContainer,
     TileLayer,
-    CircleMarker,
     Marker,
     Polyline,
     Popup,
@@ -34,7 +33,7 @@ const LANDMARKS = [
         label: 'University of Surrey',
         lat: 51.2430,
         lng: -0.5890,
-        color: '#4F46E5',       // indigo
+        color: '#4F46E5',      // indigo
         fillColor: '#818CF8',
         icon: '🎓',
     },
@@ -43,7 +42,7 @@ const LANDMARKS = [
         label: 'Town Centre',
         lat: 51.2362,
         lng: -0.5704,
-        color: '#059669',       // emerald
+        color: '#059669',      // emerald
         fillColor: '#34D399',
         icon: '🏪',
     },
@@ -52,7 +51,7 @@ const LANDMARKS = [
         label: 'Guildford Station',
         lat: 51.2364,
         lng: -0.5797,
-        color: '#64748B',       // slate
+        color: '#64748B',      // slate
         fillColor: '#94A3B8',
         icon: '🚂',
     },
@@ -105,7 +104,7 @@ function makePropertyIcon() {
 }
 
 // ── Click-to-measure handler ──────────────────────────────────────────────────
-function MeasureTool({ propLat, propLng, onMeasure }) {
+function MeasureTool({ onMeasure }) {
     useMapEvents({
         click(e) {
             // Ignore clicks on markers/popups (target is not the map canvas)
@@ -216,7 +215,7 @@ export default function LocationMap({ lat, lng, postcode, distances = [] }) {
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
 
-                <MeasureTool propLat={lat} propLng={lng} onMeasure={handleMeasure} />
+                <MeasureTool onMeasure={handleMeasure} />
 
                 {/* Property marker */}
                 <Marker position={[lat, lng]} icon={propertyIcon}>

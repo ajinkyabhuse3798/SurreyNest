@@ -1,8 +1,6 @@
 /**
- * AreaRankings — Top 5 safest areas and top 5 crime hotspots in Guildford.
+ * AreaRankings, Top 5 safest areas and top 5 crime hotspots in Guildford.
  */
-import { Shield, AlertTriangle } from 'lucide-react'
-
 function RankList({ title, areas, emoji, color }) {
     if (!areas?.length) return null
     return (

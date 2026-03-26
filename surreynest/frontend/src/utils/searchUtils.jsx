@@ -1,5 +1,5 @@
 /**
- * Search utilities — constants, sort functions, and helpers.
+ * Search utilities, constants, sort functions, and helpers.
  */
 
 export const EPC_ORDER = { A: 1, B: 2, C: 3, D: 4, E: 5, F: 6, G: 7 }

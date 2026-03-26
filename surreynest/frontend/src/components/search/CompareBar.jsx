@@ -1,5 +1,5 @@
 /**
- * CompareBar — Floating compare bar.
+ * CompareBar, Floating compare bar.
  */
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeftRight, ArrowRight } from 'lucide-react'

@@ -1,5 +1,5 @@
 /**
- * Score API — safety scores and rent fairness.
+ * Score API, safety scores and rent fairness.
  *
  * Endpoints:
  *   GET /api/scores/safety?postcode=

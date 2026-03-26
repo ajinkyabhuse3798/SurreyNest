@@ -1,14 +1,14 @@
 /**
- * CostSection — Rent band, XAI CTA, bills estimate, total/per-person, RentRadar.
+ * CostSection, Rent band, XAI CTA, bills estimate, total/per-person, RentRadar.
  *
  * Props:
- *   property       — needs uprn, postcode, num_rooms
- *   weeklyRent     — predicted weekly rent (or null)
- *   monthlyRent    — monthly equivalent (or null)
- *   energyCost     — estimated monthly energy cost
- *   totalMonthly   — rent + bills total (or null)
- *   perPerson      — per-room cost (or null)
- *   annualCost     — 12-month total (or null)
+ *   property      , needs uprn, postcode, num_rooms
+ *   weeklyRent    , predicted weekly rent (or null)
+ *   monthlyRent   , monthly equivalent (or null)
+ *   energyCost    , estimated monthly energy cost
+ *   totalMonthly  , rent + bills total (or null)
+ *   perPerson     , per-room cost (or null)
+ *   annualCost    , 12-month total (or null)
  */
 import { Link } from 'react-router-dom'
 import {
@@ -37,7 +37,7 @@ function SubSection({ id, icon: Icon, title, infoTip, children }) {
     )
 }
 
-export default function CostSection({ property: p, weeklyRent, monthlyRent, energyCost, totalMonthly, perPerson, annualCost }) {
+export default function CostSection({ property: p, weeklyRent, energyCost, totalMonthly, perPerson, annualCost }) {
     const waterCost = 30
     const internetCost = 25
 
@@ -50,9 +50,9 @@ export default function CostSection({ property: p, weeklyRent, monthlyRent, ener
             : null
     })()
 
-    // Area-based market rent premium — varies by postcode district
+    // Area-based market rent premium, varies by postcode district
     // GU1/GU2: high student demand, premium landlords charge more
-    // GU3–GU5: family suburbs, moderate premium
+    // GU3 to GU5: family suburbs, moderate premium
     // GU7: Godalming, lower demand premium
     const marketRentMultiplier = (() => {
         const district = (p.postcode || '').trim().toUpperCase().split(/\s+/)[0]
@@ -131,7 +131,7 @@ export default function CostSection({ property: p, weeklyRent, monthlyRent, ener
                         </div>
                         <div className="flex-1 min-w-0 z-10">
                             <p className="text-[15px] font-bold text-white tracking-wide">Challenge a rent increase</p>
-                            <p className="text-xs text-amber-200 mt-1 font-medium">Section 13 analysis + tribunal brief · Renters' Rights Act 2025</p>
+                            <p className="text-xs text-amber-200 mt-1 font-medium">Section 13 market check + notice timing guide</p>
                         </div>
                         <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-sm group-hover:bg-white/20 transition-colors z-10">
                             <ChevronRight size={18} className="text-white group-hover:translate-x-0.5 transition-transform" />
@@ -147,7 +147,7 @@ export default function CostSection({ property: p, weeklyRent, monthlyRent, ener
                         <div className="space-y-3.5 pt-1">
                             {[
                                 { icon: Zap, colour: 'text-amber-500 bg-amber-50 border-amber-100', label: 'Energy', value: `~£${energyCost}/mo` },
-                                { icon: Droplets, colour: 'text-blue-500 bg-blue-50 border-blue-100', label: 'Water', value: `~£${waterCost}/mo` },
+                                { icon: Droplets, colour: 'text-teal-500 bg-teal-50 border-teal-100', label: 'Water', value: `~£${waterCost}/mo` },
                                 { icon: Wifi, colour: 'text-primary/80 bg-primary/10 border-primary/10', label: 'Internet', value: `~£${internetCost}/mo` },
                             ].map(b => (
                                 <div key={b.label} className="flex items-center justify-between text-sm group">
@@ -168,7 +168,7 @@ export default function CostSection({ property: p, weeklyRent, monthlyRent, ener
                                     Council tax
                                     <InfoTip text="Full-time students are exempt from council tax. You don't pay this! Register your exemption with Guildford council." />
                                 </span>
-                                <span className="font-extrabold text-emerald-700 bg-emerald-100 px-3 py-1.5 rounded-full text-xs border border-emerald-200 shadow-sm">£0 — Exempt ✓</span>
+                                <span className="font-extrabold text-emerald-700 bg-emerald-100 px-3 py-1.5 rounded-full text-xs border border-emerald-200 shadow-sm">£0, Exempt ✓</span>
                             </div>
                         </div>
                     </div>
@@ -221,4 +221,3 @@ export default function CostSection({ property: p, weeklyRent, monthlyRent, ener
         </>
     )
 }
-

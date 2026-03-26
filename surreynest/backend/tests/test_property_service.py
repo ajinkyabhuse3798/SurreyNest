@@ -1,6 +1,6 @@
 """Unit tests for property_service — pure helpers and structural checks.
 
-Tests _extract_postcode_sector (pure function, no DB).
+Tests extract_postcode_sector (pure function, no DB).
 search_properties and get_property_detail require PostGIS — integration
 tests for those are deferred to Step 3.11 with the full test DB.
 """
@@ -8,10 +8,10 @@ tests for those are deferred to Step 3.11 with the full test DB.
 import inspect
 
 from app.services.property_service import (
-    _extract_postcode_sector,
     get_property_detail,
     search_properties,
 )
+from app.utils.postcode import extract_postcode_sector as _extract_postcode_sector
 
 
 # ── Postcode sector extraction ────────────────────────────────────────────────
@@ -25,10 +25,10 @@ class TestExtractPostcodeSector:
         assert _extract_postcode_sector("GU2 7XH") == "GU2 7"
 
     def test_extract_sector_no_space(self) -> None:
-        """No-space postcode 'GU27XH' returns passthrough (no split possible)."""
+        """No-space postcode 'GU27XH' returns empty string (unparseable)."""
         result = _extract_postcode_sector("GU27XH")
-        # Without space, split returns one element — original returned
-        assert result == "GU27XH"
+        # Without space, split returns one element — cannot extract sector
+        assert result == ""
 
     def test_extract_sector_extra_spaces(self) -> None:
         """Extra whitespace '  GU2  7XH  ' → cleaned to 'GU2 7'."""

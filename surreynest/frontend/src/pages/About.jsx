@@ -1,5 +1,5 @@
 /**
- * About page — project overview, data sources, and team info.
+ * About page, project overview, data sources, and team info.
  */
 import Navbar from '../components/Navbar'
 
@@ -28,19 +28,19 @@ export default function About() {
                         <ul className="space-y-2">
                             <li className="flex items-start gap-2">
                                 <span className="text-primary font-bold text-xs mt-0.5">✓</span>
-                                <span><strong>Rent Fairness Scoring</strong> — ML-powered prediction of fair rent based on property characteristics</span>
+                                <span><strong>Rent Fairness Scoring</strong>, ML-powered prediction of fair rent based on property characteristics</span>
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-primary font-bold text-xs mt-0.5">✓</span>
-                                <span><strong>Safety Scores</strong> — Crime-weighted safety ratings for every postcode sector</span>
+                                <span><strong>Safety Scores</strong>, Crime-weighted safety ratings for every postcode sector</span>
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-primary font-bold text-xs mt-0.5">✓</span>
-                                <span><strong>HMO Verification</strong> — Instant check of HMO licensing status</span>
+                                <span><strong>HMO Verification</strong>, Instant check of HMO licensing status</span>
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-primary font-bold text-xs mt-0.5">✓</span>
-                                <span><strong>Tenant Rights</strong> — Comprehensive guide to your rights as a renter</span>
+                                <span><strong>Tenant Rights</strong>, Comprehensive guide to your rights as a renter</span>
                             </li>
                         </ul>
                     </div>

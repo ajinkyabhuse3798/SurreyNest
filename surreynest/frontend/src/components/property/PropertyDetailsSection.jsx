@@ -1,10 +1,10 @@
 /**
- * PropertyDetailsSection — Specs grid (type, rooms, area, built form) + EPC band.
+ * PropertyDetailsSection, Specs grid (type, rooms, area, built form) + EPC band.
  *
  * Props:
- *   property — needs property_type, num_rooms, floor_area_m2, built_form, energy_rating
- *   areaCtx  — floor area context string (or null)
- *   epcCtx   — { text, colour } from epcImpact() (or null)
+ *   property, needs property_type, num_rooms, floor_area_m2, built_form, energy_rating
+ *   areaCtx , floor area context string (or null)
+ *   epcCtx  , { text, colour } from epcImpact() (or null)
  */
 import { Home, Bed, Ruler, Building2, Info as InfoIcon } from 'lucide-react'
 import EpcBand from '../EpcBand'
@@ -45,7 +45,7 @@ export default function PropertyDetailsSection({ property: p, areaCtx, epcCtx })
                 <div className="space-y-4 pt-2 border-t border-slate-100/80">
                     <h3 className="text-sm font-extrabold text-slate-800 flex items-center gap-1.5">
                         Energy rating (EPC)
-                        <InfoTip text="Energy Performance Certificate — rates how energy-efficient the property is. A is best (cheapest to heat), G is worst (most expensive)." />
+                        <InfoTip text="Energy Performance Certificate, rates how energy-efficient the property is. A is best (cheapest to heat), G is worst (most expensive)." />
                     </h3>
                     <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-100/60">
                         <EpcBand rating={p.energy_rating} />

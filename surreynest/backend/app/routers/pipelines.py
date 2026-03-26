@@ -1,8 +1,8 @@
 """Admin pipeline management endpoints.
 
 Provides:
-    GET  /api/admin/pipelines/status          — last run per pipeline
-    POST /api/admin/pipelines/{name}/trigger   — manually trigger a pipeline
+    GET  /api/admin/pipelines/status         , last run per pipeline
+    POST /api/admin/pipelines/{name}/trigger  , manually trigger a pipeline
 """
 
 import logging
@@ -149,6 +149,6 @@ async def trigger_pipeline(
         )
 
     return TriggerResponse(
-        message=f"Pipeline '{pipeline_name}' triggered — check status endpoint for progress.",
+        message=f"Pipeline '{pipeline_name}' triggered, check status endpoint for progress.",
         pipeline_name=pipeline_name,
     )

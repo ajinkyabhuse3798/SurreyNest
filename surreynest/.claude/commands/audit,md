@@ -1,0 +1,7 @@
+Your goal is to update any vulnerable dependencies. 
+
+Do the following:
+
+First, run `npm audit` to find vulnerable installed packages in this project. 
+Second, run `npm audit fix` to apply updates. 
+Run test and verify the updates didn't break anything. 

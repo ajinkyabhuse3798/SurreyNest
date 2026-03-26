@@ -1,5 +1,5 @@
 /**
- * StreetSmarts — Best Streets & Comparison (Stitch-aligned).
+ * StreetSmarts, Best Streets & Comparison (Stitch-aligned).
  *
  * Layout matches Stitch screen "Best Streets & Comparison":
  *   1. Header: "Guildford Student Living"
@@ -12,7 +12,6 @@
  */
 import { useState, useEffect, useRef } from 'react'
 import { motion, useInView } from 'framer-motion'
-import { Link } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import api from '../services/api'
 
@@ -75,7 +74,7 @@ function ComparisonCard({ street, label, badgeClass = 'bg-primary text-white' })
                         <span className="material-symbols-outlined text-base">
                             {street.pillars?.find(p => p.label === 'Safety')?.score >= 70 ? 'check_circle' : 'pending'}
                         </span>
-                        {street.pillars?.find(p => p.label === 'Safety')?.score || '—'}
+                        {street.pillars?.find(p => p.label === 'Safety')?.score || 'N/A'}
                     </span>
                 </div>
                 {/* Tenant Rating / Properties */}
@@ -83,7 +82,7 @@ function ComparisonCard({ street, label, badgeClass = 'bg-primary text-white' })
                     <span className="text-sm font-medium">Properties</span>
                     <div className="flex items-center gap-1">
                         <span className="material-symbols-outlined text-primary text-base">apartment</span>
-                        <span className="font-bold">{street.property_count || '—'}</span>
+                        <span className="font-bold">{street.property_count || 'N/A'}</span>
                     </div>
                 </div>
             </div>

@@ -1,7 +1,8 @@
 """Review routes: GET/POST /reviews, DELETE /reviews/{id}.
 
-GET is public (moderated reviews only). POST requires auth.
-DELETE requires admin role (soft-deletes via is_flagged=True).
+GET is public (moderated reviews only). POST is public with moderation and can
+optionally attach an authenticated author. DELETE requires the original author
+or an admin (soft-deletes via is_flagged=True).
 """
 
 import logging
@@ -9,7 +10,7 @@ import math
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from app.rate_limit import limiter  # shared singleton — one instance for the whole app
+from app.rate_limit import limiter  # shared singleton, one instance for the whole app
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -18,7 +19,7 @@ from app.models.property import Property
 from app.models.review import Review
 from app.models.user import User
 from app.schemas.review import ReviewCreate, ReviewListResponse, ReviewResponse
-from app.services.auth_service import get_current_user, require_admin
+from app.services.auth_service import get_current_user, get_optional_user, require_admin
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +41,7 @@ async def get_reviews(
 ) -> ReviewListResponse:
     """Get paginated list of moderated, unflagged reviews for a property.
 
-    Public endpoint — no auth required.
+    Public endpoint, no auth required.
     """
     # Verify property exists
     prop = db.query(Property).filter(Property.uprn == uprn).first()
@@ -75,19 +76,20 @@ async def get_reviews(
     "/reviews",
     response_model=ReviewResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="Submit a review (requires auth)",
+    summary="Submit a review",
 )
 @limiter.limit(f"{settings.rate_limit_reviews}/hour")
 async def create_review(
     request: Request,
     review_data: ReviewCreate,
-    current_user: User = Depends(get_current_user),
+    current_user: User | None = Depends(get_optional_user),
     db: Session = Depends(get_db),
 ) -> ReviewResponse:
     """Create a new review for a property.
 
-    Requires authentication. One review per user per property.
-    Reviews start as unmoderated (not visible until admin approves).
+    Public endpoint. If a registered user is signed in, we tie the review to
+    that account and keep the one-review-per-user-per-property rule. Anonymous
+    reviews are allowed, but always start unmoderated.
     """
     # Verify property exists
     prop = db.query(Property).filter(Property.uprn == review_data.uprn).first()
@@ -97,21 +99,23 @@ async def create_review(
             detail=f"Property with UPRN {review_data.uprn} not found",
         )
 
-    # Check for existing review by this user for this property
-    existing = (
-        db.query(Review)
-        .filter(Review.user_id == current_user.id)
-        .filter(Review.uprn == review_data.uprn)
-        .first()
-    )
-    if existing:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="You have already reviewed this property",
+    author_id = current_user.id if current_user else None
+
+    if author_id is not None:
+        existing = (
+            db.query(Review)
+            .filter(Review.user_id == author_id)
+            .filter(Review.uprn == review_data.uprn)
+            .first()
         )
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="You have already reviewed this property",
+            )
 
     review = Review(
-        user_id=current_user.id,
+        user_id=author_id,
         uprn=review_data.uprn,
         overall_rating=review_data.overall_rating,
         landlord_rating=review_data.landlord_rating,
@@ -126,7 +130,12 @@ async def create_review(
     db.commit()
     db.refresh(review)
 
-    logger.info("Review created: %s for UPRN %s by user %s", review.id, review.uprn, current_user.id)
+    logger.info(
+        "Review created: %s for UPRN %s by %s",
+        review.id,
+        review.uprn,
+        author_id or "anonymous",
+    )
     return ReviewResponse.model_validate(review)
 
 
@@ -183,7 +192,7 @@ async def get_moderation_queue(
 ) -> ReviewListResponse:
     """Return reviews awaiting moderation.
 
-    Admin only — returns reviews where is_moderated=False AND is_flagged=False.
+    Admin only, returns reviews where is_moderated=False AND is_flagged=False.
     """
     query = (
         db.query(Review)
@@ -218,7 +227,7 @@ async def approve_review(
 ) -> ReviewResponse:
     """Approve a review by setting is_moderated=True.
 
-    Admin only — makes the review visible to public users.
+    Admin only, makes the review visible to public users.
     """
     review = db.query(Review).filter(Review.id == review_id).first()
     if not review:
@@ -249,7 +258,7 @@ async def reject_review(
 ) -> dict:
     """Reject a review by setting is_flagged=True.
 
-    Admin only — soft-deletes the review (never hard-deleted).
+    Admin only, soft-deletes the review (never hard-deleted).
     """
     review = db.query(Review).filter(Review.id == review_id).first()
     if not review:

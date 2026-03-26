@@ -1,12 +1,11 @@
 import { useState } from 'react'
-import { Link, useNavigate, useLocation, Outlet } from 'react-router-dom'
+import { Link, Navigate, useNavigate, useLocation, Outlet } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
-import { LayoutDashboard, Users, CreditCard, Flag, Activity, LogOut, Menu, X } from 'lucide-react'
+import { LayoutDashboard, Users, Flag, Activity, LogOut, Menu, X } from 'lucide-react'
 
 const NAV_ITEMS = [
     { label: 'Overview', to: '/admin/dashboard', icon: LayoutDashboard },
     { label: 'Users', to: '/admin/users', icon: Users },
-    { label: 'Subscriptions', to: '/admin/subscriptions', icon: CreditCard },
     { label: 'Reviews', to: '/admin/reviews', icon: Flag },
     { label: 'Pipelines', to: '/admin/pipelines', icon: Activity },
 ]
@@ -23,13 +22,12 @@ export default function AdminLayout() {
     }
 
     if (!user || user.role !== 'admin') {
-        navigate('/admin/login', { replace: true, state: { from: location } })
-        return null
+        return <Navigate to="/admin/login" replace state={{ from: location }} />
     }
 
-    function handleLogout() {
-        logout()
-        navigate('/')
+    async function handleLogout() {
+        await logout()
+        navigate('/', { replace: true })
     }
 
     return (

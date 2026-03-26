@@ -13,13 +13,14 @@ from urllib.parse import urlparse
 
 import requests as http_requests
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from pydantic import BaseModel, Field
-from app.rate_limit import limiter  # shared singleton — one instance for the whole app
+from app.rate_limit import limiter  # shared singleton, one instance for the whole app
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.property import Property
+from app.schemas.listings import CheckListingRequest, CheckListingResponse, NearbyProperty
+from app.services.listing_compliance_service import analyse_listing_compliance, html_to_listing_text
 from app.services.score_service import get_safety_score, get_rent_prediction
 
 logger = logging.getLogger(__name__)
@@ -33,6 +34,8 @@ ALLOWED_DOMAINS = {
     "www.spareroom.co.uk",
     "rightmove.co.uk",
     "www.rightmove.co.uk",
+    "openrent.co.uk",
+    "www.openrent.co.uk",
     "openrent.com",
     "www.openrent.com",
     "zoopla.co.uk",
@@ -55,39 +58,6 @@ HEADERS = {
     "Accept": "text/html,application/xhtml+xml",
     "Accept-Language": "en-GB,en;q=0.9",
 }
-
-
-# ── Schemas ──────────────────────────────────────────────────────────────────
-class CheckListingRequest(BaseModel):
-    url: str = Field(..., min_length=10, max_length=500)
-    postcode: Optional[str] = Field(None, max_length=10)  # user-supplied postcode (skips scraping)
-
-
-class NearbyProperty(BaseModel):
-    uprn: str
-    address: str
-    postcode: str
-    property_type: Optional[str] = None
-    num_rooms: Optional[int] = None
-    tenure: Optional[str] = None
-
-
-class CheckListingResponse(BaseModel):
-    postcode: str
-    postcode_sector: str
-    source_domain: str
-    original_url: str
-    safety_score: Optional[float] = None
-    safety_label: Optional[str] = None
-    avg_predicted_rent_weekly: Optional[float] = None
-    avg_predicted_rent_monthly: Optional[float] = None
-    properties_in_area: int = 0
-    nearby_properties: list[NearbyProperty] = []
-    hmo_licensed_count: int = 0
-    hmo_total_count: int = 0
-    flood_risk_severity: Optional[str] = None
-    message: str = ""
-
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 def _normalise_postcode(pc: str) -> str:
@@ -160,8 +130,11 @@ async def check_listing(
 
     # ── Resolve postcode ─────────────────────────────────────────────────
     # If the user supplied a postcode directly, use it (most reliable).
-    # Otherwise attempt to scrape the listing page — many sites block this.
+    # Otherwise attempt to scrape the listing page, many sites block this.
     best_postcode: Optional[str] = None
+    listing_text = body.listing_text.strip() if body.listing_text else None
+    listing_text_source = "manual_text" if listing_text else None
+    fetched_html: Optional[str] = None
 
     if body.postcode:
         raw = body.postcode.strip().upper()
@@ -177,36 +150,42 @@ async def check_listing(
             )
         best_postcode = candidate
         logger.info("Using user-supplied area/postcode: %s", best_postcode)
-    else:
-        # Try scraping — best effort; many listing sites block crawlers
+    if not best_postcode or not listing_text:
+        # Try scraping, best effort; many listing sites block crawlers
         try:
             resp = http_requests.get(url, headers=HEADERS, timeout=10, allow_redirects=True)
             resp.raise_for_status()
-            all_postcodes = _extract_postcodes_from_html(resp.text)
-            best_postcode = _pick_best_gu_postcode(all_postcodes)
+            fetched_html = resp.text
+            if not listing_text:
+                listing_text = html_to_listing_text(fetched_html)
+                listing_text_source = "scraped_page"
             if not best_postcode:
-                non_gu = [pc for pc in all_postcodes if not GU_PREFIX_RE.match(pc)]
-                if non_gu:
+                all_postcodes = _extract_postcodes_from_html(fetched_html)
+                best_postcode = _pick_best_gu_postcode(all_postcodes)
+                if not best_postcode:
+                    non_gu = [pc for pc in all_postcodes if not GU_PREFIX_RE.match(pc)]
+                    if non_gu:
+                        raise HTTPException(
+                            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                            detail=f"Found postcode(s) {', '.join(set(non_gu[:3]))} but SurreyNest only covers GU (Guildford) areas. Enter the postcode manually.",
+                        )
                     raise HTTPException(
                         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                        detail=f"Found postcode(s) {', '.join(set(non_gu[:3]))} but SurreyNest only covers GU (Guildford) areas. Enter the postcode manually.",
+                        detail="Could not extract a Guildford postcode from this listing page. Please enter the postcode manually.",
                     )
-                raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    detail="Could not extract a Guildford postcode from this listing page. Please enter the postcode manually.",
-                )
         except HTTPException:
             raise
         except http_requests.RequestException as exc:
             logger.warning("Failed to fetch listing URL %s: %s", url, exc)
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="Could not fetch the listing page — the site may be blocking automated requests. Please enter the postcode manually.",
-            )
+            if not best_postcode:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="Could not fetch the listing page, the site may be blocking automated requests. Please enter the postcode manually.",
+                )
 
     # ── District vs full postcode ─────────────────────────────────────────
     is_district = _is_district_only(best_postcode)
-    # Build the SQLAlchemy filter expression once — reused across all queries
+    # Build the SQLAlchemy filter expression once, reused across all queries
     if is_district:
         pc_filter = Property.postcode.like(f"{best_postcode} %")
         display_area = f"{best_postcode} area"
@@ -258,9 +237,14 @@ async def check_listing(
         for p in nearby_rows
     ]
 
+    compliance_report = analyse_listing_compliance(
+        listing_text,
+        text_source=listing_text_source,
+    )
+
     # Safety score
     safety = get_safety_score(sector, db)
-    safety_score_val = safety.get("score") if safety else None
+    safety_score_val = safety.get("safety_score") if safety else None
     safety_label = safety.get("label") if safety else None
 
     # Average rent prediction
@@ -321,5 +305,6 @@ async def check_listing(
         hmo_licensed_count=hmo_licensed,
         hmo_total_count=hmo_total,
         flood_risk_severity=flood_severity,
+        compliance_report=compliance_report,
         message=f"Analysis for {display_area} based on {properties_count} properties in our database.",
     )

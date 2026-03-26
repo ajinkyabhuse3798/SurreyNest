@@ -1,5 +1,5 @@
 /**
- * Section — Shared card-wrapper used across SafetyDetail, RentDetail, etc.
+ * Section, Shared card-wrapper used across SafetyDetail, RentDetail, etc.
  *
  * Provides a consistent white-card layout with an icon + title header
  * and optional subtitle. Extracted to eliminate 3 duplicate definitions.

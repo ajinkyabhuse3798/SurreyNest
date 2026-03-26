@@ -1,6 +1,6 @@
 """Rent increase challenge endpoint.
 
-POST /api/rent/challenge-increase — analyses a proposed rent increase
+POST /api/rent/challenge-increase, analyses a proposed rent increase
 and returns a verdict with tribunal brief.
 """
 

@@ -10,8 +10,8 @@ describe('POSTCODE_RE', () => {
         'GU1 3SB',
         'SW1A 1AA',
         'EC1A 1BB',
-        'gu2 7xh',      // lowercase
-        'GU27XH',        // no space
+        'gu2 7xh',     // lowercase
+        'GU27XH',       // no space
     ]
 
     const invalid = [
@@ -19,7 +19,7 @@ describe('POSTCODE_RE', () => {
         'GU',
         '12345',
         'ABCDEF',
-        'GU2',           // incomplete
+        'GU2',          // incomplete
         'hello world',
     ]
 

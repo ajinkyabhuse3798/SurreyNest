@@ -1,16 +1,16 @@
 /**
- * MarketPulse — Seasonal availability indicator for Guildford rentals.
+ * MarketPulse, Seasonal availability indicator for Guildford rentals.
  *
- * Static component — no API needed. Uses the current month to show
+ * Static component, no API needed. Uses the current month to show
  * where students are in the Guildford rental cycle and whether now
  * is a good time to search.
  *
  * Guildford cycle:
- *   Jan–Feb: Early Bird (supply rising)
- *   Mar–Jun: Peak/High Season (widest choice)
- *   Jul–Aug: Last Chance (dropping fast)
+ *   Jan to Feb: Early Bird (supply rising)
+ *   Mar to Jun: Peak/High Season (widest choice)
+ *   Jul to Aug: Last Chance (dropping fast)
  *   Sep:     Term Start (slim pickings)
- *   Oct–Nov: Low Season (very few listings)
+ *   Oct to Nov: Low Season (very few listings)
  *   Dec:     Off-Season (landlords list ahead)
  */
 import { useMemo } from 'react'
@@ -40,7 +40,7 @@ const STATUS_CONFIG = {
         badge: 'Good time to search',
         badgeColour: 'bg-amber-50 text-amber-700 border-amber-200',
         icon: Sparkles,
-        advice: 'Listings are starting to appear for September move-ins. Early birds get the best picks — start browsing now.',
+        advice: 'Listings are starting to appear for September move-ins. Early birds get the best picks, start browsing now.',
         emoji: '🟡',
     },
     peak: {
@@ -56,7 +56,7 @@ const STATUS_CONFIG = {
         badge: 'Great time to search',
         badgeColour: 'bg-green-50 text-green-700 border-green-200',
         icon: TrendingUp,
-        advice: 'Plenty of properties still available. This is your window — start signing contracts for September.',
+        advice: 'Plenty of properties still available. This is your window, start signing contracts for September.',
         emoji: '🟢',
     },
     last: {
@@ -64,7 +64,7 @@ const STATUS_CONFIG = {
         badge: 'Act quickly',
         badgeColour: 'bg-amber-50 text-amber-700 border-amber-200',
         icon: AlertTriangle,
-        advice: 'Properties are being snapped up fast. If you see something you like, don\'t wait — it may be gone tomorrow.',
+        advice: 'Properties are being snapped up fast. If you see something you like, don\'t wait, it may be gone tomorrow.',
         emoji: '🟡',
     },
     low: {
@@ -217,7 +217,7 @@ export default function MarketPulse() {
                             <div className="flex items-center gap-4 text-[10px] md:text-xs text-gray-400">
                                 <span className="flex items-center gap-1">
                                     <Calendar size={11} />
-                                    Peak: Mar–Jun
+                                    Peak: Mar to Jun
                                 </span>
                                 <span className="w-1 h-1 rounded-full bg-gray-300" />
                                 <span>🎓 Term start: Sep</span>

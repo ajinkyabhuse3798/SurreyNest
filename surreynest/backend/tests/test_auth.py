@@ -1,19 +1,45 @@
-"""Tests for registration, login, JWT, and protected routes."""
+"""Tests for registration, login, guest sessions, and protected routes."""
+
+from app.config import settings
 
 
-def test_register_with_valid_data_returns_201(client):
-    """Register a new user successfully."""
+def test_register_without_smtp_auto_verifies_and_sets_cookie(client, monkeypatch):
+    """Registering without SMTP should create a ready-to-use signed-in account."""
+    monkeypatch.setattr(settings, "smtp_host", "", raising=False)
     payload = {"email": "new@surrey.ac.uk", "password": "SecurePass123"}
 
     response = client.post("/api/auth/register", json=payload)
 
     assert response.status_code == 201
     data = response.json()
-    assert "id" in data
-    assert data["email"] == "new@surrey.ac.uk"
-    assert data["role"] == "student"
-    assert "password" not in data
-    assert "hashed_password" not in data
+    assert data["user"]["email"] == "new@surrey.ac.uk"
+    assert data["user"]["role"] == "student"
+    assert data["user"]["is_verified"] is True
+    assert data["requires_verification"] is False
+    assert "access_token=" in response.headers.get("set-cookie", "")
+
+
+def test_register_with_smtp_requires_verification(client, monkeypatch):
+    """When SMTP is configured, registration should stay in verify-email flow."""
+    payload = {"email": "verifyme@surrey.ac.uk", "password": "SecurePass123"}
+
+    async def fake_send_verification_email(to_email, token):
+        return None
+
+    monkeypatch.setattr(settings, "smtp_host", "smtp.example.com", raising=False)
+    monkeypatch.setattr(
+        "app.routers.auth.send_verification_email",
+        fake_send_verification_email,
+    )
+
+    response = client.post("/api/auth/register", json=payload)
+
+    assert response.status_code == 201
+    data = response.json()
+    assert data["user"]["email"] == "verifyme@surrey.ac.uk"
+    assert data["user"]["is_verified"] is False
+    assert data["requires_verification"] is True
+    assert "access_token=" not in response.headers.get("set-cookie", "")
 
 
 def test_register_with_duplicate_email_returns_400(client, test_user):
@@ -23,7 +49,7 @@ def test_register_with_duplicate_email_returns_400(client, test_user):
     response = client.post("/api/auth/register", json=payload)
 
     assert response.status_code == 400
-    assert "already exists" in response.json()["detail"]
+    assert "already registered" in response.json()["detail"].lower()
 
 
 def test_register_with_short_password_returns_422(client):
@@ -35,8 +61,9 @@ def test_register_with_short_password_returns_422(client):
     assert response.status_code == 422
 
 
-def test_login_with_valid_credentials_returns_token(client, test_user):
-    """Login with correct credentials returns JWT."""
+def test_login_with_valid_credentials_sets_cookie_and_returns_user(client, test_user, monkeypatch):
+    """Login with correct credentials sets cookie and returns user info."""
+    monkeypatch.setattr(settings, "smtp_host", "", raising=False)
     response = client.post(
         "/api/auth/login",
         data={"username": "testuser@surrey.ac.uk", "password": "TestPass123"},
@@ -44,8 +71,16 @@ def test_login_with_valid_credentials_returns_token(client, test_user):
 
     assert response.status_code == 200
     data = response.json()
-    assert "access_token" in data
-    assert data["token_type"] == "bearer"
+    assert data["user"]["email"] == "testuser@surrey.ac.uk"
+    assert data["user"]["role"] == "student"
+    assert data["user"]["is_verified"] is True
+    assert "access_token=" in response.headers.get("set-cookie", "")
+
+
+def test_guest_login_endpoint_removed(client):
+    """Guest login endpoint should no longer exist."""
+    response = client.post("/api/auth/guest-login")
+    assert response.status_code in (404, 405)
 
 
 def test_login_with_wrong_password_returns_401(client, test_user):
@@ -58,8 +93,20 @@ def test_login_with_wrong_password_returns_401(client, test_user):
     assert response.status_code == 401
 
 
-def test_protected_endpoint_without_token_returns_401(client, seeded_property):
-    """Accessing a protected endpoint without a token should fail."""
+def test_forgot_password_without_smtp_returns_honest_message(client, test_user, monkeypatch):
+    """Password reset should be explicit when email delivery is unavailable."""
+    monkeypatch.setattr(settings, "smtp_host", "", raising=False)
+    response = client.post(
+        "/api/auth/forgot-password",
+        json={"email": "testuser@surrey.ac.uk"},
+    )
+
+    assert response.status_code == 200
+    assert "not available" in response.json()["message"].lower()
+
+
+def test_public_review_submission_without_token_is_allowed(client, seeded_property):
+    """Public review submissions no longer require an auth token."""
     response = client.post(
         "/api/reviews",
         json={
@@ -72,7 +119,7 @@ def test_protected_endpoint_without_token_returns_401(client, seeded_property):
         },
     )
 
-    assert response.status_code == 401
+    assert response.status_code == 201
 
 
 # ── GET /auth/me ──────────────────────────────────────────────────────────────

@@ -1,5 +1,5 @@
 /**
- * AgentHero — gradient hero section for an agent's profile page.
+ * AgentHero, gradient hero section for an agent's profile page.
  * Shows display name, verified badge, sector pills, and composite score.
  *
  * @param {{ agent: import('../../services/agentApi').AgentDetail }} props

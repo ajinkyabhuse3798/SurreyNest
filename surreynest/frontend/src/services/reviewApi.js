@@ -1,13 +1,13 @@
 /**
- * Review API — CRUD for reviews + admin moderation.
+ * Review API, CRUD for reviews + admin moderation.
  *
  * Endpoints:
- *   GET    /api/reviews/{uprn}                    — public
- *   POST   /api/reviews                           — auth required
- *   DELETE /api/reviews/{reviewId}                 — author or admin
- *   GET    /api/admin/reviews/queue                — admin only
- *   POST   /api/admin/reviews/{reviewId}/approve   — admin only
- *   POST   /api/admin/reviews/{reviewId}/reject    — admin only
+ *   GET    /api/reviews/{uprn}                   , public
+ *   POST   /api/reviews                          , auth required
+ *   DELETE /api/reviews/{reviewId}                , author or admin
+ *   GET    /api/admin/reviews/queue               , admin only
+ *   POST   /api/admin/reviews/{reviewId}/approve  , admin only
+ *   POST   /api/admin/reviews/{reviewId}/reject   , admin only
  */
 import api from './api'
 

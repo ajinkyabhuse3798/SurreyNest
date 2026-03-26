@@ -1,10 +1,7 @@
-/**
- * ForgotPassword — request a password reset email.
- * Route: /forgot-password
- */
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Mail, ArrowLeft, CheckCircle2 } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, Mail } from 'lucide-react'
+
 import Navbar from '../components/Navbar'
 import api from '../services/api'
 
@@ -13,16 +10,21 @@ export default function ForgotPassword() {
     const [loading, setLoading] = useState(false)
     const [sent, setSent] = useState(false)
     const [error, setError] = useState('')
+    const [message, setMessage] = useState('')
 
-    async function handleSubmit(e) {
-        e.preventDefault()
+    async function handleSubmit(event) {
+        event.preventDefault()
         setError('')
         setLoading(true)
+
         try {
-            await api.post('/api/auth/forgot-password', { email: email.trim().toLowerCase() })
+            const res = await api.post('/api/auth/forgot-password', {
+                email: email.trim().toLowerCase(),
+            })
+            setMessage(res.data?.message || '')
             setSent(true)
         } catch (err) {
-            setError(err?.response?.data?.detail || 'Something went wrong. Please try again.')
+            setError(err.detail || err.response?.data?.detail || 'Something went wrong. Please try again.')
         } finally {
             setLoading(false)
         }
@@ -46,19 +48,19 @@ export default function ForgotPassword() {
                             <CheckCircle2 size={28} className="text-emerald-500" />
                         </div>
                         <h1 className="text-2xl font-bold text-slate-900 mb-2">Check your inbox</h1>
-                        <p className="text-sm text-slate-500 leading-relaxed mb-6">
-                            If <span className="font-semibold text-slate-700">{email}</span> is registered,
-                            we've sent a reset link. It expires in <strong>15 minutes</strong>.
-                        </p>
+                        <p className="text-sm text-slate-500 leading-relaxed mb-4">{message}</p>
                         <p className="text-xs text-slate-400">
-                            Didn't receive it? Check your spam folder, or{' '}
+                            Didn&apos;t receive it? Check your spam folder, or{' '}
                             <button
-                                onClick={() => { setSent(false); setEmail('') }}
+                                onClick={() => {
+                                    setSent(false)
+                                    setEmail('')
+                                    setMessage('')
+                                }}
                                 className="text-primary font-medium hover:underline"
                             >
                                 try again
-                            </button>
-                            .
+                            </button>.
                         </p>
                     </div>
                 ) : (
@@ -67,9 +69,7 @@ export default function ForgotPassword() {
                             <Mail size={22} className="text-primary" />
                         </div>
                         <h1 className="text-2xl font-bold text-slate-900 mb-1">Forgot password?</h1>
-                        <p className="text-sm text-slate-500 mb-7">
-                            Enter your email and we'll send you a reset link.
-                        </p>
+                        <p className="text-sm text-slate-500 mb-7">Enter your email and we&apos;ll send you a reset link.</p>
 
                         {error && (
                             <div className="border border-red-200 bg-red-50 rounded-lg px-4 py-3 text-sm text-red-700 mb-4">
@@ -83,7 +83,7 @@ export default function ForgotPassword() {
                                 <input
                                     type="email"
                                     value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
+                                    onChange={(event) => setEmail(event.target.value)}
                                     required
                                     autoComplete="email"
                                     placeholder="you@surrey.ac.uk"

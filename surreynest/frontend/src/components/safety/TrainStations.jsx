@@ -1,5 +1,5 @@
 /**
- * TrainStations — Nearest train stations with walking distance.
+ * TrainStations, Nearest train stations with walking distance.
  */
 import { Train } from 'lucide-react'
 import { TRAIN_STATIONS } from '../../utils/safetyConstants'
@@ -17,8 +17,8 @@ export default function TrainStations({ lat, lng }) {
         <div className="space-y-2.5">
             {stations.map((s) => (
                 <div key={s.name} className="flex items-start gap-3 bg-slate-50 rounded-xl px-4 py-3 border border-slate-100">
-                    <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
-                        <Train size={16} className="text-blue-600" />
+                    <div className="w-9 h-9 rounded-xl bg-orange-50 flex items-center justify-center flex-shrink-0">
+                        <Train size={16} className="text-primary" />
                     </div>
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2">

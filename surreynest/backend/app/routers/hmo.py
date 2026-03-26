@@ -1,6 +1,6 @@
 """HMO routes: GET /hmo/check.
 
-Thin route layer — queries HMO register for a property by UPRN or postcode.
+Thin route layer, queries HMO register for a property by UPRN or postcode.
 Returns status as "licensed", "expired", or "not_found".
 """
 

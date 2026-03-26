@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Activity, RefreshCw, AlertCircle, CheckCircle2, Play, Clock, Database } from 'lucide-react'
+import { RefreshCw, AlertCircle, CheckCircle2, Play, Clock, Database } from 'lucide-react'
 import { adminApi } from '../../services/adminApi'
 
 const DISPLAY_NAMES = {

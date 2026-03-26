@@ -1,5 +1,5 @@
 /**
- * AgentReviewCard — single review card on an agent's profile.
+ * AgentReviewCard, single review card on an agent's profile.
  *
  * @param {{ review: object }} props
  */

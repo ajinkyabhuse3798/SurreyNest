@@ -1,5 +1,5 @@
 /**
- * VerdictCard — colour-coded verdict display for rent challenge results.
+ * VerdictCard, colour-coded verdict display for rent challenge results.
  *
  * @param {{ result: object }} props
  */
@@ -44,6 +44,23 @@ const STRENGTH_LABEL = {
 
 export default function VerdictCard({ result }) {
     const config = VERDICT_CONFIG[result.verdict] || VERDICT_CONFIG.FAIR
+    const fmtDate = (value) => (
+        value
+            ? new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(value))
+            : null
+    )
+
+    const noticeLabel = result.minimum_notice_ok == null
+        ? 'Add notice dates to check this'
+        : result.minimum_notice_ok
+            ? 'Looks valid'
+            : 'Needs a second look'
+
+    const annualLabel = result.annual_limit_ok == null
+        ? 'Add the last increase date to check this'
+        : result.annual_limit_ok
+            ? 'Looks valid'
+            : 'Looks too soon'
 
     return (
         <div className={`rounded-2xl border ${config.bg} ${config.border} p-6 space-y-4`}>
@@ -83,6 +100,40 @@ export default function VerdictCard({ result }) {
                     <p className={`font-extrabold ${result.is_above_market ? config.text : 'text-emerald-700'}`}>
                         {result.market_excess_pct.toFixed(1)}%
                     </p>
+                </div>
+            </div>
+
+            <div className="grid gap-3 pt-2 border-t border-current/10 md:grid-cols-2">
+                <div className="rounded-xl bg-white/70 border border-white/80 p-4 space-y-2">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest">
+                        Legal timing
+                    </p>
+                    <p className="text-sm text-slate-700 leading-relaxed">
+                        {result.legal_summary}
+                    </p>
+                    {result.apply_before_date && (
+                        <p className="text-sm font-semibold text-slate-900">
+                            If you challenge it, apply before {fmtDate(result.apply_before_date)}.
+                        </p>
+                    )}
+                </div>
+
+                <div className="rounded-xl bg-white/70 border border-white/80 p-4 space-y-3">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest">
+                        Quick checks
+                    </p>
+                    <div>
+                        <p className="text-sm font-semibold text-slate-900">2-month notice: {noticeLabel}</p>
+                        <p className="text-xs text-slate-500 mt-1">
+                            {result.minimum_notice_detail || 'We can check this once you add the notice and start dates.'}
+                        </p>
+                    </div>
+                    <div>
+                        <p className="text-sm font-semibold text-slate-900">Once a year: {annualLabel}</p>
+                        <p className="text-xs text-slate-500 mt-1">
+                            {result.annual_limit_detail || 'We can check this once you add the previous increase date.'}
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>

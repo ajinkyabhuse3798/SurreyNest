@@ -1,5 +1,5 @@
 /**
- * FeaturesSection — "Everything you need" 3-column card grid.
+ * FeaturesSection, "Everything you need" 3-column card grid.
  * Matches Stitch Benefit Section: icon container, hover border, learn-more links.
  */
 import { Link } from 'react-router-dom'
@@ -17,10 +17,10 @@ const FEATURES = [
     },
     {
         icon: 'verified_user',
-        title: 'HMO Licensing',
-        description: 'Instant cross-referencing with local council databases to ensure your house is legally licensed and safety-compliant.',
+        title: 'Listing Compliance',
+        description: 'Scan advert wording for likely bidding, upfront-rent, pet, and discrimination issues, then cross-check it against Guildford area data.',
         link: '/check-listing',
-        linkLabel: 'Check a license',
+        linkLabel: 'Scan a listing',
     },
     {
         icon: 'menu_book',

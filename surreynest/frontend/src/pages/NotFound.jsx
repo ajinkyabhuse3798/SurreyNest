@@ -1,5 +1,5 @@
 /**
- * 404 Not Found page — catch-all for unknown routes.
+ * 404 Not Found page, catch-all for unknown routes.
  */
 import { Link } from 'react-router-dom'
 import Navbar from '../components/Navbar'

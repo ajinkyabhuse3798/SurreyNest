@@ -1,5 +1,5 @@
 /**
- * Property API — search and detail endpoints.
+ * Property API, search and detail endpoints.
  *
  * Endpoints:
  *   GET /api/properties?postcode=&radius=&page=&per_page=

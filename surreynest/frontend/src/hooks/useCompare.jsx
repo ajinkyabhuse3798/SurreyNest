@@ -1,5 +1,5 @@
 /**
- * useCompare — Context for managing property comparison list.
+ * useCompare, Context for managing property comparison list.
  *
  * Stores up to 4 UPRNs. Persisted to sessionStorage so state
  * survives page refreshes. Syncs to URL params on compare page.

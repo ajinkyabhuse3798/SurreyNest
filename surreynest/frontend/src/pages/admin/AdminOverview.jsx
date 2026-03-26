@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Users, Crown, CreditCard, Flag, TrendingUp, ArrowRight } from 'lucide-react'
+import { Users, UserPlus, Building2, Flag, TrendingUp, ArrowRight } from 'lucide-react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { adminApi } from '../../services/adminApi'
 
@@ -94,9 +94,6 @@ export default function AdminOverview() {
         )
     }
 
-    // Monthly revenue approximation based on pro_users (at £5.99/mo)
-    const monthlyRevenue = `£${(stats.pro_users * 5.99).toFixed(2)}`
-
     return (
         <div className="space-y-6 max-w-7xl mx-auto">
             <div className="flex items-center justify-between">
@@ -115,16 +112,15 @@ export default function AdminOverview() {
                     to="/admin/users"
                 />
                 <MetricCard 
-                    title="Active Pro Subs" 
-                    value={stats.pro_users.toLocaleString()} 
-                    icon={Crown} 
-                    to="/admin/subscriptions"
+                    title="Registered Accounts" 
+                    value={stats.registered_users.toLocaleString()} 
+                    icon={UserPlus} 
+                    to="/admin/users"
                 />
                 <MetricCard 
-                    title="Estimated MRR" 
-                    value={monthlyRevenue} 
-                    icon={CreditCard} 
-                    to="/admin/subscriptions"
+                    title="Properties Indexed" 
+                    value={stats.total_properties.toLocaleString()} 
+                    icon={Building2} 
                 />
                 <MetricCard 
                     title="Pending Reviews" 
@@ -140,7 +136,7 @@ export default function AdminOverview() {
                 {/* Signups Chart */}
                 <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200">
                     <div className="px-6 py-5 border-b border-slate-100">
-                        <h2 className="text-lg font-semibold text-slate-900">Signups (Last 30 Days)</h2>
+                        <h2 className="text-lg font-semibold text-slate-900">New Users (Last 30 Days)</h2>
                     </div>
                     <div className="p-6 h-[350px]">
                         <ResponsiveContainer width="100%" height="100%">
@@ -169,7 +165,7 @@ export default function AdminOverview() {
                                 <Tooltip 
                                     contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                                     itemStyle={{ color: '#0F172A', fontWeight: 600 }}
-                                    formatter={(value) => [value, 'Signups']}
+                                    formatter={(value) => [value, 'New users']}
                                 />
                                 <Area 
                                     type="monotone" 

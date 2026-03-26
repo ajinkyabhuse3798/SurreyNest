@@ -1,5 +1,5 @@
 /**
- * FilterBar — Collapsible filter dropdowns.
+ * FilterBar, Collapsible filter dropdowns.
  */
 import { ChevronDown, X } from 'lucide-react'
 

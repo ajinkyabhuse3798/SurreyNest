@@ -62,13 +62,11 @@ def _html(title: str, body: str) -> str:
 </html>"""
 
 
-def _verification_html(verify_url: str) -> str:
+def _verification_html(token: str) -> str:
     return _html("Verify your SurreyNest email", f"""
       <p>Thanks for signing up to SurreyNest!</p>
-      <p>Click the button below to verify your email address. This link expires in <strong>24 hours</strong>.</p>
-      <a href="{verify_url}" class="btn">Verify my email</a>
-      <p class="note">Or copy this link into your browser:</p>
-      <div class="token-box">{verify_url}</div>
+      <p>Please enter the verification code below to confirm your email address. This code expires in <strong>24 hours</strong>.</p>
+      <div style="font-size: 32px; font-weight: bold; letter-spacing: 4px; color: #ea871d; margin: 24px 0; text-align: center;">{token}</div>
       <p class="note">Didn't create a SurreyNest account? You can safely ignore this email.</p>
     """)
 
@@ -100,7 +98,7 @@ def _send_sync(to_email: str, subject: str, html_body: str) -> None:
     if not settings.smtp_host:
         # Dev mode: print to console instead of sending
         logger.info(
-            "📧 [DEV — EMAIL NOT SENT] To: %s | Subject: %s\n"
+            "📧 [DEV, EMAIL NOT SENT] To: %s | Subject: %s\n"
             "SMTP not configured. Set SMTP_HOST in .env to send real emails.",
             to_email,
             subject,
@@ -128,14 +126,13 @@ def _send_sync(to_email: str, subject: str, html_body: str) -> None:
 
 
 async def send_verification_email(to_email: str, token: str) -> None:
-    """Send an email verification link asynchronously.
+    """Send an email verification code asynchronously.
 
     Args:
         to_email: Recipient email address.
-        token: Raw (unhashed) verification token.
+        token: 6-digit verification token.
     """
-    url = f"{settings.frontend_url}/verify-email?token={token}"
-    html = _verification_html(url)
+    html = _verification_html(token)
     loop = asyncio.get_event_loop()
     await loop.run_in_executor(
         None, _send_sync, to_email, "Verify your SurreyNest email", html

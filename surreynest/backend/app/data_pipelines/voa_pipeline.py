@@ -16,8 +16,8 @@ Each sheet has the same column layout (header at row 6):
     col 8: Upper quartile
 
 Outputs:
-- ``data/processed/voa_rental_stats_clean.csv``  — full multi-column record
-- ``data/raw/voa_rental_stats_2024.csv``          — slim (bedroom_count, weekly_rent)
+- ``data/processed/voa_rental_stats_clean.csv`` , full multi-column record
+- ``data/raw/voa_rental_stats_2024.csv``         , slim (bedroom_count, weekly_rent)
   This slim CSV is the file ``train.py`` reads as ``VOA_PATH`` for MODE B.
 
 Usage:
@@ -51,7 +51,7 @@ ONS_URL = (
 )
 
 # Each bedroom count maps to the sheet name patterns to try (case-insensitive
-# substring match — robust to minor edition renaming like "Table 2.3" vs "Table2.3")
+# substring match, robust to minor edition renaming like "Table 2.3" vs "Table2.3")
 BEDROOM_SHEET_PATTERNS: Dict[int, List[str]] = {
     1: ["2.3", "one bedroom", "1 bedroom"],
     2: ["2.4", "two bedroom", "2 bedroom"],
@@ -60,7 +60,7 @@ BEDROOM_SHEET_PATTERNS: Dict[int, List[str]] = {
     # 5+ bedrooms: reuse the 4+ sheet (no separate 5-bed sheet in ONS data)
 }
 
-# Sanity bounds for monthly rent (£/month) — rejects missing/corrupt cells
+# Sanity bounds for monthly rent (£/month), rejects missing/corrupt cells
 VALID_MONTHLY_RANGE = (0.0, 20_000.0)
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
@@ -69,7 +69,7 @@ _DATA_ROOT = Path(__file__).resolve().parents[2] / "data"
 RAW_PATH = _DATA_ROOT / "raw" / "voa_rental_stats_2024.xls"
 PROCESSED_PATH = _DATA_ROOT / "processed" / "voa_rental_stats_clean.csv"
 
-# Slim CSV consumed by train.py — must match VOA_PATH defined in train.py
+# Slim CSV consumed by train.py, must match VOA_PATH defined in train.py
 VOA_CSV_PATH = _DATA_ROOT / "raw" / "voa_rental_stats_2024.csv"
 
 
@@ -82,7 +82,7 @@ def download_voa_xls(url: str = ONS_URL, dest: Path = RAW_PATH) -> Path:
     """Download the ONS PRMS XLS file with 3-attempt exponential backoff.
 
     Uses ``requests.get`` with ``stream=True`` for large binary files.
-    Does NOT use ``api_call_with_retry`` — that helper returns parsed JSON.
+    Does NOT use ``api_call_with_retry``, that helper returns parsed JSON.
 
     Args:
         url: URL of the ONS XLS file.
@@ -118,7 +118,7 @@ def download_voa_xls(url: str = ONS_URL, dest: Path = RAW_PATH) -> Path:
                 raise
             wait = 2**attempt  # 1 s, 2 s, 4 s
             logger.warning(
-                "Download attempt %d failed (%s) — retrying in %ds",
+                "Download attempt %d failed (%s), retrying in %ds",
                 attempt + 1,
                 exc,
                 wait,
@@ -129,7 +129,7 @@ def download_voa_xls(url: str = ONS_URL, dest: Path = RAW_PATH) -> Path:
 
 
 # =============================================================================
-# Step 2: Parse XLS — per-sheet strategy
+# Step 2: Parse XLS, per-sheet strategy
 # =============================================================================
 
 
@@ -163,7 +163,7 @@ def _find_sheet_for_bedroom(
 
     Args:
         sheet_names: All sheet names in the workbook.
-        bed_count: Bedroom count (1–4).
+        bed_count: Bedroom count (1 to 4).
 
     Returns:
         Matching sheet name, or ``None`` if no pattern matches.
@@ -190,12 +190,12 @@ def _extract_median_from_sheet(
     """Extract Guildford's median monthly rent from a single per-bedroom sheet.
 
     Scans for the Guildford row by LA code, then finds the Median column
-    header dynamically (falling back to column index 7 — the known position).
+    header dynamically (falling back to column index 7, the known position).
 
     Args:
         xls_path: Path to the spreadsheet file.
         sheet_name: Name of the sheet to read.
-        engine: pandas engine — ``"xlrd"`` for .xls, ``"openpyxl"`` for .xlsx.
+        engine: pandas engine, ``"xlrd"`` for .xls, ``"openpyxl"`` for .xlsx.
 
     Returns:
         Median monthly rent in £, or ``None`` if data is suppressed (``".."``).
@@ -242,7 +242,7 @@ def _extract_median_from_sheet(
         # Fallback: column 7 is the Median in the known ONS layout
         median_col_idx = 7
         logger.warning(
-            "Could not auto-detect Median column in '%s' — using col 7 fallback",
+            "Could not auto-detect Median column in '%s', using col 7 fallback",
             sheet_name,
         )
 
@@ -251,7 +251,7 @@ def _extract_median_from_sheet(
     # Suppressed values are published as ".." when sample size is too small
     if raw_val in ("..", "nan", "", "None"):
         logger.warning(
-            "Median value suppressed ('%s') in sheet '%s' for Guildford — skipping",
+            "Median value suppressed ('%s') in sheet '%s' for Guildford, skipping",
             raw_val,
             sheet_name,
         )
@@ -261,7 +261,7 @@ def _extract_median_from_sheet(
         return float(raw_val.replace(",", "").replace("£", ""))
     except ValueError:
         logger.warning(
-            "Cannot parse median value '%s' in sheet '%s' — skipping",
+            "Cannot parse median value '%s' in sheet '%s', skipping",
             raw_val,
             sheet_name,
         )
@@ -298,13 +298,13 @@ def clean_voa_data(xls_path: Path = RAW_PATH) -> pd.DataFrame:
 
     records = []
 
-    # Extract from per-bedroom sheets (1–4 have distinct sheets; 5 reuses 4+)
+    # Extract from per-bedroom sheets (1 to 4 have distinct sheets; 5 reuses 4+)
     extracted: Dict[int, float] = {}
     for bed_count in [1, 2, 3, 4]:
         sheet_name = _find_sheet_for_bedroom(sheet_names, bed_count)
         if sheet_name is None:
             logger.warning(
-                "No sheet found for bedroom_count=%d (patterns=%s) — skipping",
+                "No sheet found for bedroom_count=%d (patterns=%s), skipping",
                 bed_count,
                 BEDROOM_SHEET_PATTERNS.get(bed_count),
             )
@@ -316,7 +316,7 @@ def clean_voa_data(xls_path: Path = RAW_PATH) -> pd.DataFrame:
 
         if not (VALID_MONTHLY_RANGE[0] < monthly <= VALID_MONTHLY_RANGE[1]):
             logger.warning(
-                "Monthly rent £%.2f outside valid range %s for bed_count=%d — skipping",
+                "Monthly rent £%.2f outside valid range %s for bed_count=%d, skipping",
                 monthly,
                 VALID_MONTHLY_RANGE,
                 bed_count,
@@ -396,13 +396,13 @@ def save_voa_for_train(df: pd.DataFrame, output_path: Path = VOA_CSV_PATH) -> No
     """Save a slim two-column CSV consumed by ``train.py`` for MODE B.
 
     The file contains only ``bedroom_count`` and ``weekly_rent`` (5 rows for
-    bedrooms 1–5).  ``train.py`` reads this path via ``VOA_PATH`` — keeping
+    bedrooms 1 to 5).  ``train.py`` reads this path via ``VOA_PATH``, keeping
     the file slim ensures the training script stays DB-free.
 
     Args:
         df: Cleaned DataFrame containing at least ``bedroom_count`` and
             ``weekly_rent`` columns.
-        output_path: Destination path — must match ``train.py``'s ``VOA_PATH``.
+        output_path: Destination path, must match ``train.py``'s ``VOA_PATH``.
     """
     slim = df[["bedroom_count", "weekly_rent"]].copy()
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -486,7 +486,7 @@ def run_voa_pipeline(db: Optional[Session] = None) -> int:
         2. Parse and extract Guildford rent bands (per-bedroom sheets).
         3. Save full processed CSV.
         4. Save slim CSV for ``train.py`` MODE B.
-        5. Upsert to ``voa_rent_bands`` table (error-isolated — CSVs always
+        5. Upsert to ``voa_rent_bands`` table (error-isolated, CSVs always
            saved even if the DB is unavailable).
 
     Args:
@@ -499,7 +499,7 @@ def run_voa_pipeline(db: Optional[Session] = None) -> int:
 
     # Step 1: Download if not cached
     if not RAW_PATH.exists():
-        logger.info("Raw XLS not found — downloading from ONS")
+        logger.info("Raw XLS not found, downloading from ONS")
         download_voa_xls()
     else:
         logger.info("Using cached XLS at %s", RAW_PATH)
@@ -521,7 +521,7 @@ def run_voa_pipeline(db: Optional[Session] = None) -> int:
         logger.info("VOA pipeline complete: %d bedroom bands upserted to DB", rows)
     except Exception:
         logger.error(
-            "DB upsert failed — CSVs were saved successfully", exc_info=True
+            "DB upsert failed, CSVs were saved successfully", exc_info=True
         )
         rows = len(df)
     finally:

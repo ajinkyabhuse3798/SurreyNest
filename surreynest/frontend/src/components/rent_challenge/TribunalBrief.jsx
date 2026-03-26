@@ -1,5 +1,5 @@
 /**
- * TribunalBrief — displays and exports the tribunal application brief.
+ * TribunalBrief, displays and exports the tribunal application brief.
  *
  * @param {{ brief: string }} props
  */
@@ -21,7 +21,7 @@ export default function TribunalBrief({ brief }) {
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
-        a.download = 'section-13-challenge.txt'
+        a.download = 'rent-increase-challenge-notes.txt'
         document.body.appendChild(a)
         a.click()
         document.body.removeChild(a)
@@ -32,7 +32,7 @@ export default function TribunalBrief({ brief }) {
         <div className="space-y-3">
             <div className="flex items-center justify-between">
                 <h3 className="text-sm font-extrabold text-slate-800">
-                    Tribunal Application Brief
+                    Draft Challenge Notes
                 </h3>
                 <div className="flex gap-2">
                     <button

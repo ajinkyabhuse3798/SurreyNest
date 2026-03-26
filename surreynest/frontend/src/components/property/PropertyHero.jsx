@@ -1,13 +1,13 @@
 /**
- * PropertyHero — address header, tenure badge, compare button, and stat cards.
+ * PropertyHero, address header, tenure badge, compare button, and stat cards.
  *
  * Props:
- *   property     — the full property object
- *   weeklyRent   — predicted weekly rent (or null)
- *   areaCtx      — floor area context string (or null)
- *   compared     — boolean, whether this property is in the compare list
- *   onToggleCompare — callback to add/remove from compare
- *   onGoBack     — callback for the back button
+ *   property    , the full property object
+ *   weeklyRent  , predicted weekly rent (or null)
+ *   areaCtx     , floor area context string (or null)
+ *   compared    , boolean, whether this property is in the compare list
+ *   onToggleCompare, callback to add/remove from compare
+ *   onGoBack    , callback for the back button
  */
 import {
     PoundSterling, Shield, Bed, ArrowLeft, ArrowLeftRight, Maximize2,
@@ -81,27 +81,27 @@ export default function PropertyHero({ property: p, weeklyRent, areaCtx, compare
                 <StatCard
                     icon={PoundSterling}
                     label="Est. rent"
-                    value={weeklyRent ? `£${Math.round(weeklyRent * 0.92)}–${Math.round(weeklyRent * 1.08)}` : '—'}
+                    value={weeklyRent ? `£${Math.round(weeklyRent * 0.92)} to ${Math.round(weeklyRent * 1.08)}` : 'N/A'}
                     sub={weeklyRent ? '/wk range' : 'Not available'}
                 />
                 <StatCard
                     icon={Shield}
                     label="Safety"
-                    value={p.safety_score != null ? Math.round(p.safety_score) : '—'}
+                    value={p.safety_score != null ? Math.round(p.safety_score) : 'N/A'}
                     sub={p.safety_score != null ? '/100' : 'No data'}
                     colour={p.safety_score >= 60 ? 'text-emerald-600' : p.safety_score >= 40 ? 'text-amber-600' : p.safety_score != null ? 'text-red-600' : 'text-slate-400'}
                 />
                 <StatCard
                     icon={Bed}
                     label="Rooms"
-                    value={p.num_rooms || '—'}
+                    value={p.num_rooms || 'N/A'}
                     sub={p.floor_area_m2 ? `${p.floor_area_m2}m²` : null}
                     colour="text-slate-800"
                 />
                 <StatCard
                     icon={Maximize2}
                     label="Floor area"
-                    value={p.floor_area_m2 ? `${p.floor_area_m2}m²` : '—'}
+                    value={p.floor_area_m2 ? `${p.floor_area_m2}m²` : 'N/A'}
                     sub={areaCtx || null}
                     colour="text-slate-800"
                 />

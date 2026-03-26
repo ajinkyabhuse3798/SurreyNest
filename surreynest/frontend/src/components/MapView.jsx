@@ -1,5 +1,5 @@
 /**
- * MapView — reusable Leaflet map with score-coloured markers.
+ * MapView, reusable Leaflet map with score-coloured markers.
  *
  * Works in two modes:
  *   - Multi-marker (SearchResults): fitBounds to show all markers, click navigates
@@ -67,7 +67,7 @@ function ChangeView({ centre, zoom, markers, fitBounds, singleMode }) {
         } else if (centre) {
             map.setView(centre, zoom, { animate: true })
         }
-    }, [centre?.[0], centre?.[1], zoom, markers.length, fitBounds, singleMode])
+    }, [map, centre, zoom, markers, fitBounds, singleMode])
 
     return null
 }
@@ -160,7 +160,7 @@ export default function MapView({
         if (centre) return centre
         const first = markers.find((m) => m.lat && m.lng)
         return first ? [first.lat, first.lng] : GUILDFORD
-    }, [])
+    }, [centre, markers])
 
     const initialZoom = singleMode ? zoom : 13
 
@@ -173,7 +173,7 @@ export default function MapView({
     return (
         // Outer div sets the block size via Tailwind classes.
         // min-h ensures a fallback when h-full resolves to 0 (no definite parent height).
-        // MapContainer uses inline style — CSS height:100% only works with explicit parent
+        // MapContainer uses inline style, CSS height:100% only works with explicit parent
         // height, but inline style bypasses that restriction.
         <div className={`${height} min-h-[300px] ${className}`}>
             <MapContainer

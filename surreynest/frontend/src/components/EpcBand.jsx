@@ -1,5 +1,5 @@
 /**
- * EpcBand — UK Energy Performance Certificate colour band A→G.
+ * EpcBand, UK Energy Performance Certificate colour band A→G.
  * Highlights the property's rating with an arrow marker.
  *
  * @param {{ rating: string | null, className?: string }} props

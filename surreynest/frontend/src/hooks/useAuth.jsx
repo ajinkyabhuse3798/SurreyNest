@@ -1,13 +1,13 @@
 /**
  * Authentication hook and context provider.
- * Uses httpOnly cookies for JWT auth — no token in localStorage.
+ * Uses httpOnly cookies for JWT auth, no token in localStorage.
  *
  * On mount, calls GET /api/auth/me to restore session from cookie.
  * Login sets the cookie server-side; frontend only stores user info in state.
  *
  * Usage:
  *   Wrap app in <AuthProvider> then call useAuth() in any component.
- *   { user, loading, login, register, logout }
+ *   { user, loading, login, logout }
  */
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
@@ -16,46 +16,67 @@ import api from '../services/api'
 const AuthContext = createContext(null)
 
 /**
- * AuthProvider — wraps the app and provides auth state + actions.
+ * AuthProvider, wraps the app and provides auth state + actions.
  * @param {{ children: React.ReactNode }} props
  */
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null)
     const [loading, setLoading] = useState(true)
 
+    const refreshUser = useCallback(async () => {
+        try {
+            const res = await api.get('/api/auth/me')
+            setUser(res.data)
+            return res.data
+        } catch {
+            setUser(null)
+            return null
+        }
+    }, [])
+
     // On mount, restore session from httpOnly cookie via /api/auth/me
     useEffect(() => {
         let cancelled = false
+
         api.get('/api/auth/me')
             .then((res) => {
                 if (!cancelled) setUser(res.data)
             })
             .catch(() => {
-                // Not authenticated or cookie expired — that's fine
+                // Not authenticated or cookie expired, that's fine
                 if (!cancelled) setUser(null)
             })
             .finally(() => {
                 if (!cancelled) setLoading(false)
             })
+
         return () => { cancelled = true }
     }, [])
 
     const login = useCallback(async (email, password) => {
         const formData = new URLSearchParams()
-        formData.append('username', email)
+        formData.append('username', email.trim().toLowerCase())
         formData.append('password', password)
 
         const res = await api.post('/api/auth/login', formData, {
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         })
 
-        // Server sets httpOnly cookie — we only store user info in React state
+        // Server sets httpOnly cookie, we only store user info in React state
         setUser(res.data.user)
         return res.data
     }, [])
 
     const register = useCallback(async (email, password) => {
-        const res = await api.post('/api/auth/register', { email, password })
+        const res = await api.post('/api/auth/register', {
+            email: email.trim().toLowerCase(),
+            password,
+        })
+
+        if (res.data?.requires_verification === false && res.data?.user) {
+            setUser(res.data.user)
+        }
+
         return res.data
     }, [])
 
@@ -68,24 +89,21 @@ export function AuthProvider({ children }) {
         setUser(null)
     }, [])
 
-    // Re-fetch /api/auth/me and update user state (e.g. after email verification)
-    const refreshUser = useCallback(async () => {
-        try {
-            const res = await api.get('/api/auth/me')
-            setUser(res.data)
-        } catch {
-            // Session may have expired — leave user state as-is
-        }
-    }, [])
-
-    const value = { user, loading, login, register, logout, refreshUser }
+    const value = {
+        user,
+        loading,
+        login,
+        register,
+        logout,
+        refreshUser,
+    }
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
 /**
  * Hook to access auth state and actions.
- * @returns {{ user: object|null, loading: boolean, login: Function, register: Function, logout: Function }}
+ * @returns {{ user: object|null, loading: boolean, login: Function, logout: Function }}
  */
 export function useAuth() {
     const context = useContext(AuthContext)
@@ -96,9 +114,8 @@ export function useAuth() {
 }
 
 /**
- * Route guard — redirects to /login if not authenticated.
- * Usage: <RequireAuth><AdminDashboard /></RequireAuth>
- * Preserves the attempted URL in state so Login can redirect back.
+ * Route guard, redirects to the admin login if not authenticated.
+ * Preserves the attempted URL in state so admin login can redirect back.
  * @param {{ children: React.ReactNode, adminOnly?: boolean }} props
  */
 export function RequireAuth({ children, adminOnly = false }) {
@@ -114,17 +131,13 @@ export function RequireAuth({ children, adminOnly = false }) {
     }
 
     if (!user) {
-        // Declarative redirect — preserves React state, passes return URL
+        // Declarative redirect, preserves React state, passes return URL
         const loginPath = adminOnly ? '/admin/login' : '/login'
         return <Navigate to={loginPath} state={{ from: location }} replace />
     }
 
     if (adminOnly && user.role !== 'admin') {
-        return (
-            <div className="px-4 py-12 text-center text-sm text-gray-500">
-                You do not have permission to view this page.
-            </div>
-        )
+        return <Navigate to="/admin/login" state={{ from: location }} replace />
     }
 
     return children

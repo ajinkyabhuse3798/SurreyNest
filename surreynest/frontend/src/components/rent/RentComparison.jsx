@@ -1,5 +1,5 @@
 /**
- * RentComparison — Predicted rent vs sector and Guildford median.
+ * RentComparison, Predicted rent vs sector and Guildford median.
  */
 export default function RentComparison({ predicted, comparison }) {
     if (!comparison) return null
@@ -13,9 +13,9 @@ export default function RentComparison({ predicted, comparison }) {
             value: `£${Math.round(comparison.sector_median)}/wk`,
             diff,
             sentence: diff > 5
-                ? `This property is about ${Math.abs(Math.round(diff))}% above the ${comparison.sector} average — it is a bigger or better-located property.`
+                ? `This property is about ${Math.abs(Math.round(diff))}% above the ${comparison.sector} average, it is a bigger or better-located property.`
                 : diff < -5
-                    ? `This is about ${Math.abs(Math.round(diff))}% below average for ${comparison.sector} — a more affordable option in this area.`
+                    ? `This is about ${Math.abs(Math.round(diff))}% below average for ${comparison.sector}, a more affordable option in this area.`
                     : `Right around average for ${comparison.sector}.`,
         })
     }
@@ -27,9 +27,9 @@ export default function RentComparison({ predicted, comparison }) {
             value: `£${Math.round(comparison.guildford_median)}/wk`,
             diff,
             sentence: diff > 10
-                ? `Higher than the Guildford average — this tends to be a more expensive area or property type.`
+                ? `Higher than the Guildford average, this tends to be a more expensive area or property type.`
                 : diff < -10
-                    ? `Lower than the Guildford average — one of the more affordable options in the borough.`
+                    ? `Lower than the Guildford average, one of the more affordable options in the borough.`
                     : `Close to the overall Guildford average.`,
         })
     }

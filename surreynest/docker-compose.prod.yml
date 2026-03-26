@@ -49,11 +49,17 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       SECRET_KEY: ${SECRET_KEY}
       ENVIRONMENT: production
-      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-https://surreynest.com}
-      ML_MODEL_VERSION: ${ML_MODEL_VERSION:-v4.4.0}
+      ALLOWED_ORIGINS: "${ALLOWED_ORIGINS:-https://surreynest.com}"
+      FRONTEND_URL: "${FRONTEND_URL:?FRONTEND_URL must be set}"
+      ML_MODEL_VERSION: ${ML_MODEL_VERSION:-v7.0.0}
       ML_MODEL_PATH: app/ml/models
       EPC_API_USERNAME: ${EPC_API_USERNAME}
       EPC_API_KEY: ${EPC_API_KEY}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: "${SMTP_FROM:-SurreyNest <noreply@surreynest.com>}"
     expose:
       - "8000"
     depends_on:
@@ -76,7 +82,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
+        VITE_API_URL: ${VITE_API_URL:-}
     container_name: surreynest-frontend
     restart: always
     ports:

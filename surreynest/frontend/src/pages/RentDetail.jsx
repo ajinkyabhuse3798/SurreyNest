@@ -1,5 +1,5 @@
 /**
- * RentDetail v2 — Thin orchestrator for the rent XAI page.
+ * RentDetail v2, Thin orchestrator for the rent XAI page.
  *
  * Route: /rent/:uprn
  *
@@ -18,7 +18,6 @@ import Section from '../components/ui/Section'
 import api from '../services/api'
 
 // ── Sub-components ───────────────────────────────────────────────────────────
-import ProGate from '../components/ProGate'
 import RentHero from '../components/rent/RentHero'
 import WaterfallChart from '../components/rent/WaterfallChart'
 import TopFactors from '../components/rent/TopFactors'
@@ -95,44 +94,39 @@ export default function RentDetail() {
                         {/* 1. Hero */}
                         <RentHero data={data} />
 
-                        {/* 2–7. Full XAI breakdown — Pro only */}
-                        <ProGate feature="Full rent breakdown with AI explanations">
-                            <div className="space-y-5">
-                                {/* 2. Waterfall Chart */}
-                                <Section icon={BarChart3} title="What affects this rent?" subtitle="Each bar shows how much a feature pushes the rent up (↑) or down (↓)">
-                                    <p className="text-sm text-slate-500 mb-4 leading-relaxed">
-                                        Our model looked at <span className="font-semibold text-slate-700">{data.feature_contributions.length} features</span> of this property.
-                                        Here are the biggest factors that determined the predicted rent:
-                                    </p>
-                                    <WaterfallChart contributions={data.feature_contributions} />
-                                </Section>
+                        {/* 2. Waterfall Chart */}
+                        <Section icon={BarChart3} title="What affects this rent?" subtitle="Each bar shows how much a feature pushes the rent up (↑) or down (↓)">
+                            <p className="text-sm text-slate-500 mb-4 leading-relaxed">
+                                Our model looked at <span className="font-semibold text-slate-700">{data.feature_contributions.length} features</span> of this property.
+                                Here are the biggest factors that determined the predicted rent:
+                            </p>
+                            <WaterfallChart contributions={data.feature_contributions} />
+                        </Section>
 
-                                {/* 3. Top 3 Factors */}
-                                <Section icon={Lightbulb} title="The 3 biggest reasons for this rent" subtitle="In plain English — why this property costs what it does">
-                                    <TopFactors contributions={data.feature_contributions} />
-                                </Section>
+                        {/* 3. Top 3 Factors */}
+                        <Section icon={Lightbulb} title="The 3 biggest reasons for this rent" subtitle="In plain English, why this property costs what it does">
+                            <TopFactors contributions={data.feature_contributions} />
+                        </Section>
 
-                                {/* 4. Feature Deep-Dive */}
-                                <Section icon={Layers} title="All features the model considered" subtitle="Every data point that went into the prediction">
-                                    <FeatureDeepDive contributions={data.feature_contributions} />
-                                </Section>
+                        {/* 4. Feature Deep-Dive */}
+                        <Section icon={Layers} title="All features the model considered" subtitle="Every data point that went into the prediction">
+                            <FeatureDeepDive contributions={data.feature_contributions} />
+                        </Section>
 
-                                {/* 5. Rent Comparison */}
-                                <Section icon={TrendingUp} title="How does this compare to other rents?" subtitle="This prediction vs the area average and Guildford average">
-                                    <RentComparison predicted={data.predicted_weekly_rent} comparison={data.rent_comparison} />
-                                </Section>
+                        {/* 5. Rent Comparison */}
+                        <Section icon={TrendingUp} title="How does this compare to other rents?" subtitle="This prediction vs the area average and Guildford average">
+                            <RentComparison predicted={data.predicted_weekly_rent} comparison={data.rent_comparison} />
+                        </Section>
 
-                                {/* 6. How the Model Works */}
-                                <Section icon={Brain} title="How does the AI calculate rent?" subtitle="A simple explanation of the 3-step process">
-                                    <ModelExplainer modelInfo={data.model_info} />
-                                </Section>
+                        {/* 6. How the Model Works */}
+                        <Section icon={Brain} title="How does the AI calculate rent?" subtitle="A simple explanation of the 3-step process">
+                            <ModelExplainer modelInfo={data.model_info} />
+                        </Section>
 
-                                {/* 7. Global Importance */}
-                                <Section icon={Target} title="What matters most across all of Guildford?" subtitle="Features ranked by global importance — not just for this property">
-                                    <GlobalImportance importance={data.global_feature_importance} />
-                                </Section>
-                            </div>
-                        </ProGate>
+                        {/* 7. Global Importance */}
+                        <Section icon={Target} title="What matters most across all of Guildford?" subtitle="Features ranked by global importance, not just for this property">
+                            <GlobalImportance importance={data.global_feature_importance} />
+                        </Section>
 
                         {/* Footer */}
                         <div className="text-center text-xs text-slate-400 pt-4 pb-8">

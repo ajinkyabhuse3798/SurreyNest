@@ -1,5 +1,5 @@
 /**
- * HowItWorks — 3-step timeline.
+ * HowItWorks, 3-step timeline.
  * Mobile: vertical timeline with dashed connecting line.
  * Desktop: horizontal 3-column with connecting dashed line.
  * Updated for Stitch branding: amber primary palette.

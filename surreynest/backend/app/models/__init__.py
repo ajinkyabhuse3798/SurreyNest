@@ -1,4 +1,4 @@
-"""SQLAlchemy ORM models — one file per database table.
+"""SQLAlchemy ORM models, one file per database table.
 
 Import all models here so that Alembic autogenerate can discover them
 when it imports `app.models`.

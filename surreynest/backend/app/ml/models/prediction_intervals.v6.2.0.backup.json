@@ -1,0 +1,24 @@
+{
+  "method": "absolute_residual_quantile",
+  "alpha": 0.2,
+  "global_half_width": 83.68,
+  "min_type_samples": 25,
+  "by_type": {
+    "Flat": {
+      "n": 208,
+      "half_width": 77.81800000000007
+    },
+    "Semi-Detached": {
+      "n": 172,
+      "half_width": 85.232
+    },
+    "Terraced": {
+      "n": 81,
+      "half_width": 80.80999999999995
+    },
+    "Detached": {
+      "n": 36,
+      "half_width": 130.91000000000003
+    }
+  }
+}

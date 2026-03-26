@@ -1,11 +1,5 @@
 /**
- * MonthlyChart — Monthly crime bar chart + trend indicator.
- *
- * Bugs fixed:
- *  - Bars were invisible because CSS `height: X%` inside a flex child
- *    without explicit height resolves to 0. Now uses pixel-based height.
- *  - Trend badge checked 'decreasing'/'increasing' but API returns
- *    'improving'/'worsening'. Now handles both vocabularies.
+ * MonthlyChart, Monthly crime bar chart + trend indicator.
  */
 import { TrendingDown, TrendingUp, Minus } from 'lucide-react'
 
@@ -19,9 +13,10 @@ export default function MonthlyChart({ data, trend }) {
     }
 
     const maxCount = Math.max(...data.map(d => d.count), 1)
-    const BAR_CONTAINER_PX = 128 // matches h-32
+    const plotHeightPx = 136
+    const labelStep = data.length > 10 ? 3 : data.length > 6 ? 2 : 1
 
-    // Normalise trend direction — API may return 'improving'/'worsening'
+    // Normalise trend direction, API may return 'improving'/'worsening'
     // or 'decreasing'/'increasing' depending on the service version.
     const isImproving = trend?.direction === 'improving' || trend?.direction === 'decreasing'
     const isWorsening = trend?.direction === 'worsening' || trend?.direction === 'increasing'
@@ -43,28 +38,47 @@ export default function MonthlyChart({ data, trend }) {
                 </div>
             )}
 
-            {/* Bar chart — uses pixel heights to avoid CSS % height bug */}
-            <div className="flex items-end gap-1" style={{ height: `${BAR_CONTAINER_PX}px` }}>
-                {data.map((d, i) => {
-                    const hPx = Math.max(6, (d.count / maxCount) * BAR_CONTAINER_PX)
-                    return (
-                        <div
-                            key={i}
-                            className="flex-1 flex flex-col items-center justify-end group"
-                            style={{ height: '100%' }}
-                            title={`${getMonth(d.month)}: ${d.count} crimes`}
-                        >
-                            <span className="text-[9px] font-bold text-primary/80 opacity-0 group-hover:opacity-100 transition-opacity mb-1 bg-white px-1.5 py-0.5 rounded shadow-sm relative bottom-1">{d.count}</span>
+            {/* Bar chart */}
+            <div className="rounded-2xl border border-slate-100 bg-slate-50/60 px-3 py-4">
+                <div className="flex gap-1.5">
+                    {data.map((d, i) => {
+                        const hPx = d.count > 0
+                            ? Math.max(8, Math.round((d.count / maxCount) * (plotHeightPx - 12)))
+                            : 4
+                        const showLabel = i % labelStep === 0 || i === data.length - 1
+                        return (
                             <div
-                                className="w-full bg-primary/100 rounded-t-lg group-hover:bg-primary shadow-[0_4px_10px_-2px_rgba(99,102,241,0.3)] transition-all duration-300"
-                                style={{ height: `${hPx}px`, minHeight: '6px' }}
-                            />
-                            {i % 3 === 0 && (
-                                <span className="text-[8px] text-slate-400 font-medium mt-1">{getMonth(d.month)}</span>
-                            )}
-                        </div>
-                    )
-                })}
+                                key={i}
+                                className="group flex-1 min-w-0"
+                                title={`${getMonth(d.month)}: ${d.count} crimes`}
+                            >
+                                <div className="relative flex items-end" style={{ height: `${plotHeightPx}px` }}>
+                                    <div className="pointer-events-none absolute inset-0 flex flex-col justify-between">
+                                        <div className="border-t border-slate-200/70" />
+                                        <div className="border-t border-slate-200/50" />
+                                        <div className="border-t border-slate-200/50" />
+                                        <div className="border-t border-slate-300" />
+                                    </div>
+
+                                    <span className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 rounded-md bg-white px-1.5 py-0.5 text-[10px] font-bold text-slate-600 shadow-sm opacity-0 transition-opacity group-hover:opacity-100">
+                                        {d.count}
+                                    </span>
+
+                                    <div
+                                        className="relative z-10 w-full rounded-t-lg bg-primary transition-all duration-300 group-hover:brightness-95"
+                                        style={{ height: `${hPx}px`, minHeight: '4px' }}
+                                    />
+                                </div>
+
+                                <div className="mt-2 h-4 text-center">
+                                    <span className={`text-[9px] font-medium text-slate-400 ${showLabel ? '' : 'invisible'}`}>
+                                        {getMonth(d.month)}
+                                    </span>
+                                </div>
+                            </div>
+                        )
+                    })}
+                </div>
             </div>
 
             {trend?.label && (

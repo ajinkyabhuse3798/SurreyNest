@@ -13,9 +13,11 @@ writes audit records to the ``pipeline_runs`` table.
 """
 
 import asyncio
+import fcntl
 import logging
 from concurrent.futures import ThreadPoolExecutor
-from typing import Optional
+from pathlib import Path
+from typing import Optional, TextIO
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -26,6 +28,7 @@ logger = logging.getLogger(__name__)
 
 # Thread pool for running synchronous pipelines off the event loop
 _executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="pipeline")
+_SCHEDULER_LOCK_PATH = Path("/tmp/surreynest-scheduler.lock")
 
 
 # ── Pipeline wrappers ─────────────────────────────────────────────────────────
@@ -93,6 +96,34 @@ async def _run_in_thread(fn) -> None:  # type: ignore[no-untyped-def]
         logger.error("Scheduled pipeline job failed", exc_info=True)
 
 
+# ── Scheduler leader lock ────────────────────────────────────────────────────
+def acquire_scheduler_lock() -> Optional[TextIO]:
+    """Try to claim the single scheduler slot for this container.
+
+    Returns:
+        An open file handle if this process became the scheduler leader, or
+        None if another worker already holds the lock.
+    """
+    lock_file = _SCHEDULER_LOCK_PATH.open("a+")
+    try:
+        fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        lock_file.close()
+        return None
+    return lock_file
+
+
+def release_scheduler_lock(lock_file: Optional[TextIO]) -> None:
+    """Release the scheduler leader lock and close the file handle."""
+    if lock_file is None:
+        return
+
+    try:
+        fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+    finally:
+        lock_file.close()
+
+
 # ── Job registration ──────────────────────────────────────────────────────────
 def register_jobs(scheduler: AsyncIOScheduler) -> None:
     """Register all pipeline cron jobs on the scheduler.
@@ -100,7 +131,7 @@ def register_jobs(scheduler: AsyncIOScheduler) -> None:
     Args:
         scheduler: The APScheduler AsyncIOScheduler instance from main.py.
     """
-    # Crime pipeline — nightly at 3:00 AM
+    # Crime pipeline, nightly at 3:00 AM
     scheduler.add_job(
         _run_in_thread,
         CronTrigger(hour=3, minute=0),
@@ -108,10 +139,10 @@ def register_jobs(scheduler: AsyncIOScheduler) -> None:
         id="crime_pipeline",
         name="Crime pipeline (nightly)",
         replace_existing=True,
-        misfire_grace_time=3600,  # 1 hour grace period
+        misfire_grace_time=3600, # 1 hour grace period
     )
 
-    # HMO pipeline — weekly Monday at 2:00 AM
+    # HMO pipeline, weekly Monday at 2:00 AM
     scheduler.add_job(
         _run_in_thread,
         CronTrigger(day_of_week="mon", hour=2, minute=0),
@@ -122,7 +153,7 @@ def register_jobs(scheduler: AsyncIOScheduler) -> None:
         misfire_grace_time=3600,
     )
 
-    # EPC pipeline — monthly 1st at 2:00 AM
+    # EPC pipeline, monthly 1st at 2:00 AM
     scheduler.add_job(
         _run_in_thread,
         CronTrigger(day=1, hour=2, minute=0),
@@ -133,7 +164,7 @@ def register_jobs(scheduler: AsyncIOScheduler) -> None:
         misfire_grace_time=3600,
     )
 
-    # Land Registry pipeline — monthly 1st at 3:00 AM
+    # Land Registry pipeline, monthly 1st at 3:00 AM
     scheduler.add_job(
         _run_in_thread,
         CronTrigger(day=1, hour=3, minute=0),
@@ -144,7 +175,7 @@ def register_jobs(scheduler: AsyncIOScheduler) -> None:
         misfire_grace_time=3600,
     )
 
-    # Flood pipeline — weekly Tuesday at 4:00 AM
+    # Flood pipeline, weekly Tuesday at 4:00 AM
     scheduler.add_job(
         _run_in_thread,
         CronTrigger(day_of_week="tue", hour=4, minute=0),
@@ -163,7 +194,7 @@ def trigger_pipeline(name: str) -> bool:
     """Manually trigger a pipeline in a background thread.
 
     Args:
-        name: Pipeline key — one of: crime, hmo, epc, land_registry, flood.
+        name: Pipeline key, one of: crime, hmo, epc, land_registry, flood.
 
     Returns:
         True if the pipeline was started, False if name is invalid.

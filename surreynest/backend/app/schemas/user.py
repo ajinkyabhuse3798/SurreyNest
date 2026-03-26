@@ -37,14 +37,13 @@ class UserCreate(BaseModel):
 
 
 class UserResponse(BaseModel):
-    """Response body for user data — never includes password fields.
+    """Response body for user data, never includes password fields.
 
     Attributes:
         id: User UUID.
         email: User email.
-        role: User role (student, landlord, admin).
+        role: User role (guest, student, landlord, admin).
         created_at: Account creation timestamp.
-        is_pro: Whether the user has an active Pro subscription.
         is_verified: Whether the user has verified their email address.
     """
 
@@ -52,7 +51,6 @@ class UserResponse(BaseModel):
     email: str
     role: str
     created_at: datetime
-    is_pro: bool = False
     is_verified: bool = False
 
     model_config = {"from_attributes": True}

@@ -1,244 +1,171 @@
 # ML Model Documentation
 
-> Rent fairness prediction model — design decisions, features, training process, evaluation.
+> SurreyNest rent prediction model for Guildford weekly rents.
 
----
+## Current Artifact
 
-## Model Goal
+- Active model version: `v7.0.0`
+- Runtime entrypoint: `backend/app/ml/predict.py`
+- Training script: `backend/app/ml/train.py`
+- Evaluation script: `backend/app/ml/evaluate.py`
+- Saved artifacts:
+  - `backend/app/ml/models/rent_model_v1.pkl`
+  - `backend/app/ml/models/feature_columns.json`
+  - `backend/app/ml/models/sector_rent_map.json`
+  - `backend/app/ml/models/prediction_calibration.json`
+  - `backend/app/ml/models/prediction_intervals.json`
+  - `backend/app/ml/models/model_metadata.json`
 
-**Input:** Property characteristics (size, type, location, energy rating)
-**Output:** Predicted fair weekly rent in £
+## Goal
 
-**Downstream use:** Compare against actual rent submitted by user → compute fairness score 0–100
+The model predicts a fair weekly rent for a Guildford property using structural, location, energy, and local-market features. SurreyNest uses that prediction to power rent comparisons, fairness messaging, and the rent-explain route.
 
----
+## Architecture
 
-## Model Architecture
+- Estimator: `xgboost.XGBRegressor`
+- Wrapper: single-step sklearn `Pipeline`
+- Target transform: `log1p(y)` during training, `expm1(...)` at inference
+- Preprocessing: no `StandardScaler` in v7
 
-**Type:** Gradient Boosting Regression
-**Library:** scikit-learn `GradientBoostingRegressor`
-**Wrapper:** sklearn `Pipeline` (scaler → estimator)
-**Serialisation:** `joblib.dump()` → `backend/app/ml/models/rent_model_v1.pkl`
+Why v7 dropped scaling:
 
-### Why Gradient Boosting?
-- Handles mixed numerical + categorical features well
-- Robust to outliers (less sensitive than linear regression)
-- Doesn't require feature scaling for tree-based methods (but we scale anyway for future model swaps)
-- Good out-of-the-box performance on small-medium tabular datasets (~10k rows)
+- XGBoost uses tree splits, so monotonic feature scaling does not change the learned split order.
+- Removing the unused scaler makes the artifact simpler and avoids explainability drift between pipeline versions.
 
-### Baselines (always train these for comparison)
-1. `Ridge` regression — linear baseline
-2. `RandomForestRegressor` — alternative ensemble
-3. Mean prediction — sanity check (R² = 0 by definition)
+## Training Data
 
----
+- Source feature matrix: `backend/data/processed/features.csv`
+- Primary target: `actual_market_rent_weekly`
+- Rows with missing real observed rent are excluded from training
+- University-managed properties are excluded from the target
+- Weekly rent outliers above `£1000` are capped out of training
+- Grouping key for evaluation: postcode sector, with postcode fallback when sector is missing
 
-## Features
+The sector prior used at inference is intentionally leakage-safe:
 
-### Numerical Features (scaled with StandardScaler)
+- `sector_median_rent` is recomputed from `implied_weekly_rent`
+- scraped market rents are not allowed to leak into the anchor prior
+- anchors are split by `Flat` versus `House`
 
-| Feature | Source | Notes |
-|---------|--------|-------|
-| `floor_area_m2` | EPC: TOTAL-FLOOR-AREA | Strongest single predictor. Never impute — drop rows where null. |
-| `num_rooms` | EPC: NUMBER-HABITABLE-ROOMS | Integer. Impute with median if null (rare). |
-| `energy_rating_encoded` | EPC: CURRENT-ENERGY-RATING | Ordinal: G=0, F=1, E=2, D=3, C=4, B=5, A=6 |
-| `distance_to_town_km` | Computed | Haversine from property to GU1 3AY (51.2362, -0.5704) |
-| `distance_to_uni_km` | Computed | Haversine from property to Surrey Uni (51.2417, -0.5888) |
-| `area_value_index` | Land Registry | Median sale price for postcode, normalised 0–1 |
-| `safety_score` | police.uk | Our computed safety score 0–100 for postcode sector |
+## Feature Set
 
-### Categorical Features (one-hot encoded)
+### Core numeric features
 
-| Feature | Source | Categories |
-|---------|--------|-----------|
-| `property_type` | EPC | Flat, Terraced, Semi-Detached, Detached, Other |
-| `built_form` | EPC | Detached, Semi-Detached, Terraced, End-Terrace, Other |
+- `floor_area_m2`
+- `actual_bedrooms`
+- `rooms_per_m2`
+- `energy_rating_ordinal`
+- `potential_rating_ordinal`
+- `distance_to_town_km`
+- `distance_to_uni_km`
+- `distance_to_station_km`
+- `town_proximity_score`
+- `uni_proximity_score`
+- `station_proximity_score`
+- `accessibility_score`
+- `safety_score`
+- `sale_count`
+- `sector_median_rent`
+- `has_mains_gas`
+- `flat_floor_premium`
+- `annual_energy_cost`
+- `energy_improvement_gap`
+- `price_drop_pct`
+- `is_studio`
+- `is_student_zone`
+- `m2_per_bedroom`
 
-### Binary Features
+### One-hot features
 
-| Feature | Source | Notes |
-|---------|--------|-------|
-| `is_hmo` | HMO register | 1 if on register, 0 if not |
+- `ptype_*` property-type columns
+- `bform_*` built-form columns
 
-### Features NOT included (and why)
+The saved feature order is always taken from `feature_columns.json`.
 
-| Feature | Reason excluded |
-|---------|----------------|
-| `address` (raw string) | Too high cardinality, no semantic encoding for MVP |
-| `postcode` (raw) | Use computed distance features instead |
-| `landlord_name` | Not reliably available |
-| `number_of_floors` | Sparse in EPC data |
-| `construction_year` | Low correlation with rent, high missingness |
+## Training And Evaluation Flow
 
----
+1. Load the processed feature matrix.
+2. Recompute the leakage-safe sector anchor.
+3. Build the v7 feature frame and real-rent target.
+4. Run grouped cross-validation using leave-one-sector-out when enough postcode sectors exist.
+5. Fit a lightweight post-prediction calibration artifact and type-aware prediction intervals.
+6. Train the final XGBoost pipeline on the full training frame.
+7. Save the model, metadata, and post-processing artifacts.
 
-## Training Target
+## Metrics
 
-### Primary target: VOA median rent bands (MVP)
+### Shipped artifact metadata
 
-Source: VOA Private Rental Market Statistics (quarterly)
-- Download median weekly rent by bedroom count for Guildford Borough
-- Map to properties: `predicted_rent = voa_median_by_bedrooms[num_rooms]`
-- This is coarse but sufficient for MVP fairness scoring
+The current saved metadata in `model_metadata.json` reports:
 
-```python
-# Fallback VOA bands used only when the VOA pipeline has not yet run (MODE A).
-# When voa_pipeline.py has been executed, train.py and evaluate.py switch to
-# MODE B automatically: they read real ONS median rents from
-# data/raw/voa_rental_stats_2024.csv (written by the pipeline).
-#
-# Data source: ONS Private Rental Market Summary Statistics
-# Licence: Open Government Licence v3.0 (completely free, no restrictions)
-# MODE A fallback (stale estimates — superseded by pipeline output in MODE B):
-VOA_RENT_BANDS = {
-    1: 173,   # £/week median for 1-bed Guildford
-    2: 230,   # £/week median for 2-bed
-    3: 290,   # £/week median for 3-bed
-    4: 375,   # £/week median for 4-bed
-    5: 460,   # £/week median for 5-bed (use 4+ band)
-}
+- Evaluation method: `LOSO(11)`
+- MAE: `£52.75/week`
+- RMSE: `£75.75/week`
+- R²: `0.8293`
+- Raw OOF MAE: `£56.29/week`
+- Raw OOF R²: `0.8013`
+- Interval coverage: `79.88%`
+
+### Important calibration note
+
+The calibration artifact is fit after generating raw out-of-fold predictions. That is fine for the deployed artifact, but it makes the reported calibrated OOF metrics optimistic if you treat them as a fully leakage-free benchmark.
+
+An independent nested audit on `2026-03-26` found the same v7 model still beats the `v6.2.0` backup, but with more conservative calibrated metrics:
+
+- Honest calibrated MAE: `£55.73/week`
+- Honest calibrated RMSE: `£80.20/week`
+- Honest calibrated R²: `0.8086`
+- Honest raw OOF MAE: `£55.94/week`
+- Honest raw OOF R²: `0.8008`
+
+Conclusion:
+
+- Keep `v7.0.0`
+- Do not revert to `v6.2.0`
+- Use the nested figures for model-selection discussions until cross-fit calibration is added to the training pipeline
+
+## Inference Path
+
+`predict_rent(...)` in `backend/app/ml/predict.py`:
+
+- builds the runtime feature row
+- runs the pipeline prediction
+- reverses the log transform
+- applies calibration
+- applies type-aware prediction intervals
+- returns confidence and model version metadata
+
+`/api/rent/explain/{uprn}` in `backend/app/routers/rent_explain.py`:
+
+- shares the same feature builder
+- uses `prepare_explainability_input(...)` so v7 works both with and without preprocessing steps
+- computes per-feature SHAP contributions from the XGBoost booster
+
+## Operational Notes
+
+- `ML_MODEL_VERSION` should match the saved artifact version
+- if the env var and artifact differ, the backend still loads the artifact and logs an error so cached predictions are naturally invalidated
+- production health checks should verify both app startup and model loading, not just HTTP reachability
+
+## Commands
+
+Retrain:
+
+```bash
+cd backend
+python -m app.ml.train
 ```
 
-### Future target: user-submitted rents
+Evaluate:
 
-Once we have 50+ reviews with `weekly_rent_paid` populated:
-1. Join reviews with property features
-2. Use `weekly_rent_paid` as training target
-3. Retrain model — this dramatically improves accuracy
-4. Model version bumps to `v2.0.0`
-
----
-
-## Training Process (`app/ml/train.py`)
-
-```
-1. Load features.csv (output of features.py)
-2. Load VOA rent bands → create target column `expected_weekly_rent`
-3. Feature engineering:
-   - Drop rows with null floor_area_m2 or num_rooms
-   - Impute safety_score nulls with median
-   - One-hot encode property_type, built_form
-   - Ordinal encode energy_rating
-   - Compute distance features using geopy.distance.geodesic
-4. train_test_split(test_size=0.2, random_state=42)
-5. Build Pipeline: StandardScaler → GradientBoostingRegressor
-6. GridSearchCV with 5-fold CV:
-   - n_estimators: [100, 200, 300]
-   - max_depth: [3, 4, 5]
-   - learning_rate: [0.05, 0.1, 0.15]
-7. Evaluate best model on test set (see Evaluation section)
-8. If metrics acceptable: retrain on full dataset
-9. joblib.dump(pipeline, f'models/rent_model_{VERSION}.pkl')
-10. Log: model version, training date, dataset size, key metrics to pipeline_runs table
+```bash
+cd backend
+python -m app.ml.evaluate
 ```
 
----
+Run ML tests:
 
-## Evaluation Metrics (`app/ml/evaluate.py`)
-
-### Target thresholds
-
-| Metric | Target | Notes |
-|--------|--------|-------|
-| MAE | < £50/week | Average prediction error in £ |
-| RMSE | < £75/week | Penalises large errors |
-| R² | > 0.65 | % variance explained (0 = mean predictor, 1 = perfect) |
-| CV std | < 0.1 | Std of cross-validation scores — low = not overfitting |
-
-### Plots to generate (saved to `app/ml/plots/`)
-1. **Residual scatter:** actual vs predicted — look for heteroscedasticity
-2. **Feature importance bar chart:** shows which features the model relies on most
-3. **Learning curve:** training size vs validation error — shows if more data helps
-4. **Error distribution histogram:** should be roughly normal, centred near 0
-
-### Interpreting R²
-- R² = 0.0 → model does no better than predicting the mean rent for every property
-- R² = 0.70 → model explains 70% of rent variation — acceptable for fairness scoring
-- R² > 0.85 → very good — achievable once we have user-submitted rent data
-
----
-
-## Fairness Score Formula (`app/services/score_service.py`)
-
-```python
-def compute_fairness_score(actual_rent: float, predicted_rent: float) -> dict:
-    """
-    Converts rent deviation into a 0-100 fairness score.
-    
-    Args:
-        actual_rent: Weekly rent in £ as submitted by tenant
-        predicted_rent: Model's predicted fair weekly rent for this property
-    
-    Returns:
-        dict with score (int), label (str), colour (str), ratio (float)
-    """
-    ratio = actual_rent / predicted_rent
-    
-    if ratio <= 0.85:
-        score = 90 + int((0.85 - ratio) / 0.15 * 10)  # 90-100
-        label = "Excellent deal"
-        colour = "green"
-    elif ratio <= 1.00:
-        score = 70 + int((1.00 - ratio) / 0.15 * 20)   # 70-89
-        label = "Below market"
-        colour = "green"
-    elif ratio <= 1.10:
-        score = 55 + int((1.10 - ratio) / 0.10 * 15)   # 55-69
-        label = "At market rate"
-        colour = "amber"
-    elif ratio <= 1.25:
-        score = 35 + int((1.25 - ratio) / 0.15 * 20)   # 35-54
-        label = "Slightly above market"
-        colour = "amber"
-    elif ratio <= 1.40:
-        score = 15 + int((1.40 - ratio) / 0.15 * 20)   # 15-34
-        label = "Above market"
-        colour = "red"
-    else:
-        score = max(0, 15 - int((ratio - 1.40) / 0.20 * 15))  # 0-14
-        label = "Significantly overpriced"
-        colour = "red"
-    
-    score = max(0, min(100, score))
-    
-    return {
-        "score": score,
-        "label": label,
-        "colour": colour,
-        "ratio": round(ratio, 2),
-        "predicted_rent": round(predicted_rent, 2),
-        "actual_rent": actual_rent,
-        "difference_pounds": round(actual_rent - predicted_rent, 2),
-        "difference_percent": round((ratio - 1) * 100, 1)
-    }
+```bash
+cd backend
+pytest -q tests/test_ml_pipeline.py
 ```
-
----
-
-## Model Versioning
-
-| Version | Training target | Expected R² | Notes |
-|---------|----------------|-------------|-------|
-| `v1.0.0` | VOA median bands | 0.55–0.70 | MVP — coarse target |
-| `v2.0.0` | User-submitted rents | 0.75–0.85 | When 50+ reviews available |
-| `v3.0.0` | User rents + scraped | 0.82–0.90 | If Rightmove scraper built |
-
-Model pkl files are named `rent_model_v{VERSION}.pkl`.
-The active version is referenced in `app/config.py → ML_MODEL_VERSION`.
-
----
-
-## Retraining Schedule
-
-- **Monthly** via APScheduler (3rd of month 4am)
-- Pipeline: download latest VOA data → rerun features.py → train.py → evaluate → if metrics pass thresholds, deploy new pkl
-- If metrics fail: keep previous pkl, log failure, alert via email
-
----
-
-## Known Limitations
-
-1. **Coarse training target:** VOA medians are by bedroom count, not property-specific. This limits R² ceiling until user rent data is available.
-2. **No time-series component:** Model doesn't account for seasonal rent variation or year-on-year increases.
-3. **Missing furnished/unfurnished signal:** Furnished properties rent higher; EPC data doesn't include this.
-4. **HMO pricing dynamics:** HMOs are often priced per-room; our model predicts whole-property rent. HMO properties should display per-room interpretation.

@@ -1,5 +1,5 @@
 /**
- * RightsGuide — Interactive Rights Guide (Stitch-aligned).
+ * RightsGuide, Interactive Rights Guide (Stitch-aligned).
  *
  * Layout matches Stitch screen "Interactive Rights Guide":
  *   1. Hero: "Tenant Empowerment" badge + "Your Rights, Simplified." heading
@@ -7,16 +7,18 @@
  *   3. Interactive Rights Grid: 4-col category cards
  *   4. FAQ + Sidebar: 3-col grid (2-col accordion + 1-col sticky sidebar)
  *
- * No API calls — static content page.
+ * No API calls, static content page.
  */
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import Navbar from '../components/Navbar'
+import { getListingIssueContent, LISTING_RULES_TOPIC } from '../utils/listingGuidance'
 
 // ── Rights content ───────────────────────────────────────────────────────────
 const CATEGORIES = [
     {
+        slug: 'deposit-protection',
         title: 'Deposit Protection',
         icon: 'account_balance_wallet',
         summary: 'Ensure your money is safe in a government-backed scheme within 30 days.',
@@ -27,55 +29,86 @@ const CATEGORIES = [
         ],
     },
     {
+        slug: 'repairs-safety',
         title: 'Repairs & Safety',
         icon: 'build',
         summary: 'Your right to a habitable home: heating, water, and structural integrity.',
         items: [
-            { q: 'What repairs is my landlord responsible for?', a: 'Your landlord must keep the structure and exterior in repair, keep installations for water, gas, electricity, heating and hot water in working order, and ensure the property meets the Decent Homes Standard.' },
-            { q: 'How do I report a repair?', a: 'Write to your landlord or agent — always in writing (email is fine). Keep a record of the date and what you reported. Give them a reasonable time to respond (usually 14 days for non-urgent repairs).' },
+            { q: 'What repairs is my landlord responsible for?', a: 'Your landlord must keep the structure and exterior in repair and keep installations for water, gas, electricity, heating and hot water in working order. Private rented homes also need to be free from serious health and safety hazards.' },
+            { q: 'How do I report a repair?', a: 'Write to your landlord or agent, always in writing (email is fine). Keep a record of the date and what you reported. Give them a reasonable time to respond (usually 14 days for non-urgent repairs).' },
             { q: 'What if my landlord ignores repair requests?', a: 'Contact Guildford Borough Council\'s Environmental Health team. They can inspect the property and issue improvement notices. You can also contact Shelter for free legal advice.' },
         ],
     },
     {
+        slug: 'eviction-defense',
         title: 'Eviction Defense',
         icon: 'gavel',
-        summary: 'Understanding Section 21 and Section 8 notices. Know the notice periods.',
+        summary: 'Know which eviction rules apply now and what changes from 1 May 2026.',
         items: [
-            { q: 'Can my landlord evict me during my fixed term?', a: 'Generally, no — not unless you\'ve breached the tenancy agreement (e.g. rent arrears, anti-social behaviour). They would need to use a Section 8 notice with valid grounds.' },
-            { q: 'What notice do they need to give?', a: 'For a Section 21 ("no-fault") notice: at least 2 months\' written notice, and only after the fixed term ends. For Section 8: varies by ground (as little as 2 weeks for rent arrears of 2+ months).' },
+            { q: 'Can my landlord evict me during my fixed term?', a: 'Before 1 May 2026, fixed-term rules can still apply. From 1 May 2026 in England, most private tenancies move to assured periodic tenancies and Section 21 ends, so landlords will need a legal ground to seek possession.' },
+            { q: 'What notice do they need to give?', a: 'Before 1 May 2026, current Section 21 and Section 8 rules still apply. From 1 May 2026, landlords will use the reformed Section 8 process and the notice period will depend on the ground they rely on.' },
             { q: 'What should I do if I receive an eviction notice?', a: 'Don\'t panic and don\'t leave immediately. Check the notice is valid. Contact the University of Surrey Students\' Union Advice Centre or Citizens Advice for free help.' },
         ],
     },
     {
+        slug: 'rent-increases',
         title: 'Rent Increases',
         icon: 'payments',
-        summary: 'When and how much your rent can be raised legally under your contract.',
+        summary: 'How rent-rise rules work now and what changes from 1 May 2026.',
         items: [
-            { q: 'Can my landlord increase rent during a fixed term?', a: 'Only if the tenancy agreement includes a rent review clause. Otherwise, rent can only be changed at the end of a fixed term or during a periodic tenancy with a Section 13 notice.' },
-            { q: 'How much notice is required for a rent increase?', a: 'At least one month\'s notice for monthly tenancies, or six months for yearly tenancies. The increase must be fair and realistic (in line with local market rents).' },
-            { q: 'Can I challenge a rent increase?', a: 'Yes! You can challenge it through the First-tier Tribunal (Property Chamber). Use our Rent Increase Calculator tool to analyse whether the increase is fair.' },
+            { q: 'Can my landlord increase rent during a fixed term?', a: 'Before 1 May 2026, that depends on your tenancy agreement and whether it contains a rent review clause. From 1 May 2026 in England, private rent increases should move onto the revised Section 13 process.' },
+            { q: 'How much notice is required for a rent increase?', a: 'Under the Phase 1 Renters\' Rights Act rules starting on 1 May 2026, landlords should give at least 2 months\' notice and can usually increase the rent no more than once a year.' },
+            { q: 'Can I challenge a rent increase?', a: 'Yes. If you think the proposed rent is above market level, apply to the First-tier Tribunal before the new rent start date shown on the notice. Our checker helps you compare the proposal with local market evidence.' },
         ],
     },
     {
+        slug: LISTING_RULES_TOPIC,
+        title: 'Listing Rules',
+        icon: 'policy',
+        summary: 'Spot pressure tactics, upfront-rent requests, blanket exclusions, and pet wording before you commit.',
+        items: [
+            { q: 'Can a landlord or agent ask for offers above the asking rent?', a: 'From 1 May 2026 in England, landlords and agents must publish one asking rent and cannot ask for, encourage, or accept bids above it. If you see wording like "offers over" or "best offers", save the advert and ask for the fixed advertised rent in writing.' },
+            { q: 'Can a listing ask for several months of rent upfront?', a: 'Large upfront requests are a warning sign. From 1 May 2026 in England, landlords and agents cannot require more than 1 month of rent in advance for most private tenancies. Ask whether it is a condition or just a preference before paying anything.' },
+            { q: 'What if the advert says "No DSS" or rules out families?', a: 'Blanket exclusion wording is a serious concern. From 1 May 2026 in England, landlords and agents cannot make someone less likely to rent because they receive benefits or have children. Keep screenshots and ask for the actual affordability or suitability criteria in writing.' },
+            { q: 'What if the advert says "no pets"?', a: 'A blanket pet ban is worth checking carefully. From 1 May 2026 in England, landlords must consider pet requests individually and give valid reasons if they refuse. Ask for the pet policy in writing and whether any insurance or building rules apply.' },
+        ],
+    },
+    {
+        slug: 'hmo-rights',
         title: 'HMO Rights',
         icon: 'apartment',
         summary: 'If renting as 3+ individuals, the property must meet specific HMO standards.',
         items: [
             { q: 'What is an HMO?', a: 'A property is an HMO if it\'s occupied by 3 or more tenants forming 2 or more households, who share a kitchen, bathroom or toilet. If there are 5 or more tenants, a mandatory HMO licence is required.' },
-            { q: 'How do I check if my HMO is licensed?', a: 'Use the HMO check feature on SurreyNest — enter your address or postcode. You can also check Guildford Borough Council\'s public HMO register.' },
+            { q: 'How do I check if my HMO is licensed?', a: 'Use the HMO check feature on SurreyNest, enter your address or postcode. You can also check Guildford Borough Council\'s public HMO register.' },
             { q: 'What if my HMO isn\'t licensed?', a: 'An unlicensed HMO is an offence. You can apply for a Rent Repayment Order (RRO) to recover up to 12 months\' rent. Contact Guildford Borough Council to report unlicensed HMOs.' },
         ],
     },
     {
+        slug: 'harassment-illegal-eviction',
         title: 'Harassment & Illegal Eviction',
         icon: 'shield',
-        summary: 'Landlord behaviour that crosses the line — and what to do about it.',
+        summary: 'Landlord behaviour that crosses the line, and what to do about it.',
         items: [
             { q: 'What counts as landlord harassment?', a: 'Entering without notice or permission, cutting off utilities, removing your belongings, changing locks while you\'re out, threatening or intimidating behaviour, and frequent unnecessary visits.' },
             { q: 'Is illegal eviction a criminal offence?', a: 'Yes. It is a criminal offence under the Protection from Eviction Act 1977. Report it to Guildford Borough Council and the police. You may also be able to claim damages.' },
         ],
     },
 ]
+
+function categoryFromSlug(slug) {
+    return CATEGORIES.find((category) => category.slug === slug) || null
+}
+
+function initialCategoryFromQuery(topic, issue) {
+    if (topic) return categoryFromSlug(topic)?.title || null
+    if (issue) return categoryFromSlug(LISTING_RULES_TOPIC)?.title || null
+    return null
+}
+
+function toggleCategory(currentCategory, nextCategory, setActiveCategory) {
+    setActiveCategory(currentCategory === nextCategory ? null : nextCategory)
+}
 
 // ── FAQ Accordion Item ───────────────────────────────────────────────────────
 function AccordionItem({ question, answer }) {
@@ -112,7 +145,16 @@ function AccordionItem({ question, answer }) {
 
 // ── Main Page ────────────────────────────────────────────────────────────────
 export default function RightsGuide() {
-    const [activeCategory, setActiveCategory] = useState(null)
+    const [searchParams] = useSearchParams()
+    const topic = searchParams.get('topic')
+    const issue = searchParams.get('issue')
+    const fromListingCheck = topic === LISTING_RULES_TOPIC || Boolean(issue)
+    const issueSpotlight = getListingIssueContent(issue)
+    const [activeCategory, setActiveCategory] = useState(() => initialCategoryFromQuery(topic, issue))
+
+    useEffect(() => {
+        setActiveCategory(initialCategoryFromQuery(topic, issue))
+    }, [topic, issue])
 
     // Get all FAQ items from either a selected category or aggregated
     const faqItems = activeCategory
@@ -137,6 +179,53 @@ export default function RightsGuide() {
                         <p className="max-w-2xl text-lg text-slate-600">
                             Navigating legal jargon shouldn't be a nightmare. We've translated the complex laws into friendly, actionable guides to help you protect your home.
                         </p>
+
+                        {fromListingCheck && (
+                            <div className="mt-8 max-w-3xl rounded-2xl border border-primary/20 bg-white shadow-sm p-6">
+                                <p className="text-xs font-bold uppercase tracking-widest text-primary mb-2">
+                                    From your listing check
+                                </p>
+                                <h2 className="text-2xl font-bold text-slate-900">
+                                    {issueSpotlight?.title || 'Start with the listing rules'}
+                                </h2>
+                                <p className="text-sm text-slate-600 leading-relaxed mt-2 max-w-2xl">
+                                    {issueSpotlight?.summary || 'This part of the guide explains bidding language, upfront rent requests, pet wording, and unfair screening in plain English so you know what is worth pushing back on.'}
+                                </p>
+
+                                <div className="mt-4 grid gap-3 md:grid-cols-3">
+                                    {(issueSpotlight?.actions || [
+                                        'Save the advert wording before it changes.',
+                                        'Ask for the rent or screening criteria in writing.',
+                                        'Compare nearby homes before committing to one listing.',
+                                    ]).slice(0, 3).map((action, index) => (
+                                        <div key={action} className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                                            <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-1">
+                                                Step {index + 1}
+                                            </p>
+                                            <p className="text-sm text-slate-700 leading-relaxed">{action}</p>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div className="mt-5 flex flex-wrap gap-3">
+                                    <Link
+                                        to="/check-listing"
+                                        className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white hover:opacity-90 transition"
+                                    >
+                                        Check another listing
+                                        <span className="material-symbols-outlined text-base">arrow_forward</span>
+                                    </Link>
+                                    <button
+                                        type="button"
+                                        onClick={() => setActiveCategory(categoryFromSlug(LISTING_RULES_TOPIC)?.title || null)}
+                                        className="inline-flex items-center gap-2 rounded-lg border border-primary/20 px-4 py-2.5 text-sm font-bold text-primary hover:bg-primary/5 transition"
+                                    >
+                                        Jump to Listing Rules
+                                        <span className="material-symbols-outlined text-base">south</span>
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </section>
 
@@ -151,7 +240,7 @@ export default function RightsGuide() {
                                 </div>
                                 <h3 className="text-3xl font-bold text-white">Rent Increase Calculator</h3>
                                 <p className="text-purple-50 max-w-lg">
-                                    Has your landlord proposed a price hike? Check if it's legally valid and generate a formal challenge letter in minutes.
+                                    Has your landlord proposed a price hike? Compare it with the local market and sense-check the notice timing before you decide what to do next.
                                 </p>
                                 <Link
                                     to="/challenge-rent-increase"
@@ -183,16 +272,18 @@ export default function RightsGuide() {
                             <h2 className="text-2xl font-bold">Interactive Rights Guide</h2>
                             <p className="text-slate-500">Explore by category to find out where you stand.</p>
                         </div>
-                        <Link to="/check-contract" className="hidden sm:flex items-center gap-1 text-primary font-medium hover:underline text-sm">
-                            Contract Checker <span className="material-symbols-outlined text-sm">arrow_right_alt</span>
+                        <Link to="/challenge-rent-increase" className="hidden sm:flex items-center gap-1 text-primary font-medium hover:underline text-sm">
+                            Rent Increase Checker <span className="material-symbols-outlined text-sm">arrow_right_alt</span>
                         </Link>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         {CATEGORIES.slice(0, 4).map((cat) => (
-                            <motion.div
+                            <motion.button
                                 key={cat.title}
+                                type="button"
                                 whileHover={{ y: -4 }}
-                                onClick={() => setActiveCategory(activeCategory === cat.title ? null : cat.title)}
+                                onClick={() => toggleCategory(activeCategory, cat.title, setActiveCategory)}
+                                aria-pressed={activeCategory === cat.title}
                                 className={`group cursor-pointer rounded-xl border p-6 transition-all hover:shadow-xl ${activeCategory === cat.title
                                     ? 'border-primary/40 bg-primary/5 shadow-md'
                                     : 'border-primary/10 bg-white hover:border-primary/40'
@@ -210,16 +301,18 @@ export default function RightsGuide() {
                                     {activeCategory === cat.title ? 'VIEWING' : 'LEARN MORE'}
                                     <span className="material-symbols-outlined text-sm">chevron_right</span>
                                 </div>
-                            </motion.div>
+                            </motion.button>
                         ))}
                     </div>
                     {/* Extra categories (2-col below) */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                         {CATEGORIES.slice(4).map((cat) => (
-                            <motion.div
+                            <motion.button
                                 key={cat.title}
+                                type="button"
                                 whileHover={{ y: -4 }}
-                                onClick={() => setActiveCategory(activeCategory === cat.title ? null : cat.title)}
+                                onClick={() => toggleCategory(activeCategory, cat.title, setActiveCategory)}
+                                aria-pressed={activeCategory === cat.title}
                                 className={`group cursor-pointer rounded-xl border p-6 transition-all hover:shadow-xl ${activeCategory === cat.title
                                     ? 'border-primary/40 bg-primary/5 shadow-md'
                                     : 'border-primary/10 bg-white hover:border-primary/40'
@@ -241,7 +334,7 @@ export default function RightsGuide() {
                                         </div>
                                     </div>
                                 </div>
-                            </motion.div>
+                            </motion.button>
                         ))}
                     </div>
                 </section>
@@ -252,7 +345,7 @@ export default function RightsGuide() {
                     <div className="lg:col-span-2">
                         <div className="mb-8">
                             <h2 className="text-2xl font-bold">
-                                {activeCategory ? `${activeCategory} — FAQs` : 'Frequently Asked Questions'}
+                                {activeCategory ? `${activeCategory}, FAQs` : 'Frequently Asked Questions'}
                             </h2>
                             <p className="text-slate-500">
                                 {activeCategory
@@ -302,26 +395,42 @@ export default function RightsGuide() {
                                     <span className="material-symbols-outlined text-primary mb-2">verified_user</span>
                                     <h4 className="text-lg font-bold mb-2">Verified Information</h4>
                                     <p className="text-xs text-slate-400">
-                                        Our guides are reviewed to reflect current UK Housing Law including the Renters' Rights Act 2025.
+                                        Updated for March 2026. We flag where Renters&apos; Rights Act tenancy reforms begin on 1 May 2026 so the timing is clear.
                                     </p>
                                 </div>
                                 <div className="absolute -right-10 -bottom-10 h-32 w-32 rounded-full bg-primary/20 blur-3xl" />
                             </div>
 
-                            {/* Contract Checker CTA */}
+                            {/* Rent Increase Checker CTA */}
                             <Link
-                                to="/check-contract"
+                                to="/challenge-rent-increase"
                                 className="block rounded-2xl bg-white border border-primary/10 p-6 hover:shadow-md transition-shadow"
                             >
                                 <div className="flex items-center gap-3 mb-3">
-                                    <span className="material-symbols-outlined text-primary bg-primary/10 p-2 rounded-lg">description</span>
-                                    <h4 className="text-sm font-bold">Contract Checker</h4>
+                                    <span className="material-symbols-outlined text-primary bg-primary/10 p-2 rounded-lg">trending_up</span>
+                                    <h4 className="text-sm font-bold">Rent Increase Checker</h4>
                                 </div>
                                 <p className="text-xs text-slate-500">
-                                    About to sign a tenancy agreement? Run it through our AI contract checker — spots illegal clauses before you sign.
+                                    Check whether a proposed rent rise looks in line with the local market and whether the notice timing looks right.
                                 </p>
                                 <div className="mt-3 text-xs font-bold text-primary flex items-center gap-1">
-                                    Try it now <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                                    Open the checker <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                                </div>
+                            </Link>
+
+                            <Link
+                                to="/check-listing"
+                                className="block rounded-2xl bg-white border border-primary/10 p-6 hover:shadow-md transition-shadow"
+                            >
+                                <div className="flex items-center gap-3 mb-3">
+                                    <span className="material-symbols-outlined text-primary bg-primary/10 p-2 rounded-lg">policy</span>
+                                    <h4 className="text-sm font-bold">Listing Checker</h4>
+                                </div>
+                                <p className="text-xs text-slate-500">
+                                    Paste an advert to scan the wording and then bring the result straight back here for the plain-English rule guide.
+                                </p>
+                                <div className="mt-3 text-xs font-bold text-primary flex items-center gap-1">
+                                    Open the checker <span className="material-symbols-outlined text-sm">arrow_forward</span>
                                 </div>
                             </Link>
                         </div>

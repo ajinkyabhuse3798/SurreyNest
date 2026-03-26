@@ -1,9 +1,9 @@
 /**
- * LocationSidebar — Map, distance cards with proximity badges, and transit facts.
+ * LocationSidebar, Map, distance cards with proximity badges, and transit facts.
  *
  * Props:
- *   property  — needs uprn, lat, lng, address, safety_score
- *   distances — array of { label, icon, km, walkMin, cycleMin, proximityType }
+ *   property , needs uprn, lat, lng, address, safety_score
+ *   distances, array of { label, icon, km, walkMin, cycleMin, proximityType }
  */
 import MapView from '../MapView'
 import { proximityBadge, GUILDFORD_TRANSIT_FACTS } from '../../utils/propertyUtils'

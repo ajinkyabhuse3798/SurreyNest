@@ -1,14 +1,12 @@
 /**
- * Navbar — Stitch-aligned sticky navigation with glass morphism.
- * Auth-aware: shows Login/Sign Up or user links based on auth state.
+ * Navbar, Stitch-aligned sticky navigation with glass morphism.
+ * Keeps the public site open while preserving admin session controls.
  * Uses framer-motion for smooth mobile menu animation.
  */
 import { useState, useRef, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Crown } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
-import VerificationBanner from './VerificationBanner'
 
 const NAV_LINKS = [
     { to: '/search', label: 'Search' },
@@ -16,14 +14,12 @@ const NAV_LINKS = [
     { to: '/compare', label: 'Compare' },
     { to: '/rights', label: 'Rights Guide' },
     { to: '/about', label: 'About' },
-    { to: '/pricing', label: 'Pricing' },
 ]
 
 const TOOLS_LINKS = [
     { to: '/check-listing', label: 'Check Listing' },
     { to: '/agent', label: 'Agent Tracker' },
     { to: '/challenge-rent-increase', label: 'Challenge Rent Increase' },
-    { to: '/check-contract', label: 'Check Contract' },
 ]
 
 export default function Navbar() {
@@ -32,6 +28,8 @@ export default function Navbar() {
     const location = useLocation()
     const [mobileOpen, setMobileOpen] = useState(false)
     const [toolsOpen, setToolsOpen] = useState(false)
+    const [logoutLoading, setLogoutLoading] = useState(false)
+    const [authError, setAuthError] = useState('')
     const dropdownRef = useRef(null)
 
     useEffect(() => {
@@ -44,10 +42,22 @@ export default function Navbar() {
         return () => document.removeEventListener('mousedown', handleClickOutside)
     }, [])
 
-    function handleLogout() {
-        logout()
-        navigate('/')
-        setMobileOpen(false)
+    useEffect(() => {
+        setAuthError('')
+    }, [location.pathname, location.search, location.hash])
+
+    async function handleLogout() {
+        setAuthError('')
+        setLogoutLoading(true)
+        try {
+            await logout()
+            navigate('/', { replace: true })
+            setMobileOpen(false)
+        } catch (err) {
+            setAuthError(err?.detail || err?.message || 'Could not sign you out just now.')
+        } finally {
+            setLogoutLoading(false)
+        }
     }
 
     function isActive(path) {
@@ -56,7 +66,6 @@ export default function Navbar() {
 
     return (
         <>
-        <VerificationBanner />
         <nav className="sticky top-0 z-50 px-4 md:px-6 py-3">
             <div className="max-w-7xl mx-auto glass rounded-xl px-4 md:px-6 py-3 flex items-center justify-between shadow-sm">
                 {/* Logo */}
@@ -126,54 +135,50 @@ export default function Navbar() {
 
                 {/* Desktop auth + mobile hamburger */}
                 <div className="flex items-center gap-3">
-                    {/* Auth (desktop) */}
+                    {/* Primary actions (desktop) */}
                     <div className="hidden lg:flex items-center gap-3">
-                        {user ? (
+                        {user?.role === 'admin' ? (
                             <>
-                                {user.is_pro ? (
-                                    <span className="flex items-center gap-1.5 text-xs font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full">
-                                        <Crown size={11} />
-                                        Pro
-                                    </span>
-                                ) : (
-                                    <Link
-                                        to="/pricing"
-                                        className="flex items-center gap-1.5 text-xs font-bold text-primary bg-primary/10 border border-primary/20 px-2.5 py-1 rounded-full hover:bg-primary/20 transition-colors"
-                                    >
-                                        <Crown size={11} />
-                                        Upgrade
-                                    </Link>
-                                )}
-                                {user.role === 'admin' && (
-                                    <Link
-                                        to="/admin"
-                                        className="text-sm font-medium text-slate-700 hover:text-primary px-3 py-2 transition-colors"
-                                    >
-                                        Admin
-                                    </Link>
-                                )}
+                                <Link
+                                    to="/admin"
+                                    className="text-sm font-medium text-slate-700 hover:text-primary px-3 py-2 transition-colors"
+                                >
+                                    Admin
+                                </Link>
                                 <button
                                     onClick={handleLogout}
+                                    disabled={logoutLoading}
                                     className="px-5 py-2 text-sm font-semibold text-slate-700 hover:text-primary transition-colors"
                                 >
-                                    Sign out
+                                    {logoutLoading ? 'Signing out...' : 'Sign out'}
+                                </button>
+                            </>
+                        ) : user ? (
+                            <>
+                                <span className="text-sm font-medium text-slate-500 max-w-[180px] truncate">
+                                    {user.email}
+                                </span>
+                                <button
+                                    onClick={handleLogout}
+                                    disabled={logoutLoading}
+                                    className="px-5 py-2 text-sm font-semibold text-slate-700 hover:text-primary transition-colors"
+                                >
+                                    {logoutLoading ? 'Signing out...' : 'Sign out'}
                                 </button>
                             </>
                         ) : (
                             <>
                                 <Link
                                     to="/login"
-                                    state={{ from: location }}
-                                    className="px-5 py-2 text-sm font-semibold text-slate-700 hover:text-primary transition-colors"
+                                    className="text-sm font-medium text-slate-700 hover:text-primary px-3 py-2 transition-colors"
                                 >
-                                    Login
+                                    Sign in
                                 </Link>
                                 <Link
                                     to="/register"
-                                    state={{ from: location }}
                                     className="bg-primary text-white px-6 py-2 rounded-lg text-sm font-semibold shadow-lg shadow-primary/25 hover:opacity-90 transition-all active:scale-95"
                                 >
-                                    Sign Up
+                                    Create Account
                                 </Link>
                             </>
                         )}
@@ -236,54 +241,51 @@ export default function Navbar() {
                             </div>
 
                             <div className="border-t border-slate-200/60 pt-2 mt-2">
-                                {user ? (
+                                {user?.role === 'admin' ? (
                                     <>
-                                        {user.is_pro ? (
-                                            <div className="flex items-center gap-1.5 text-xs font-bold text-amber-600 px-3 py-2">
-                                                <Crown size={12} /> Pro plan active
-                                            </div>
-                                        ) : (
-                                            <Link
-                                                to="/pricing"
-                                                onClick={() => setMobileOpen(false)}
-                                                className="flex items-center gap-2 text-sm font-bold text-primary px-3 py-2.5 hover:bg-primary/5 rounded-lg"
-                                            >
-                                                <Crown size={14} /> Upgrade to Pro
-                                            </Link>
-                                        )}
-                                        {user.role === 'admin' && (
-                                            <Link
-                                                to="/admin"
-                                                onClick={() => setMobileOpen(false)}
-                                                className="block text-sm font-medium text-slate-700 px-3 py-2.5 hover:bg-slate-50 hover:text-primary rounded-lg"
-                                            >
-                                                Admin Dashboard
-                                            </Link>
-                                        )}
+                                        <Link
+                                            to="/admin"
+                                            onClick={() => setMobileOpen(false)}
+                                            className="block text-sm font-medium text-slate-700 px-3 py-2.5 hover:bg-slate-50 hover:text-primary rounded-lg"
+                                        >
+                                            Admin Dashboard
+                                        </Link>
                                         <button
                                             onClick={handleLogout}
+                                            disabled={logoutLoading}
                                             className="w-full text-left text-sm font-medium text-slate-700 px-3 py-2.5 hover:bg-slate-50 hover:text-primary rounded-lg"
                                         >
-                                            Sign out
+                                            {logoutLoading ? 'Signing out...' : 'Sign out'}
+                                        </button>
+                                    </>
+                                ) : user ? (
+                                    <>
+                                        <div className="px-3 py-2 text-sm text-slate-500 truncate">
+                                            {user.email}
+                                        </div>
+                                        <button
+                                            onClick={handleLogout}
+                                            disabled={logoutLoading}
+                                            className="w-full text-left text-sm font-medium text-slate-700 px-3 py-2.5 hover:bg-slate-50 hover:text-primary rounded-lg"
+                                        >
+                                            {logoutLoading ? 'Signing out...' : 'Sign out'}
                                         </button>
                                     </>
                                 ) : (
                                     <>
                                         <Link
                                             to="/login"
-                                            state={{ from: location }}
                                             onClick={() => setMobileOpen(false)}
                                             className="block text-sm font-medium text-slate-700 px-3 py-2.5 hover:bg-slate-50 hover:text-primary rounded-lg"
                                         >
-                                            Login
+                                            Sign in
                                         </Link>
                                         <Link
                                             to="/register"
-                                            state={{ from: location }}
                                             onClick={() => setMobileOpen(false)}
                                             className="block text-sm text-center bg-primary text-white px-3 py-2.5 rounded-lg font-semibold shadow-lg shadow-primary/25 hover:opacity-90 transition-all mt-1"
                                         >
-                                            Sign Up
+                                            Create Account
                                         </Link>
                                     </>
                                 )}
@@ -292,6 +294,12 @@ export default function Navbar() {
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {authError && (
+                <div className="max-w-7xl mx-auto mt-2 border border-red-200 bg-red-50 rounded-xl px-4 py-3 text-sm text-red-700 shadow-sm">
+                    {authError}
+                </div>
+            )}
         </nav>
         </>
     )

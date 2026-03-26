@@ -1,5 +1,5 @@
 /**
- * GuildfordHeatmap — NeighbourhoodPulse interactive heatmap component.
+ * GuildfordHeatmap, NeighbourhoodPulse interactive heatmap component.
  *
  * Shows a full-width Leaflet map of Guildford with coloured circles for each
  * postcode sector. Users toggle between 3 layers: Rent, Safety, HMO.
@@ -59,20 +59,6 @@ function getColour(layer, sector) {
     return hmoColour(sector.hmo_density_pct)
 }
 
-function getMetricLabel(layer, sector) {
-    if (layer === 'rent') {
-        return sector.avg_weekly_rent != null
-            ? `£${Math.round(sector.avg_weekly_rent)}/wk`
-            : 'No data'
-    }
-    if (layer === 'safety') {
-        return sector.safety_score != null
-            ? `${sector.safety_score}/100`
-            : 'No data'
-    }
-    return `${sector.hmo_count} HMOs (${sector.hmo_density_pct}%)`
-}
-
 // ── Circle sizing ────────────────────────────────────────────────────────────
 
 function circleRadius(propertyCount) {
@@ -93,7 +79,7 @@ function FitBounds({ bounds }) {
                 { padding: [30, 30], animate: true }
             )
         }
-    }, [bounds])
+    }, [bounds, map])
     return null
 }
 

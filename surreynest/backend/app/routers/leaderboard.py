@@ -4,11 +4,11 @@ GET /api/leaderboard/streets?district=GU1&limit=10
 
 Ranks streets by a composite score derived from:
   - Safety (crime_data)
-  - Value (area_values implied rent — lower = better for students)
+  - Value (area_values implied rent, lower = better for students)
   - Proximity to University of Surrey
   - HMO availability (licensed HMO count)
 
-All four pillars are min-max normalised 0–100 and equally weighted.
+All four pillars are min-max normalised 0 to 100 and equally weighted.
 Results are cached in Redis for 10 minutes (shared across workers).
 """
 
@@ -45,7 +45,7 @@ NOISE_WORDS = {
     "FARNHAM", "ALDERSHOT", "HASLEMERE",
 }
 
-# Note: Crime category weights have been removed — safety scoring is now
+# Note: Crime category weights have been removed, safety scoring is now
 # delegated entirely to score_service.get_safety_score() for consistency.
 
 # Allowed districts
@@ -72,7 +72,7 @@ def _haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
 
 
 def _min_max_normalise(values: List[float], invert: bool = False) -> List[float]:
-    """Normalise values to 0–100. If invert=True, lower raw → higher score."""
+    """Normalise values to 0 to 100. If invert=True, lower raw → higher score."""
     if not values:
         return []
     mn, mx = min(values), max(values)
@@ -130,7 +130,7 @@ def _build_leaderboard(db: Session, district: str, limit: int) -> LeaderboardRes
         )
 
     # Step 2: Pre-fetch safety scores for every unique sector via score_service
-    # (same 95th-percentile algorithm used on property detail pages — consistent app-wide)
+    # (same 95th-percentile algorithm used on property detail pages, consistent app-wide)
     all_sectors = set()
     for r in rows:
         for s in (r[5] or []):
@@ -219,7 +219,7 @@ def _build_leaderboard(db: Session, district: str, limit: int) -> LeaderboardRes
         })
 
     # Step 6: Normalise Value, Proximity, HMO via min-max within the district.
-    # Safety is already normalised globally by score_service — no re-normalisation needed.
+    # Safety is already normalised globally by score_service, no re-normalisation needed.
     rent_vals = [s["avg_rent"] or 999 for s in streets_data]
     dist_vals = [s["dist_uni"] for s in streets_data]
     hmo_vals = [float(s["hmo_count"]) for s in streets_data]
@@ -234,7 +234,7 @@ def _build_leaderboard(db: Session, district: str, limit: int) -> LeaderboardRes
     # Step 7: Compute composite and build response
     ranked = []
     for i, s in enumerate(streets_data):
-        # Safety: direct from score_service (0–100 global 95th-pct scale)
+        # Safety: direct from score_service (0 to 100 global 95th-pct scale)
         # Fallback to 50.0 only when genuinely no crime data exists for the sector
         safety = s["safety_score"] if s["safety_score"] is not None else 50.0
         value = round(norm_value[i], 1)

@@ -1,5 +1,5 @@
 /**
- * SafetyIntelligence v2 — plain-English crime analytics.
+ * SafetyIntelligence v2, plain-English crime analytics.
  *
  * Every metric is explained so a 15-year-old can understand it.
  * No percentiles, no indices, no jargon. Just stories and stars.
@@ -8,7 +8,6 @@
  */
 import { useState, useEffect } from 'react'
 import {
-    TrendingDown, TrendingUp, Minus, ShieldAlert,
     Lock, AlertTriangle, Volume2, Car, ShoppingBag,
     AlertOctagon, Pill, Users, Lightbulb, GraduationCap,
     Home, ChevronDown, Train, Star,
@@ -29,8 +28,8 @@ const CAT_META = {
 
 /* ── Train stations ──────────────────────────────────────────────────────── */
 const TRAIN_STATIONS = [
-    { name: 'Guildford Station', lat: 51.2370, lng: -0.5810, lines: 'South Western Railway — London Waterloo in ~35 min' },
-    { name: 'London Road (Guildford)', lat: 51.2415, lng: -0.5700, lines: 'South Western Railway — local services' },
+    { name: 'Guildford Station', lat: 51.2370, lng: -0.5810, lines: 'South Western Railway, London Waterloo in ~35 min' },
+    { name: 'London Road (Guildford)', lat: 51.2415, lng: -0.5700, lines: 'South Western Railway, local services' },
 ]
 
 function haversineKm(lat1, lng1, lat2, lng2) {
@@ -42,7 +41,7 @@ function haversineKm(lat1, lng1, lat2, lng2) {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
- * DONUT CHART — with total centre + friendly sentence
+ * DONUT CHART, with total centre + friendly sentence
  * ══════════════════════════════════════════════════════════════════════════ */
 function CrimeDonut({ breakdown }) {
     const total = breakdown.reduce((s, b) => s + b.count, 0)
@@ -54,12 +53,12 @@ function CrimeDonut({ breakdown }) {
     // Plain English summary
     const perMonth = (total / 12).toFixed(1)
     const summaryText = total <= 3
-        ? `Only ${total} crime${total === 1 ? '' : 's'} reported in the whole year — almost nothing!`
+        ? `Only ${total} crime${total === 1 ? '' : 's'} reported in the whole year, almost nothing!`
         : total <= 10
-            ? `About ${perMonth} crimes per month — that's fairly quiet.`
+            ? `About ${perMonth} crimes per month, that's fairly quiet.`
             : total <= 30
-                ? `Around ${perMonth} crimes per month — about average for Guildford.`
-                : `About ${perMonth} crimes per month — busier than most areas.`
+                ? `Around ${perMonth} crimes per month, about average for Guildford.`
+                : `About ${perMonth} crimes per month, busier than most areas.`
 
     return (
         <div className="bg-white rounded-xl border border-slate-200/60 p-4">
@@ -117,7 +116,7 @@ function CrimeDonut({ breakdown }) {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
- * MONTHLY CHART — with actual numbers on each bar
+ * MONTHLY CHART, with actual numbers on each bar
  * ══════════════════════════════════════════════════════════════════════════ */
 function MonthlyChart({ data, trend }) {
     if (!data?.length) return null
@@ -147,9 +146,9 @@ function MonthlyChart({ data, trend }) {
     if (trend?.direction === 'improving') {
         trendSentence = `Good news! Crime has gone down by about ${pct}% compared to earlier in the year.`
     } else if (trend?.direction === 'worsening') {
-        trendSentence = `Heads up — crime has gone up by about ${pct}% compared to earlier in the year.`
+        trendSentence = `Heads up, crime has gone up by about ${pct}% compared to earlier in the year.`
     } else {
-        trendSentence = 'Crime has been about the same every month — no big changes.'
+        trendSentence = 'Crime has been about the same every month, no big changes.'
     }
 
     // Bar heights: use fixed pixel max so proportions are clear
@@ -180,7 +179,7 @@ function MonthlyChart({ data, trend }) {
                             <div key={i} className="flex-1 flex flex-col items-center">
                                 {/* Number above bar */}
                                 <span className="text-[10px] font-bold text-slate-600 mb-0.5">{d.count}</span>
-                                {/* Bar — fixed pixel height */}
+                                {/* Bar, fixed pixel height */}
                                 <div
                                     className={`w-full rounded-t-sm transition-all duration-500 ${d.count > 0 ? 'bg-primary-400' : 'bg-slate-200'}`}
                                     style={{ height: `${barPx}px`, transitionDelay: `${i * 50}ms` }}
@@ -197,7 +196,7 @@ function MonthlyChart({ data, trend }) {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
- * GUILDFORD COMPARISON — 5-dot safety rating + plain sentence
+ * GUILDFORD COMPARISON, 5-dot safety rating + plain sentence
  * ══════════════════════════════════════════════════════════════════════════ */
 function SafetyRating({ comparison }) {
     if (!comparison) return null
@@ -216,11 +215,11 @@ function SafetyRating({ comparison }) {
 
     // Plain English sentence
     let sentence = ''
-    if (dots === 5) sentence = `This is one of the safest areas in Guildford. Only ${sectorTotal} crime${sectorTotal === 1 ? '' : 's'} were reported here last year — most areas had around ${Math.round(avgTotal)}.`
+    if (dots === 5) sentence = `This is one of the safest areas in Guildford. Only ${sectorTotal} crime${sectorTotal === 1 ? '' : 's'} were reported here last year, most areas had around ${Math.round(avgTotal)}.`
     else if (dots === 4) sentence = `This area is safer than most of Guildford. It had ${sectorTotal} crimes last year, while the average area had ${Math.round(avgTotal)}.`
-    else if (dots === 3) sentence = `This area is about average for Guildford — not the safest, not the worst. It had ${sectorTotal} crimes last year, similar to the average of ${Math.round(avgTotal)}.`
+    else if (dots === 3) sentence = `This area is about average for Guildford, not the safest, not the worst. It had ${sectorTotal} crimes last year, similar to the average of ${Math.round(avgTotal)}.`
     else if (dots === 2) sentence = `This area has more crime than most of Guildford. It had ${sectorTotal} crimes last year, while the average area had ${Math.round(avgTotal)}.`
-    else sentence = `This is a higher-crime area. It had ${sectorTotal} crimes last year — much more than the Guildford average of ${Math.round(avgTotal)}.`
+    else sentence = `This is a higher-crime area. It had ${sectorTotal} crimes last year, much more than the Guildford average of ${Math.round(avgTotal)}.`
 
     const dotColors = {
         5: 'text-emerald-500',
@@ -258,7 +257,7 @@ function SafetyRating({ comparison }) {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
- * HOLIDAY BURGLARY ALERT — already clear, just polish
+ * HOLIDAY BURGLARY ALERT, already clear, just polish
  * ══════════════════════════════════════════════════════════════════════════ */
 function HolidayAlert({ risk }) {
     if (!risk || risk.risk_level === 'low') return null
@@ -287,7 +286,7 @@ function HolidayAlert({ risk }) {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
- * STUDENT SAFETY — emoji rating + one plain sentence, NO numbers
+ * STUDENT SAFETY, emoji rating + one plain sentence, NO numbers
  * ══════════════════════════════════════════════════════════════════════════ */
 function StudentSafety({ data }) {
     if (!data || data.student_score == null) return null
@@ -303,10 +302,10 @@ function StudentSafety({ data }) {
     } else if (score >= 70) {
         stars = 4; emoji = '✅'
         verdict = 'This area is good for students'
-        detail = 'Most students living here feel safe. Take the usual precautions — lock your door and don\'t leave valuables in plain sight.'
+        detail = 'Most students living here feel safe. Take the usual precautions, lock your door and don\'t leave valuables in plain sight.'
     } else if (score >= 50) {
         stars = 3; emoji = '🟡'
-        verdict = 'This area is okay — just be aware'
+        verdict = 'This area is okay, just be aware'
         detail = 'Some crimes that affect students happen here. Lock your house when leaving, especially during holidays. Walk with friends at night.'
     } else if (score >= 30) {
         stars = 2; emoji = '⚠️'
@@ -410,7 +409,7 @@ function TrainStations({ lat, lng }) {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
- * SAFETY TIPS — already clear, keep as-is
+ * SAFETY TIPS, already clear, keep as-is
  * ══════════════════════════════════════════════════════════════════════════ */
 function SafetyTips({ tips }) {
     if (!tips?.length) return null

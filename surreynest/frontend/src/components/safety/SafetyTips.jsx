@@ -1,5 +1,5 @@
 /**
- * SafetyTips — Data-driven safety tips.
+ * SafetyTips, Data-driven safety tips.
  */
 import { Lightbulb } from 'lucide-react'
 

@@ -31,7 +31,7 @@ PROCESSED_PATH = Path(__file__).resolve().parents[2] / "data" / "processed" / "e
 PROPERTY_TYPE_MAP = {
     "flat": "Flat",
     "maisonette": "Flat",
-    "house": "Other",  # further classified by built_form below
+    "house": "Other", # further classified by built_form below
     "bungalow": "Other",
     "park home": "Other",
 }
@@ -424,7 +424,7 @@ def run_epc_pipeline(db: Optional[Session] = None) -> int:
     df = clean_epc_data()
     logger.info("Cleaned EPC data: %d rows", len(df))
 
-    # Save processed CSV (before geocoding — coordinates aren't needed in CSV)
+    # Save processed CSV (before geocoding, coordinates aren't needed in CSV)
     save_clean_csv(df)
 
     # Geocode and upsert to DB
@@ -456,7 +456,7 @@ def run_epc_pipeline(db: Optional[Session] = None) -> int:
         rows = upsert_to_db(df, db)
         logger.info("EPC pipeline complete: %d rows upserted", rows)
 
-        # Run geocoding backfill — error-isolated so EPC data is saved even
+        # Run geocoding backfill, error-isolated so EPC data is saved even
         # if geocoding fails (e.g. Postcodes.io down)
         try:
             from app.data_pipelines.geocoding_pipeline import run_geocoding_pipeline
@@ -464,7 +464,7 @@ def run_epc_pipeline(db: Optional[Session] = None) -> int:
             logger.info("Geocoding backfill: %d properties updated", updated)
         except Exception:
             logger.error(
-                "Geocoding backfill failed — EPC data was saved successfully",
+                "Geocoding backfill failed, EPC data was saved successfully",
                 exc_info=True,
             )
 

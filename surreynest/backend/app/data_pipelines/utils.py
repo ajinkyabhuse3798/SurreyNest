@@ -34,7 +34,7 @@ def api_call_with_retry(
     Args:
         url: Target URL.
         params: Query parameters for GET requests.
-        method: HTTP method — GET or POST.
+        method: HTTP method, GET or POST.
         json_body: JSON body for POST requests.
         max_retries: Maximum number of attempts.
         timeout: Request timeout in seconds.

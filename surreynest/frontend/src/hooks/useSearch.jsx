@@ -1,5 +1,5 @@
 /**
- * Search context — persists search params and results across route navigation.
+ * Search context, persists search params and results across route navigation.
  *
  * Usage:
  *   Wrap app in <SearchProvider>, then call useSearch() in any component.

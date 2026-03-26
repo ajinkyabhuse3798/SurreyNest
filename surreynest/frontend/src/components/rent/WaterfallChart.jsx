@@ -1,5 +1,5 @@
 /**
- * WaterfallChart — Feature contribution bars for rent explanation.
+ * WaterfallChart, Feature contribution bars for rent explanation.
  */
 export default function WaterfallChart({ contributions }) {
     if (!contributions?.length) return null

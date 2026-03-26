@@ -1,0 +1,2536 @@
+{
+  "method": "ridge_linear_type_calibration",
+  "intercept": 49.858162004466294,
+  "coefficients": {
+    "raw_prediction": 0.7524618597894617,
+    "is_flat": -6.036651227381609,
+    "raw_x_is_flat": 0.18340461800894794,
+    "is_semi_detached": -60.036000832367726,
+    "raw_x_is_semi_detached": 0.28334686942558074,
+    "is_terraced": -41.145162208701926,
+    "raw_x_is_terraced": 0.24570507557003826,
+    "is_detached": 107.21781426852407,
+    "raw_x_is_detached": 0.04000530669226049
+  },
+  "sector_type_adjustment": {
+    "method": "shrunk_sector_type_residual",
+    "global_mean": 4.3233022795544123e-14,
+    "min_samples": 6,
+    "shrinkage": 8.0,
+    "by_type": {
+      "Detached": {
+        "mean": 2.978272618570074,
+        "count": 36
+      },
+      "Flat": {
+        "mean": -0.0290223616701576,
+        "count": 208
+      },
+      "Semi-Detached": {
+        "mean": -0.3490465164673666,
+        "count": 172
+      },
+      "Terraced": {
+        "mean": -0.5079649655397674,
+        "count": 81
+      }
+    },
+    "by_sector_type": {
+      "GU1 1": {
+        "Detached": {
+          "mean": 30.090833760450362,
+          "count": 3
+        },
+        "Flat": {
+          "mean": -25.914493936932104,
+          "count": 23
+        },
+        "Semi-Detached": {
+          "mean": -44.00123401894793,
+          "count": 15
+        },
+        "Terraced": {
+          "mean": -16.69180475043591,
+          "count": 3
+        }
+      },
+      "GU1 2": {
+        "Detached": {
+          "mean": 141.74567249377375,
+          "count": 3
+        },
+        "Flat": {
+          "mean": -18.15052275022478,
+          "count": 17
+        },
+        "Semi-Detached": {
+          "mean": 46.9930561441024,
+          "count": 4
+        },
+        "Terraced": {
+          "mean": 26.138235555759763,
+          "count": 2
+        }
+      },
+      "GU1 3": {
+        "Detached": {
+          "mean": -41.36459116196064,
+          "count": 3
+        },
+        "Flat": {
+          "mean": 51.30668646045905,
+          "count": 36
+        },
+        "Semi-Detached": {
+          "mean": 25.046759930753723,
+          "count": 4
+        },
+        "Terraced": {
+          "mean": 66.90454784532785,
+          "count": 4
+        }
+      },
+      "GU1 4": {
+        "Detached": {
+          "mean": -68.40063914072894,
+          "count": 2
+        },
+        "Flat": {
+          "mean": -1.3110562979424525,
+          "count": 61
+        },
+        "Semi-Detached": {
+          "mean": -2.9920932359830257,
+          "count": 21
+        },
+        "Terraced": {
+          "mean": -13.289957222982098,
+          "count": 7
+        }
+      },
+      "GU2 4": {
+        "Detached": {
+          "mean": -200.83261907778228,
+          "count": 1
+        },
+        "Flat": {
+          "mean": -20.596222421606612,
+          "count": 15
+        },
+        "Semi-Detached": {
+          "mean": -43.9021489944316,
+          "count": 4
+        },
+        "Terraced": {
+          "mean": 76.78581194650546,
+          "count": 3
+        }
+      },
+      "GU2 7": {
+        "Detached": {
+          "mean": 43.81122921633065,
+          "count": 6
+        },
+        "Flat": {
+          "mean": -37.64147340862451,
+          "count": 12
+        },
+        "Semi-Detached": {
+          "mean": 10.509952370474934,
+          "count": 35
+        },
+        "Terraced": {
+          "mean": 3.4167097649331617,
+          "count": 26
+        }
+      },
+      "GU2 8": {
+        "Detached": {
+          "mean": -38.82701155216072,
+          "count": 6
+        },
+        "Flat": {
+          "mean": 4.501919720616472,
+          "count": 14
+        },
+        "Semi-Detached": {
+          "mean": 5.5599725807582026,
+          "count": 57
+        },
+        "Terraced": {
+          "mean": -27.27441059916652,
+          "count": 19
+        }
+      },
+      "GU2 9": {
+        "Detached": {
+          "mean": -48.515114700579794,
+          "count": 6
+        },
+        "Flat": {
+          "mean": -34.61694065001006,
+          "count": 14
+        },
+        "Semi-Detached": {
+          "mean": -12.58516253413842,
+          "count": 21
+        },
+        "Terraced": {
+          "mean": -27.000808300944374,
+          "count": 9
+        }
+      },
+      "GU3 3": {
+        "Detached": {
+          "mean": -26.222562700683966,
+          "count": 2
+        },
+        "Semi-Detached": {
+          "mean": -4.397683156618712,
+          "count": 4
+        },
+        "Terraced": {
+          "mean": 18.29476824373948,
+          "count": 3
+        }
+      },
+      "GU4 7": {
+        "Detached": {
+          "mean": 177.0579494229352,
+          "count": 3
+        },
+        "Flat": {
+          "mean": 19.60878924455839,
+          "count": 16
+        },
+        "Semi-Detached": {
+          "mean": 21.054024979902675,
+          "count": 7
+        },
+        "Terraced": {
+          "mean": 33.842034348859315,
+          "count": 5
+        }
+      },
+      "GU4 8": {
+        "Detached": {
+          "mean": -164.1073742980061,
+          "count": 1
+        }
+      }
+    }
+  },
+  "observed_rent_prior": {
+    "method": "hierarchical_observed_rent_prior",
+    "global_median": 496.0,
+    "postcode_shrinkage": 8.0,
+    "sector_shrinkage": 10.0,
+    "blend_weight_model": 0.9,
+    "by_type": {
+      "Detached": {
+        "median": 622.5,
+        "count": 36
+      },
+      "Flat": {
+        "median": 352.0,
+        "count": 208
+      },
+      "Semi-Detached": {
+        "median": 612.0,
+        "count": 172
+      },
+      "Terraced": {
+        "median": 600.0,
+        "count": 81
+      }
+    },
+    "by_sector_type": {
+      "GU1 1": {
+        "Detached": {
+          "median": 622.0,
+          "count": 3
+        },
+        "Flat": {
+          "median": 335.0,
+          "count": 23
+        },
+        "Semi-Detached": {
+          "median": 600.0,
+          "count": 15
+        },
+        "Terraced": {
+          "median": 496.0,
+          "count": 3
+        }
+      },
+      "GU1 2": {
+        "Detached": {
+          "median": 808.0,
+          "count": 3
+        },
+        "Flat": {
+          "median": 346.0,
+          "count": 17
+        },
+        "Semi-Detached": {
+          "median": 542.5,
+          "count": 4
+        },
+        "Terraced": {
+          "median": 508.0,
+          "count": 2
+        }
+      },
+      "GU1 3": {
+        "Detached": {
+          "median": 542.0,
+          "count": 3
+        },
+        "Flat": {
+          "median": 369.0,
+          "count": 36
+        },
+        "Semi-Detached": {
+          "median": 594.0,
+          "count": 4
+        },
+        "Terraced": {
+          "median": 565.5,
+          "count": 4
+        }
+      },
+      "GU1 4": {
+        "Detached": {
+          "median": 479.0,
+          "count": 2
+        },
+        "Flat": {
+          "median": 346.0,
+          "count": 61
+        },
+        "Semi-Detached": {
+          "median": 600.0,
+          "count": 21
+        },
+        "Terraced": {
+          "median": 565.0,
+          "count": 7
+        }
+      },
+      "GU2 4": {
+        "Detached": {
+          "median": 485.0,
+          "count": 1
+        },
+        "Flat": {
+          "median": 363.0,
+          "count": 15
+        },
+        "Semi-Detached": {
+          "median": 548.5,
+          "count": 4
+        },
+        "Terraced": {
+          "median": 785.0,
+          "count": 3
+        }
+      },
+      "GU2 7": {
+        "Detached": {
+          "median": 703.0,
+          "count": 6
+        },
+        "Flat": {
+          "median": 415.5,
+          "count": 12
+        },
+        "Semi-Detached": {
+          "median": 635.0,
+          "count": 35
+        },
+        "Terraced": {
+          "median": 635.0,
+          "count": 26
+        }
+      },
+      "GU2 8": {
+        "Detached": {
+          "median": 617.5,
+          "count": 6
+        },
+        "Flat": {
+          "median": 323.5,
+          "count": 14
+        },
+        "Semi-Detached": {
+          "median": 623.0,
+          "count": 57
+        },
+        "Terraced": {
+          "median": 577.0,
+          "count": 19
+        }
+      },
+      "GU2 9": {
+        "Detached": {
+          "median": 600.0,
+          "count": 6
+        },
+        "Flat": {
+          "median": 329.0,
+          "count": 14
+        },
+        "Semi-Detached": {
+          "median": 600.0,
+          "count": 21
+        },
+        "Terraced": {
+          "median": 692.0,
+          "count": 9
+        }
+      },
+      "GU3 3": {
+        "Detached": {
+          "median": 594.0,
+          "count": 2
+        },
+        "Semi-Detached": {
+          "median": 537.0,
+          "count": 4
+        },
+        "Terraced": {
+          "median": 507.0,
+          "count": 3
+        }
+      },
+      "GU4 7": {
+        "Detached": {
+          "median": 450.0,
+          "count": 3
+        },
+        "Flat": {
+          "median": 308.5,
+          "count": 16
+        },
+        "Semi-Detached": {
+          "median": 340.0,
+          "count": 7
+        },
+        "Terraced": {
+          "median": 391.0,
+          "count": 5
+        }
+      },
+      "GU4 8": {
+        "Detached": {
+          "median": 646.0,
+          "count": 1
+        }
+      }
+    },
+    "by_postcode_type": {
+      "GU1 1BT": {
+        "Flat": {
+          "median": 291.0,
+          "count": 2
+        }
+      },
+      "GU1 1EJ": {
+        "Flat": {
+          "median": 335.0,
+          "count": 1
+        }
+      },
+      "GU1 1ER": {
+        "Flat": {
+          "median": 288.0,
+          "count": 2
+        }
+      },
+      "GU1 1FB": {
+        "Semi-Detached": {
+          "median": 496.0,
+          "count": 1
+        },
+        "Terraced": {
+          "median": 496.0,
+          "count": 1
+        }
+      },
+      "GU1 1FG": {
+        "Flat": {
+          "median": 392.0,
+          "count": 1
+        }
+      },
+      "GU1 1FP": {
+        "Flat": {
+          "median": 328.5,
+          "count": 2
+        }
+      },
+      "GU1 1FS": {
+        "Flat": {
+          "median": 335.0,
+          "count": 1
+        }
+      },
+      "GU1 1FY": {
+        "Flat": {
+          "median": 392.0,
+          "count": 3
+        }
+      },
+      "GU1 1HL": {
+        "Semi-Detached": {
+          "median": 623.0,
+          "count": 2
+        }
+      },
+      "GU1 1HP": {
+        "Detached": {
+          "median": 622.0,
+          "count": 1
+        },
+        "Semi-Detached": {
+          "median": 691.0,
+          "count": 1
+        }
+      },
+      "GU1 1HQ": {
+        "Flat": {
+          "median": 485.0,
+          "count": 1
+        },
+        "Semi-Detached": {
+          "median": 623.0,
+          "count": 1
+        }
+      },
+      "GU1 1JD": {
+        "Semi-Detached": {
+          "median": 508.0,
+          "count": 1
+        }
+      },
+      "GU1 1JH": {
+        "Semi-Detached": {
+          "median": 554.0,
+          "count": 1
+        }
+      },
+      "GU1 1LD": {
+        "Semi-Detached": {
+          "median": 612.0,
+          "count": 1
+        }
+      },
+      "GU1 1LP": {
+        "Semi-Detached": {
+          "median": 600.0,
+          "count": 2
+        }
+      },
+      "GU1 1LR": {
+        "Terraced": {
+          "median": 831.0,
+          "count": 1
+        }
+      },
+      "GU1 1NB": {
+        "Semi-Detached": {
+          "median": 392.0,
+          "count": 1
+        }
+      },
+      "GU1 1NN": {
+        "Semi-Detached": {
+          "median": 600.0,
+          "count": 1
+        }
+      },
+      "GU1 1NS": {
+        "Semi-Detached": {
+          "median": 173.0,
+          "count": 1
+        }
+      },
+      "GU1 1PY": {
+        "Flat": {
+          "median": 277.0,
+          "count": 1
+        }
+      },
+      "GU1 1QR": {
+        "Semi-Detached": {
+          "median": 519.5,
+          "count": 2
+        }
+      },
+      "GU1 1QT": {
+        "Detached": {
+          "median": 542.0,
+          "count": 1
+        }
+      },
+      "GU1 1QZ": {
+        "Terraced": {
+          "median": 496.0,
+          "count": 1
+        }
+      },
+      "GU1 1SS": {
+        "Detached": {
+          "median": 922.0,
+          "count": 1
+        }
+      },
+      "GU1 1TD": {
+        "Flat": {
+          "median": 293.5,
+          "count": 2
+        }
+      },
+      "GU1 1TJ": {
+        "Flat": {
+          "median": 369.0,
+          "count": 1
+        }
+      },
+      "GU1 1TL": {
+        "Flat": {
+          "median": 404.0,
+          "count": 1
+        }
+      },
+      "GU1 1TS": {
+        "Flat": {
+          "median": 415.0,
+          "count": 1
+        }
+      },
+      "GU1 1UF": {
+        "Flat": {
+          "median": 299.5,
+          "count": 2
+        }
+      },
+      "GU1 1XD": {
+        "Flat": {
+          "median": 369.0,
+          "count": 1
+        }
+      },
+      "GU1 1XP": {
+        "Flat": {
+          "median": 306.0,
+          "count": 1
+        }
+      },
+      "GU1 2AA": {
+        "Flat": {
+          "median": 202.0,
+          "count": 2
+        }
+      },
+      "GU1 2AS": {
+        "Flat": {
+          "median": 392.0,
+          "count": 1
+        }
+      },
+      "GU1 2BX": {
+        "Flat": {
+          "median": 392.0,
+          "count": 2
+        }
+      },
+      "GU1 2DR": {
+        "Flat": {
+          "median": 242.0,
+          "count": 1
+        }
+      },
+      "GU1 2DX": {
+        "Flat": {
+          "median": 323.0,
+          "count": 1
+        }
+      },
+      "GU1 2EE": {
+        "Flat": {
+          "median": 502.0,
+          "count": 1
+        }
+      },
+      "GU1 2EH": {
+        "Flat": {
+          "median": 368.0,
+          "count": 1
+        }
+      },
+      "GU1 2EU": {
+        "Flat": {
+          "median": 277.0,
+          "count": 1
+        }
+      },
+      "GU1 2HR": {
+        "Flat": {
+          "median": 531.0,
+          "count": 1
+        }
+      },
+      "GU1 2JA": {
+        "Detached": {
+          "median": 577.0,
+          "count": 1
+        }
+      },
+      "GU1 2JP": {
+        "Semi-Detached": {
+          "median": 865.0,
+          "count": 1
+        }
+      },
+      "GU1 2LT": {
+        "Flat": {
+          "median": 265.0,
+          "count": 1
+        }
+      },
+      "GU1 2NG": {
+        "Flat": {
+          "median": 462.0,
+          "count": 1
+        }
+      },
+      "GU1 2NY": {
+        "Detached": {
+          "median": 923.0,
+          "count": 1
+        }
+      },
+      "GU1 2PA": {
+        "Flat": {
+          "median": 368.0,
+          "count": 1
+        }
+      },
+      "GU1 2PB": {
+        "Flat": {
+          "median": 335.0,
+          "count": 1
+        }
+      },
+      "GU1 2PX": {
+        "Semi-Detached": {
+          "median": 404.0,
+          "count": 1
+        }
+      },
+      "GU1 2RB": {
+        "Flat": {
+          "median": 346.0,
+          "count": 1
+        }
+      },
+      "GU1 2RX": {
+        "Flat": {
+          "median": 438.0,
+          "count": 1
+        }
+      },
+      "GU1 2TH": {
+        "Detached": {
+          "median": 808.0,
+          "count": 1
+        }
+      },
+      "GU1 2UG": {
+        "Terraced": {
+          "median": 508.0,
+          "count": 2
+        }
+      },
+      "GU1 2UL": {
+        "Semi-Detached": {
+          "median": 623.0,
+          "count": 1
+        }
+      },
+      "GU1 2UQ": {
+        "Semi-Detached": {
+          "median": 462.0,
+          "count": 1
+        }
+      },
+      "GU1 3DA": {
+        "Flat": {
+          "median": 495.5,
+          "count": 2
+        }
+      },
+      "GU1 3HW": {
+        "Flat": {
+          "median": 375.0,
+          "count": 1
+        }
+      },
+      "GU1 3JL": {
+        "Flat": {
+          "median": 490.5,
+          "count": 2
+        }
+      },
+      "GU1 3JT": {
+        "Flat": {
+          "median": 358.0,
+          "count": 1
+        }
+      },
+      "GU1 3JZ": {
+        "Flat": {
+          "median": 312.0,
+          "count": 1
+        }
+      },
+      "GU1 3LF": {
+        "Flat": {
+          "median": 352.0,
+          "count": 2
+        }
+      },
+      "GU1 3LH": {
+        "Semi-Detached": {
+          "median": 404.0,
+          "count": 1
+        }
+      },
+      "GU1 3LL": {
+        "Flat": {
+          "median": 369.0,
+          "count": 1
+        }
+      },
+      "GU1 3LN": {
+        "Detached": {
+          "median": 796.0,
+          "count": 1
+        },
+        "Flat": {
+          "median": 288.0,
+          "count": 1
+        }
+      },
+      "GU1 3LQ": {
+        "Flat": {
+          "median": 381.0,
+          "count": 1
+        }
+      },
+      "GU1 3LU": {
+        "Flat": {
+          "median": 213.0,
+          "count": 1
+        }
+      },
+      "GU1 3ND": {
+        "Terraced": {
+          "median": 438.5,
+          "count": 2
+        }
+      },
+      "GU1 3NE": {
+        "Terraced": {
+          "median": 669.0,
+          "count": 1
+        }
+      },
+      "GU1 3NL": {
+        "Flat": {
+          "median": 323.0,
+          "count": 1
+        }
+      },
+      "GU1 3NQ": {
+        "Flat": {
+          "median": 369.0,
+          "count": 1
+        }
+      },
+      "GU1 3NX": {
+        "Flat": {
+          "median": 369.0,
+          "count": 1
+        }
+      },
+      "GU1 3PB": {
+        "Flat": {
+          "median": 265.0,
+          "count": 1
+        }
+      },
+      "GU1 3PG": {
+        "Flat": {
+          "median": 346.0,
+          "count": 1
+        }
+      },
+      "GU1 3PN": {
+        "Flat": {
+          "median": 518.0,
+          "count": 1
+        }
+      },
+      "GU1 3PS": {
+        "Flat": {
+          "median": 196.0,
+          "count": 1
+        }
+      },
+      "GU1 3QE": {
+        "Flat": {
+          "median": 323.0,
+          "count": 1
+        }
+      },
+      "GU1 3QF": {
+        "Flat": {
+          "median": 340.5,
+          "count": 2
+        }
+      },
+      "GU1 3QG": {
+        "Detached": {
+          "median": 542.0,
+          "count": 2
+        }
+      },
+      "GU1 3QL": {
+        "Flat": {
+          "median": 317.0,
+          "count": 1
+        }
+      },
+      "GU1 3QQ": {
+        "Semi-Detached": {
+          "median": 600.0,
+          "count": 1
+        }
+      },
+      "GU1 3RJ": {
+        "Semi-Detached": {
+          "median": 588.0,
+          "count": 1
+        }
+      },
+      "GU1 3RT": {
+        "Flat": {
+          "median": 323.0,
+          "count": 1
+        },
+        "Semi-Detached": {
+          "median": 819.0,
+          "count": 1
+        }
+      },
+      "GU1 3RX": {
+        "Terraced": {
+          "median": 808.0,
+          "count": 1
+        }
+      },
+      "GU1 3ST": {
+        "Flat": {
+          "median": 415.0,
+          "count": 2
+        }
+      },
+      "GU1 3SY": {
+        "Flat": {
+          "median": 381.0,
+          "count": 1
+        }
+      },
+      "GU1 3TR": {
+        "Flat": {
+          "median": 750.0,
+          "count": 1
+        }
+      },
+      "GU1 3TS": {
+        "Flat": {
+          "median": 738.0,
+          "count": 1
+        }
+      },
+      "GU1 3UY": {
+        "Flat": {
+          "median": 450.0,
+          "count": 2
+        }
+      },
+      "GU1 3XD": {
+        "Flat": {
+          "median": 485.0,
+          "count": 1
+        }
+      },
+      "GU1 3XY": {
+        "Flat": {
+          "median": 358.0,
+          "count": 1
+        }
+      },
+      "GU1 3XZ": {
+        "Flat": {
+          "median": 340.5,
+          "count": 2
+        }
+      },
+      "GU1 4AF": {
+        "Flat": {
+          "median": 335.0,
+          "count": 1
+        }
+      },
+      "GU1 4AJ": {
+        "Flat": {
+          "median": 403.0,
+          "count": 2
+        }
+      },
+      "GU1 4AR": {
+        "Flat": {
+          "median": 392.5,
+          "count": 2
+        }
+      },
+      "GU1 4AW": {
+        "Flat": {
+          "median": 462.0,
+          "count": 1
+        }
+      },
+      "GU1 4AX": {
+        "Flat": {
+          "median": 450.0,
+          "count": 3
+        }
+      },
+      "GU1 4BE": {
+        "Flat": {
+          "median": 369.0,
+          "count": 2
+        }
+      },
+      "GU1 4BP": {
+        "Flat": {
+          "median": 381.0,
+          "count": 1
+        }
+      },
+      "GU1 4BQ": {
+        "Flat": {
+          "median": 483.5,
+          "count": 2
+        }
+      },
+      "GU1 4BU": {
+        "Flat": {
+          "median": 421.5,
+          "count": 2
+        }
+      },
+      "GU1 4DD": {
+        "Flat": {
+          "median": 288.0,
+          "count": 1
+        }
+      },
+      "GU1 4DE": {
+        "Flat": {
+          "median": 256.5,
+          "count": 2
+        }
+      },
+      "GU1 4DF": {
+        "Flat": {
+          "median": 300.0,
+          "count": 1
+        }
+      },
+      "GU1 4DG": {
+        "Flat": {
+          "median": 277.0,
+          "count": 2
+        }
+      },
+      "GU1 4DH": {
+        "Flat": {
+          "median": 300.0,
+          "count": 1
+        }
+      },
+      "GU1 4DN": {
+        "Flat": {
+          "median": 288.0,
+          "count": 3
+        }
+      },
+      "GU1 4DP": {
+        "Semi-Detached": {
+          "median": 692.0,
+          "count": 1
+        }
+      },
+      "GU1 4DR": {
+        "Flat": {
+          "median": 288.0,
+          "count": 1
+        }
+      },
+      "GU1 4DW": {
+        "Flat": {
+          "median": 323.0,
+          "count": 2
+        }
+      },
+      "GU1 4EA": {
+        "Flat": {
+          "median": 312.0,
+          "count": 1
+        }
+      },
+      "GU1 4HL": {
+        "Flat": {
+          "median": 352.0,
+          "count": 2
+        }
+      },
+      "GU1 4HP": {
+        "Flat": {
+          "median": 387.0,
+          "count": 1
+        }
+      },
+      "GU1 4HY": {
+        "Semi-Detached": {
+          "median": 427.0,
+          "count": 1
+        }
+      },
+      "GU1 4JF": {
+        "Flat": {
+          "median": 302.5,
+          "count": 2
+        }
+      },
+      "GU1 4JJ": {
+        "Flat": {
+          "median": 299.0,
+          "count": 1
+        },
+        "Semi-Detached": {
+          "median": 516.5,
+          "count": 2
+        }
+      },
+      "GU1 4JL": {
+        "Flat": {
+          "median": 462.0,
+          "count": 1
+        }
+      },
+      "GU1 4JN": {
+        "Flat": {
+          "median": 265.0,
+          "count": 1
+        }
+      },
+      "GU1 4LG": {
+        "Flat": {
+          "median": 462.0,
+          "count": 2
+        }
+      },
+      "GU1 4LH": {
+        "Flat": {
+          "median": 369.0,
+          "count": 1
+        }
+      },
+      "GU1 4LR": {
+        "Flat": {
+          "median": 312.0,
+          "count": 1
+        },
+        "Semi-Detached": {
+          "median": 508.0,
+          "count": 1
+        }
+      },
+      "GU1 4NE": {
+        "Semi-Detached": {
+          "median": 427.0,
+          "count": 1
+        }
+      },
+      "GU1 4NG": {
+        "Semi-Detached": {
+          "median": 623.0,
+          "count": 1
+        }
+      },
+      "GU1 4NL": {
+        "Semi-Detached": {
+          "median": 392.0,
+          "count": 1
+        }
+      },
+      "GU1 4NN": {
+        "Semi-Detached": {
+          "median": 738.0,
+          "count": 1
+        }
+      },
+      "GU1 4NP": {
+        "Detached": {
+          "median": 312.0,
+          "count": 1
+        },
+        "Flat": {
+          "median": 300.0,
+          "count": 1
+        },
+        "Terraced": {
+          "median": 437.0,
+          "count": 1
+        }
+      },
+      "GU1 4NQ": {
+        "Flat": {
+          "median": 381.0,
+          "count": 1
+        }
+      },
+      "GU1 4NT": {
+        "Flat": {
+          "median": 346.0,
+          "count": 1
+        }
+      },
+      "GU1 4NX": {
+        "Flat": {
+          "median": 438.0,
+          "count": 1
+        }
+      },
+      "GU1 4NZ": {
+        "Semi-Detached": {
+          "median": 681.0,
+          "count": 2
+        }
+      },
+      "GU1 4PA": {
+        "Semi-Detached": {
+          "median": 808.0,
+          "count": 2
+        }
+      },
+      "GU1 4PD": {
+        "Flat": {
+          "median": 508.0,
+          "count": 1
+        },
+        "Semi-Detached": {
+          "median": 692.0,
+          "count": 5
+        }
+      },
+      "GU1 4PG": {
+        "Detached": {
+          "median": 646.0,
+          "count": 1
+        },
+        "Flat": {
+          "median": 288.0,
+          "count": 1
+        },
+        "Semi-Detached": {
+          "median": 808.0,
+          "count": 1
+        }
+      },
+      "GU1 4PT": {
+        "Flat": {
+          "median": 462.0,
+          "count": 1
+        }
+      },
+      "GU1 4QG": {
+        "Terraced": {
+          "median": 577.0,
+          "count": 1
+        }
+      },
+      "GU1 4QH": {
+        "Flat": {
+          "median": 276.0,
+          "count": 1
+        }
+      },
+      "GU1 4QJ": {
+        "Flat": {
+          "median": 392.0,
+          "count": 1
+        }
+      },
+      "GU1 4QN": {
+        "Flat": {
+          "median": 346.0,
+          "count": 1
+        }
+      },
+      "GU1 4QW": {
+        "Terraced": {
+          "median": 485.0,
+          "count": 1
+        }
+      },
+      "GU1 4RJ": {
+        "Flat": {
+          "median": 369.0,
+          "count": 1
+        }
+      },
+      "GU1 4RN": {
+        "Flat": {
+          "median": 312.0,
+          "count": 1
+        }
+      },
+      "GU1 4RP": {
+        "Flat": {
+          "median": 460.0,
+          "count": 1
+        }
+      },
+      "GU1 4SB": {
+        "Flat": {
+          "median": 305.0,
+          "count": 1
+        }
+      },
+      "GU1 4SF": {
+        "Flat": {
+          "median": 404.0,
+          "count": 1
+        }
+      },
+      "GU1 4SJ": {
+        "Flat": {
+          "median": 300.0,
+          "count": 1
+        }
+      },
+      "GU1 4TY": {
+        "Flat": {
+          "median": 364.5,
+          "count": 2
+        }
+      },
+      "GU1 4UB": {
+        "Semi-Detached": {
+          "median": 600.0,
+          "count": 1
+        },
+        "Terraced": {
+          "median": 534.0,
+          "count": 1
+        }
+      },
+      "GU1 4UQ": {
+        "Semi-Detached": {
+          "median": 600.0,
+          "count": 1
+        },
+        "Terraced": {
+          "median": 635.0,
+          "count": 3
+        }
+      },
+      "GU1 4YR": {
+        "Flat": {
+          "median": 219.0,
+          "count": 1
+        }
+      },
+      "GU2 4AG": {
+        "Flat": {
+          "median": 300.0,
+          "count": 2
+        }
+      },
+      "GU2 4AL": {
+        "Flat": {
+          "median": 358.0,
+          "count": 1
+        }
+      },
+      "GU2 4AT": {
+        "Semi-Detached": {
+          "median": 462.0,
+          "count": 1
+        }
+      },
+      "GU2 4AU": {
+        "Flat": {
+          "median": 253.0,
+          "count": 1
+        }
+      },
+      "GU2 4AZ": {
+        "Flat": {
+          "median": 363.0,
+          "count": 1
+        }
+      },
+      "GU2 4BP": {
+        "Semi-Detached": {
+          "median": 253.0,
+          "count": 1
+        }
+      },
+      "GU2 4BW": {
+        "Flat": {
+          "median": 577.0,
+          "count": 1
+        }
+      },
+      "GU2 4DG": {
+        "Flat": {
+          "median": 462.0,
+          "count": 1
+        }
+      },
+      "GU2 4EL": {
+        "Flat": {
+          "median": 460.0,
+          "count": 1
+        }
+      },
+      "GU2 4ER": {
+        "Flat": {
+          "median": 317.0,
+          "count": 1
+        }
+      },
+      "GU2 4ET": {
+        "Flat": {
+          "median": 381.0,
+          "count": 1
+        }
+      },
+      "GU2 4EW": {
+        "Detached": {
+          "median": 485.0,
+          "count": 1
+        }
+      },
+      "GU2 4HR": {
+        "Flat": {
+          "median": 312.0,
+          "count": 1
+        }
+      },
+      "GU2 4JN": {
+        "Flat": {
+          "median": 381.0,
+          "count": 3
+        }
+      },
+      "GU2 4JR": {
+        "Flat": {
+          "median": 381.0,
+          "count": 1
+        }
+      },
+      "GU2 4JT": {
+        "Terraced": {
+          "median": 807.5,
+          "count": 2
+        }
+      },
+      "GU2 4LF": {
+        "Semi-Detached": {
+          "median": 715.0,
+          "count": 1
+        }
+      },
+      "GU2 4LG": {
+        "Semi-Detached": {
+          "median": 635.0,
+          "count": 1
+        },
+        "Terraced": {
+          "median": 577.0,
+          "count": 1
+        }
+      },
+      "GU2 7AT": {
+        "Flat": {
+          "median": 554.0,
+          "count": 1
+        }
+      },
+      "GU2 7ND": {
+        "Semi-Detached": {
+          "median": 692.0,
+          "count": 1
+        },
+        "Terraced": {
+          "median": 460.0,
+          "count": 1
+        }
+      },
+      "GU2 7NE": {
+        "Semi-Detached": {
+          "median": 779.0,
+          "count": 2
+        }
+      },
+      "GU2 7NF": {
+        "Semi-Detached": {
+          "median": 642.0,
+          "count": 1
+        },
+        "Terraced": {
+          "median": 490.5,
+          "count": 2
+        }
+      },
+      "GU2 7NG": {
+        "Semi-Detached": {
+          "median": 554.0,
+          "count": 1
+        }
+      },
+      "GU2 7NH": {
+        "Semi-Detached": {
+          "median": 623.0,
+          "count": 2
+        },
+        "Terraced": {
+          "median": 617.5,
+          "count": 2
+        }
+      },
+      "GU2 7NJ": {
+        "Semi-Detached": {
+          "median": 565.5,
+          "count": 2
+        },
+        "Terraced": {
+          "median": 692.0,
+          "count": 1
+        }
+      },
+      "GU2 7NL": {
+        "Terraced": {
+          "median": 669.0,
+          "count": 3
+        }
+      },
+      "GU2 7NN": {
+        "Semi-Detached": {
+          "median": 880.0,
+          "count": 4
+        },
+        "Terraced": {
+          "median": 808.0,
+          "count": 7
+        }
+      },
+      "GU2 7NQ": {
+        "Terraced": {
+          "median": 738.0,
+          "count": 2
+        }
+      },
+      "GU2 7NR": {
+        "Semi-Detached": {
+          "median": 554.0,
+          "count": 1
+        },
+        "Terraced": {
+          "median": 554.0,
+          "count": 1
+        }
+      },
+      "GU2 7NT": {
+        "Flat": {
+          "median": 525.0,
+          "count": 2
+        }
+      },
+      "GU2 7NU": {
+        "Flat": {
+          "median": 375.0,
+          "count": 2
+        },
+        "Semi-Detached": {
+          "median": 623.5,
+          "count": 2
+        }
+      },
+      "GU2 7NY": {
+        "Semi-Detached": {
+          "median": 611.5,
+          "count": 4
+        },
+        "Terraced": {
+          "median": 611.5,
+          "count": 2
+        }
+      },
+      "GU2 7NZ": {
+        "Terraced": {
+          "median": 519.0,
+          "count": 2
+        }
+      },
+      "GU2 7PA": {
+        "Flat": {
+          "median": 248.0,
+          "count": 2
+        }
+      },
+      "GU2 7PQ": {
+        "Detached": {
+          "median": 542.0,
+          "count": 2
+        },
+        "Flat": {
+          "median": 542.0,
+          "count": 1
+        }
+      },
+      "GU2 7QS": {
+        "Flat": {
+          "median": 460.0,
+          "count": 3
+        }
+      },
+      "GU2 7SA": {
+        "Flat": {
+          "median": 276.0,
+          "count": 1
+        }
+      },
+      "GU2 7SP": {
+        "Detached": {
+          "median": 703.0,
+          "count": 2
+        }
+      },
+      "GU2 7SU": {
+        "Semi-Detached": {
+          "median": 981.0,
+          "count": 1
+        }
+      },
+      "GU2 7SX": {
+        "Semi-Detached": {
+          "median": 611.0,
+          "count": 2
+        }
+      },
+      "GU2 7SY": {
+        "Semi-Detached": {
+          "median": 531.0,
+          "count": 1
+        }
+      },
+      "GU2 7SZ": {
+        "Semi-Detached": {
+          "median": 750.0,
+          "count": 2
+        },
+        "Terraced": {
+          "median": 219.0,
+          "count": 1
+        }
+      },
+      "GU2 7TR": {
+        "Semi-Detached": {
+          "median": 462.0,
+          "count": 1
+        }
+      },
+      "GU2 7TZ": {
+        "Semi-Detached": {
+          "median": 750.0,
+          "count": 1
+        }
+      },
+      "GU2 7UH": {
+        "Terraced": {
+          "median": 808.0,
+          "count": 1
+        }
+      },
+      "GU2 7UQ": {
+        "Detached": {
+          "median": 981.0,
+          "count": 1
+        }
+      },
+      "GU2 7UU": {
+        "Semi-Detached": {
+          "median": 623.0,
+          "count": 1
+        }
+      },
+      "GU2 7UX": {
+        "Semi-Detached": {
+          "median": 617.5,
+          "count": 2
+        }
+      },
+      "GU2 7UZ": {
+        "Semi-Detached": {
+          "median": 842.0,
+          "count": 2
+        },
+        "Terraced": {
+          "median": 635.0,
+          "count": 1
+        }
+      },
+      "GU2 7XA": {
+        "Semi-Detached": {
+          "median": 831.0,
+          "count": 1
+        }
+      },
+      "GU2 7XB": {
+        "Semi-Detached": {
+          "median": 692.0,
+          "count": 1
+        }
+      },
+      "GU2 7XE": {
+        "Detached": {
+          "median": 800.0,
+          "count": 1
+        }
+      },
+      "GU2 8AE": {
+        "Semi-Detached": {
+          "median": 750.0,
+          "count": 2
+        }
+      },
+      "GU2 8AF": {
+        "Detached": {
+          "median": 577.0,
+          "count": 1
+        },
+        "Flat": {
+          "median": 311.0,
+          "count": 2
+        },
+        "Semi-Detached": {
+          "median": 646.0,
+          "count": 1
+        }
+      },
+      "GU2 8AJ": {
+        "Flat": {
+          "median": 438.0,
+          "count": 3
+        },
+        "Semi-Detached": {
+          "median": 617.5,
+          "count": 6
+        }
+      },
+      "GU2 8AP": {
+        "Semi-Detached": {
+          "median": 692.0,
+          "count": 1
+        }
+      },
+      "GU2 8AS": {
+        "Semi-Detached": {
+          "median": 542.0,
+          "count": 1
+        }
+      },
+      "GU2 8AT": {
+        "Detached": {
+          "median": 612.0,
+          "count": 1
+        },
+        "Semi-Detached": {
+          "median": 635.0,
+          "count": 1
+        }
+      },
+      "GU2 8AU": {
+        "Semi-Detached": {
+          "median": 496.0,
+          "count": 1
+        }
+      },
+      "GU2 8AW": {
+        "Semi-Detached": {
+          "median": 623.0,
+          "count": 3
+        }
+      },
+      "GU2 8AX": {
+        "Semi-Detached": {
+          "median": 623.0,
+          "count": 1
+        }
+      },
+      "GU2 8BE": {
+        "Flat": {
+          "median": 496.0,
+          "count": 1
+        }
+      },
+      "GU2 8BH": {
+        "Semi-Detached": {
+          "median": 877.0,
+          "count": 1
+        }
+      },
+      "GU2 8BN": {
+        "Detached": {
+          "median": 623.0,
+          "count": 3
+        },
+        "Semi-Detached": {
+          "median": 634.5,
+          "count": 2
+        }
+      },
+      "GU2 8BT": {
+        "Semi-Detached": {
+          "median": 612.0,
+          "count": 1
+        }
+      },
+      "GU2 8BU": {
+        "Detached": {
+          "median": 692.0,
+          "count": 1
+        },
+        "Semi-Detached": {
+          "median": 611.5,
+          "count": 2
+        }
+      },
+      "GU2 8BW": {
+        "Semi-Detached": {
+          "median": 692.0,
+          "count": 4
+        },
+        "Terraced": {
+          "median": 414.0,
+          "count": 1
+        }
+      },
+      "GU2 8DA": {
+        "Semi-Detached": {
+          "median": 460.0,
+          "count": 1
+        }
+      },
+      "GU2 8DD": {
+        "Semi-Detached": {
+          "median": 496.0,
+          "count": 1
+        }
+      },
+      "GU2 8DE": {
+        "Semi-Detached": {
+          "median": 946.0,
+          "count": 1
+        },
+        "Terraced": {
+          "median": 923.0,
+          "count": 1
+        }
+      },
+      "GU2 8DF": {
+        "Semi-Detached": {
+          "median": 691.0,
+          "count": 3
+        }
+      },
+      "GU2 8DJ": {
+        "Semi-Detached": {
+          "median": 531.0,
+          "count": 2
+        },
+        "Terraced": {
+          "median": 612.0,
+          "count": 1
+        }
+      },
+      "GU2 8DL": {
+        "Semi-Detached": {
+          "median": 646.0,
+          "count": 1
+        }
+      },
+      "GU2 8DN": {
+        "Terraced": {
+          "median": 692.0,
+          "count": 1
+        }
+      },
+      "GU2 8ED": {
+        "Terraced": {
+          "median": 600.0,
+          "count": 2
+        }
+      },
+      "GU2 8EN": {
+        "Semi-Detached": {
+          "median": 623.0,
+          "count": 1
+        }
+      },
+      "GU2 8EP": {
+        "Terraced": {
+          "median": 531.0,
+          "count": 2
+        }
+      },
+      "GU2 8ER": {
+        "Terraced": {
+          "median": 692.0,
+          "count": 1
+        }
+      },
+      "GU2 8EX": {
+        "Terraced": {
+          "median": 577.0,
+          "count": 2
+        }
+      },
+      "GU2 8EY": {
+        "Terraced": {
+          "median": 554.0,
+          "count": 1
+        }
+      },
+      "GU2 8EZ": {
+        "Terraced": {
+          "median": 404.0,
+          "count": 1
+        }
+      },
+      "GU2 8GG": {
+        "Semi-Detached": {
+          "median": 404.0,
+          "count": 1
+        }
+      },
+      "GU2 8HA": {
+        "Terraced": {
+          "median": 427.0,
+          "count": 1
+        }
+      },
+      "GU2 8HE": {
+        "Flat": {
+          "median": 277.0,
+          "count": 1
+        }
+      },
+      "GU2 8HJ": {
+        "Semi-Detached": {
+          "median": 614.0,
+          "count": 1
+        }
+      },
+      "GU2 8HR": {
+        "Semi-Detached": {
+          "median": 623.0,
+          "count": 1
+        }
+      },
+      "GU2 8HW": {
+        "Semi-Detached": {
+          "median": 507.5,
+          "count": 2
+        }
+      },
+      "GU2 8HZ": {
+        "Semi-Detached": {
+          "median": 646.0,
+          "count": 1
+        }
+      },
+      "GU2 8JA": {
+        "Terraced": {
+          "median": 508.0,
+          "count": 1
+        }
+      },
+      "GU2 8JG": {
+        "Semi-Detached": {
+          "median": 392.0,
+          "count": 1
+        }
+      },
+      "GU2 8JQ": {
+        "Semi-Detached": {
+          "median": 807.0,
+          "count": 1
+        }
+      },
+      "GU2 8JR": {
+        "Semi-Detached": {
+          "median": 583.0,
+          "count": 2
+        }
+      },
+      "GU2 8JS": {
+        "Terraced": {
+          "median": 450.0,
+          "count": 1
+        }
+      },
+      "GU2 8JT": {
+        "Semi-Detached": {
+          "median": 600.0,
+          "count": 3
+        },
+        "Terraced": {
+          "median": 600.0,
+          "count": 1
+        }
+      },
+      "GU2 8JX": {
+        "Flat": {
+          "median": 208.0,
+          "count": 1
+        }
+      },
+      "GU2 8LE": {
+        "Semi-Detached": {
+          "median": 612.0,
+          "count": 1
+        },
+        "Terraced": {
+          "median": 692.0,
+          "count": 1
+        }
+      },
+      "GU2 8LH": {
+        "Semi-Detached": {
+          "median": 462.0,
+          "count": 1
+        }
+      },
+      "GU2 8LJ": {
+        "Terraced": {
+          "median": 577.0,
+          "count": 1
+        }
+      },
+      "GU2 8LQ": {
+        "Semi-Detached": {
+          "median": 686.5,
+          "count": 2
+        }
+      },
+      "GU2 8LS": {
+        "Semi-Detached": {
+          "median": 727.0,
+          "count": 1
+        }
+      },
+      "GU2 8LT": {
+        "Flat": {
+          "median": 294.0,
+          "count": 1
+        }
+      },
+      "GU2 8LU": {
+        "Semi-Detached": {
+          "median": 692.0,
+          "count": 1
+        }
+      },
+      "GU2 8NH": {
+        "Semi-Detached": {
+          "median": 450.0,
+          "count": 1
+        }
+      },
+      "GU2 8NJ": {
+        "Flat": {
+          "median": 381.0,
+          "count": 1
+        }
+      },
+      "GU2 8US": {
+        "Flat": {
+          "median": 312.0,
+          "count": 4
+        }
+      },
+      "GU2 9AA": {
+        "Flat": {
+          "median": 600.0,
+          "count": 2
+        }
+      },
+      "GU2 9AB": {
+        "Detached": {
+          "median": 808.0,
+          "count": 1
+        },
+        "Flat": {
+          "median": 312.0,
+          "count": 1
+        }
+      },
+      "GU2 9AF": {
+        "Flat": {
+          "median": 404.0,
+          "count": 1
+        }
+      },
+      "GU2 9GA": {
+        "Flat": {
+          "median": 288.0,
+          "count": 1
+        }
+      },
+      "GU2 9LR": {
+        "Flat": {
+          "median": 288.0,
+          "count": 1
+        }
+      },
+      "GU2 9LS": {
+        "Semi-Detached": {
+          "median": 542.0,
+          "count": 1
+        }
+      },
+      "GU2 9NF": {
+        "Semi-Detached": {
+          "median": 600.0,
+          "count": 1
+        }
+      },
+      "GU2 9NJ": {
+        "Semi-Detached": {
+          "median": 173.0,
+          "count": 1
+        }
+      },
+      "GU2 9NQ": {
+        "Semi-Detached": {
+          "median": 750.0,
+          "count": 1
+        }
+      },
+      "GU2 9NR": {
+        "Semi-Detached": {
+          "median": 738.0,
+          "count": 1
+        }
+      },
+      "GU2 9NX": {
+        "Semi-Detached": {
+          "median": 750.0,
+          "count": 1
+        }
+      },
+      "GU2 9NY": {
+        "Semi-Detached": {
+          "median": 519.5,
+          "count": 2
+        }
+      },
+      "GU2 9PA": {
+        "Semi-Detached": {
+          "median": 865.0,
+          "count": 1
+        }
+      },
+      "GU2 9PG": {
+        "Detached": {
+          "median": 460.0,
+          "count": 1
+        }
+      },
+      "GU2 9PP": {
+        "Terraced": {
+          "median": 761.5,
+          "count": 2
+        }
+      },
+      "GU2 9PZ": {
+        "Flat": {
+          "median": 358.0,
+          "count": 1
+        }
+      },
+      "GU2 9QG": {
+        "Flat": {
+          "median": 358.0,
+          "count": 1
+        }
+      },
+      "GU2 9QR": {
+        "Terraced": {
+          "median": 450.0,
+          "count": 1
+        }
+      },
+      "GU2 9QU": {
+        "Terraced": {
+          "median": 427.0,
+          "count": 1
+        }
+      },
+      "GU2 9RB": {
+        "Semi-Detached": {
+          "median": 496.0,
+          "count": 1
+        }
+      },
+      "GU2 9RU": {
+        "Flat": {
+          "median": 253.0,
+          "count": 1
+        },
+        "Semi-Detached": {
+          "median": 600.0,
+          "count": 1
+        },
+        "Terraced": {
+          "median": 427.0,
+          "count": 1
+        }
+      },
+      "GU2 9RW": {
+        "Flat": {
+          "median": 392.0,
+          "count": 1
+        },
+        "Semi-Detached": {
+          "median": 600.0,
+          "count": 1
+        }
+      },
+      "GU2 9RX": {
+        "Flat": {
+          "median": 346.0,
+          "count": 1
+        }
+      },
+      "GU2 9RY": {
+        "Terraced": {
+          "median": 703.5,
+          "count": 2
+        }
+      },
+      "GU2 9SA": {
+        "Semi-Detached": {
+          "median": 831.0,
+          "count": 2
+        }
+      },
+      "GU2 9SG": {
+        "Detached": {
+          "median": 623.0,
+          "count": 1
+        }
+      },
+      "GU2 9TA": {
+        "Semi-Detached": {
+          "median": 808.0,
+          "count": 1
+        }
+      },
+      "GU2 9TB": {
+        "Semi-Detached": {
+          "median": 802.0,
+          "count": 1
+        }
+      },
+      "GU2 9TF": {
+        "Terraced": {
+          "median": 623.0,
+          "count": 2
+        }
+      },
+      "GU2 9TH": {
+        "Semi-Detached": {
+          "median": 646.0,
+          "count": 1
+        }
+      },
+      "GU2 9TQ": {
+        "Semi-Detached": {
+          "median": 554.0,
+          "count": 1
+        }
+      },
+      "GU2 9TU": {
+        "Detached": {
+          "median": 462.0,
+          "count": 1
+        }
+      },
+      "GU2 9UH": {
+        "Detached": {
+          "median": 646.0,
+          "count": 1
+        }
+      },
+      "GU2 9UN": {
+        "Detached": {
+          "median": 577.0,
+          "count": 1
+        }
+      },
+      "GU2 9UZ": {
+        "Semi-Detached": {
+          "median": 635.0,
+          "count": 1
+        }
+      },
+      "GU2 9XA": {
+        "Flat": {
+          "median": 306.0,
+          "count": 1
+        }
+      },
+      "GU2 9XN": {
+        "Flat": {
+          "median": 213.0,
+          "count": 2
+        }
+      },
+      "GU2 9XX": {
+        "Semi-Detached": {
+          "median": 542.0,
+          "count": 1
+        }
+      },
+      "GU2 9YG": {
+        "Semi-Detached": {
+          "median": 508.0,
+          "count": 1
+        }
+      },
+      "GU3 3AN": {
+        "Detached": {
+          "median": 692.0,
+          "count": 1
+        }
+      },
+      "GU3 3AQ": {
+        "Detached": {
+          "median": 496.0,
+          "count": 1
+        }
+      },
+      "GU3 3AS": {
+        "Semi-Detached": {
+          "median": 462.0,
+          "count": 1
+        },
+        "Terraced": {
+          "median": 450.0,
+          "count": 1
+        }
+      },
+      "GU3 3AT": {
+        "Semi-Detached": {
+          "median": 462.0,
+          "count": 1
+        }
+      },
+      "GU3 3AU": {
+        "Semi-Detached": {
+          "median": 709.5,
+          "count": 2
+        }
+      },
+      "GU3 3BD": {
+        "Terraced": {
+          "median": 969.0,
+          "count": 1
+        }
+      },
+      "GU3 3BY": {
+        "Terraced": {
+          "median": 507.0,
+          "count": 1
+        }
+      },
+      "GU4 7BX": {
+        "Terraced": {
+          "median": 519.0,
+          "count": 1
+        }
+      },
+      "GU4 7EA": {
+        "Terraced": {
+          "median": 508.0,
+          "count": 1
+        }
+      },
+      "GU4 7EQ": {
+        "Flat": {
+          "median": 294.0,
+          "count": 3
+        }
+      },
+      "GU4 7ES": {
+        "Semi-Detached": {
+          "median": 658.0,
+          "count": 1
+        }
+      },
+      "GU4 7FA": {
+        "Flat": {
+          "median": 512.0,
+          "count": 2
+        },
+        "Semi-Detached": {
+          "median": 340.0,
+          "count": 1
+        }
+      },
+      "GU4 7FB": {
+        "Semi-Detached": {
+          "median": 288.0,
+          "count": 1
+        },
+        "Terraced": {
+          "median": 335.0,
+          "count": 1
+        }
+      },
+      "GU4 7FE": {
+        "Flat": {
+          "median": 282.5,
+          "count": 2
+        }
+      },
+      "GU4 7GB": {
+        "Flat": {
+          "median": 369.0,
+          "count": 1
+        }
+      },
+      "GU4 7HE": {
+        "Semi-Detached": {
+          "median": 438.0,
+          "count": 1
+        }
+      },
+      "GU4 7HG": {
+        "Terraced": {
+          "median": 391.0,
+          "count": 1
+        }
+      },
+      "GU4 7JL": {
+        "Flat": {
+          "median": 288.0,
+          "count": 1
+        }
+      },
+      "GU4 7JS": {
+        "Flat": {
+          "median": 358.0,
+          "count": 1
+        }
+      },
+      "GU4 7NA": {
+        "Detached": {
+          "median": 450.0,
+          "count": 3
+        },
+        "Flat": {
+          "median": 912.0,
+          "count": 1
+        }
+      },
+      "GU4 7RE": {
+        "Flat": {
+          "median": 294.0,
+          "count": 1
+        }
+      },
+      "GU4 7XR": {
+        "Semi-Detached": {
+          "median": 323.0,
+          "count": 1
+        }
+      },
+      "GU4 7XT": {
+        "Semi-Detached": {
+          "median": 519.0,
+          "count": 1
+        }
+      },
+      "GU4 7XU": {
+        "Flat": {
+          "median": 346.0,
+          "count": 1
+        }
+      },
+      "GU4 7XY": {
+        "Flat": {
+          "median": 317.0,
+          "count": 1
+        }
+      },
+      "GU4 7YW": {
+        "Flat": {
+          "median": 300.0,
+          "count": 1
+        },
+        "Terraced": {
+          "median": 312.0,
+          "count": 1
+        }
+      },
+      "GU4 7YZ": {
+        "Flat": {
+          "median": 277.0,
+          "count": 1
+        },
+        "Semi-Detached": {
+          "median": 300.0,
+          "count": 1
+        }
+      },
+      "GU4 8AJ": {
+        "Detached": {
+          "median": 646.0,
+          "count": 1
+        }
+      }
+    }
+  }
+}

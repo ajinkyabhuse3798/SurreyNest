@@ -1,5 +1,5 @@
 /**
- * CtaSection — Full-width amber CTA banner.
+ * CtaSection, Full-width amber CTA banner.
  * Matches Stitch CTA: "Ready to find a place you'll actually love?"
  */
 import { Link } from 'react-router-dom'
@@ -27,20 +27,20 @@ export default function CtaSection() {
                         Ready to find a place you'll actually love?
                     </h2>
                     <p className="text-base md:text-lg max-w-xl text-white/80">
-                        Join thousands of Surrey students who trust SurreyNest for transparent housing data. No fees, no fuss.
+                        Explore Surrey housing data without creating an account. Just search, compare, and make a shortlist with confidence.
                     </p>
                     <div className="flex flex-col sm:flex-row gap-4">
                         <Link
-                            to="/register"
+                            to="/search"
                             className="bg-white text-primary px-8 md:px-10 py-3.5 md:py-4 rounded-xl font-bold shadow-xl hover:scale-105 transition-transform"
                         >
-                            Create Free Account
+                            Search Properties
                         </Link>
                         <Link
-                            to="/search"
+                            to="/rights"
                             className="bg-primary/20 backdrop-blur-md border border-white/30 text-white px-8 md:px-10 py-3.5 md:py-4 rounded-xl font-bold hover:bg-primary/30 transition-all"
                         >
-                            Search Properties
+                            Learn Your Rights
                         </Link>
                     </div>
                 </div>

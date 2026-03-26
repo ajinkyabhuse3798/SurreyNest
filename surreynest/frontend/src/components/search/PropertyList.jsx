@@ -1,13 +1,9 @@
 /**
- * PropertyList — Property cards + skeleton + empty state + pagination.
+ * PropertyList, Property cards + skeleton + empty state + pagination.
  */
-import { Search, SlidersHorizontal, Lightbulb, ChevronDown, Crown } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Search, SlidersHorizontal, Lightbulb, ChevronDown } from 'lucide-react'
 import PropertyCard from '../PropertyCard'
 import { SkeletonCard, SORT_OPTIONS } from '../../utils/searchUtils'
-import { useAuth } from '../../hooks/useAuth'
-
-const FREE_RESULT_LIMIT = 10
 
 export default function PropertyList({
     loading, sorted, error, properties,
@@ -16,13 +12,9 @@ export default function PropertyList({
     activeFilterCount, handleClearFilters,
     page, setPage, totalPages,
     // Mobile sort controls
-    sortKey, setSortKey, showFilters, setShowFilters,
+    sortKey, setSortKey, setShowFilters,
     showMap,
 }) {
-    const { user } = useAuth()
-    const isPro = user?.is_pro ?? false
-    const visibleSorted = isPro ? sorted : sorted.slice(0, FREE_RESULT_LIMIT)
-    const hiddenCount = isPro ? 0 : Math.max(0, sorted.length - FREE_RESULT_LIMIT)
     return (
         <div
             className={`${showMap ? 'hidden md:block' : ''
@@ -94,7 +86,7 @@ export default function PropertyList({
 
                 {/* Property cards */}
                 {!loading &&
-                    visibleSorted.map((p, idx) => (
+                    sorted.map((p, idx) => (
                         <div key={p.uprn}>
                             <PropertyCard
                                 property={p}
@@ -117,30 +109,6 @@ export default function PropertyList({
                             )}
                         </div>
                     ))}
-
-                {/* Pro upsell after result cap */}
-                {!loading && hiddenCount > 0 && (
-                    <div className="bg-gradient-to-br from-primary/5 to-indigo-50 border border-primary/20 rounded-2xl p-5 text-center space-y-3">
-                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center mx-auto">
-                            <Crown size={18} className="text-primary" />
-                        </div>
-                        <div>
-                            <p className="text-sm font-extrabold text-slate-900">
-                                {hiddenCount} more {hiddenCount === 1 ? 'property' : 'properties'} found
-                            </p>
-                            <p className="text-xs text-slate-500 mt-0.5">
-                                Free plan shows up to {FREE_RESULT_LIMIT} results. Upgrade to see all of them.
-                            </p>
-                        </div>
-                        <Link
-                            to="/pricing"
-                            className="inline-flex items-center gap-2 bg-primary text-white text-xs font-bold px-4 py-2 rounded-lg shadow-sm shadow-primary/20 hover:opacity-90 transition-all"
-                        >
-                            <Crown size={12} />
-                            Upgrade to Pro — £5.99/mo
-                        </Link>
-                    </div>
-                )}
 
                 {/* Pagination */}
                 {totalPages > 1 && !loading && (

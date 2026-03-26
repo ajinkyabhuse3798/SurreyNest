@@ -6,6 +6,8 @@ and health check endpoint.
 """
 
 import logging
+import os
+import uuid
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
@@ -18,7 +20,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
 from app.config import settings
-from app.rate_limit import limiter  # shared singleton — one instance for the whole app
+from app.rate_limit import limiter  # shared singleton, one instance for the whole app
 
 logger = logging.getLogger(__name__)
 
@@ -37,34 +39,71 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     logger.info("SurreyNest API starting up (environment=%s)", settings.environment)
 
+    scheduler = None
+    scheduler_lock = None
+
     # ── Load ML model ─────────────────────────────────────────────────────
     try:
-        from app.ml.predict import load_model
+        from app.ml.predict import get_loaded_model_version, load_model
 
         load_model()
-        logger.info("ML model loaded successfully")
+        logger.info(
+            "ML model loaded: artifact_version=%s env_ML_MODEL_VERSION=%s",
+            get_loaded_model_version(),
+            settings.ml_model_version,
+        )
     except Exception:
         logger.warning(
-            "ML model could not be loaded — predictions unavailable",
+            "ML model could not be loaded, predictions unavailable",
             exc_info=True,
         )
 
     # ── Start APScheduler ─────────────────────────────────────────────────
-    from app.data_pipelines.scheduler import register_jobs
+    from app.data_pipelines.scheduler import (
+        acquire_scheduler_lock,
+        register_jobs,
+        release_scheduler_lock,
+    )
 
-    scheduler = AsyncIOScheduler()
-    scheduler.start()
-    register_jobs(scheduler)
-    app.state.scheduler = scheduler
-    logger.info("APScheduler started with %d jobs", len(scheduler.get_jobs()))
+    try:
+        scheduler_lock = acquire_scheduler_lock()
+        if scheduler_lock is None:
+            app.state.scheduler = None
+            app.state.scheduler_lock = None
+            logger.info(
+                "APScheduler skipped in worker pid=%s; another worker owns the lock",
+                os.getpid(),
+            )
+        else:
+            scheduler = AsyncIOScheduler()
+            scheduler.start()
+            register_jobs(scheduler)
+            app.state.scheduler = scheduler
+            app.state.scheduler_lock = scheduler_lock
+            logger.info(
+                "APScheduler started in worker pid=%s with %d jobs",
+                os.getpid(),
+                len(scheduler.get_jobs()),
+            )
+    except Exception:
+        if scheduler is not None:
+            scheduler.shutdown(wait=False)
+        if scheduler_lock is not None:
+            release_scheduler_lock(scheduler_lock)
+        raise
 
     logger.info("Startup complete")
 
     yield
 
     # ── Shutdown ──────────────────────────────────────────────────────────
-    scheduler.shutdown(wait=False)
-    logger.info("APScheduler shut down")
+    try:
+        if scheduler is not None:
+            scheduler.shutdown(wait=False)
+            logger.info("APScheduler shut down")
+    finally:
+        if scheduler_lock is not None:
+            release_scheduler_lock(scheduler_lock)
     logger.info("SurreyNest API shutdown complete")
 
 
@@ -82,17 +121,32 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+# ── Request ID middleware ─────────────────────────────────────────────────────
+@app.middleware("http")
+async def add_request_id(request: Request, call_next):  # type: ignore[type-arg]
+    """Attach a short request ID to every request and response.
+
+    Enables log correlation across services and workers. The ID is
+    available as request.state.request_id inside any route handler.
+    """
+    request_id = str(uuid.uuid4())[:8]
+    request.state.request_id = request_id
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = request_id
+    return response
+
+
 # ── CORS middleware ───────────────────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "DELETE"],
-    allow_headers=["Content-Type", "Authorization", "Cookie"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "Cookie", "X-Requested-With"],
 )
 
 # ── Import and mount routers ─────────────────────────────────────────────────
-from app.routers import admin, agents, auth, contract, heatmap, hmo, leaderboard, listings, pipelines, properties, rent_challenge, rent_explain, rent_trends, reviews, safety, scores, stats  # noqa: E402
+from app.routers import admin, agents, auth, heatmap, hmo, leaderboard, listings, pipelines, properties, rent_challenge, rent_explain, rent_trends, reviews, safety, scores, stats  # noqa: E402
 
 app.include_router(auth.router, prefix="/api", tags=["Auth"])
 app.include_router(stats.router, prefix="/api", tags=["Stats"])
@@ -109,7 +163,6 @@ app.include_router(rent_trends.router, prefix="/api", tags=["Rent Trends"])
 app.include_router(leaderboard.router, prefix="/api", tags=["Leaderboard"])
 app.include_router(agents.router, prefix="/api", tags=["Agents"])
 app.include_router(rent_challenge.router, prefix="/api", tags=["Rent Challenge"])
-app.include_router(contract.router, prefix="/api", tags=["Contract Checker"])
 app.include_router(admin.router, prefix="/api", tags=["Admin Dashboard"])
 
 
@@ -140,13 +193,53 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
 
 # ── Health check ──────────────────────────────────────────────────────────────
 @app.get("/health", tags=["Health"])
-async def health_check() -> dict:
+async def health_check(deep: bool = False) -> dict:
     """Health check endpoint.
 
+    Args:
+        deep: If True, verify DB and Redis connectivity (slower but thorough).
+              Use for deployment readiness checks.
+
     Returns:
-        dict with status and environment.
+        dict with status, environment, and optional component health.
     """
-    return {
+    result: dict = {
         "status": "ok",
         "environment": settings.environment,
     }
+
+    if not deep:
+        return result
+
+    # ── Database check ────────────────────────────────────────────────
+    from app.database import verify_connection
+
+    db_ok = verify_connection()
+    result["database"] = "ok" if db_ok else "unreachable"
+
+    # ── Redis check ───────────────────────────────────────────────────
+    try:
+        from app.cache import _get_redis
+
+        redis_client = _get_redis()
+        if redis_client is not None:
+            redis_client.ping()
+            result["redis"] = "ok"
+        else:
+            result["redis"] = "unavailable"
+    except Exception:
+        result["redis"] = "unreachable"
+
+    # ── ML model check ────────────────────────────────────────────────
+    try:
+        from app.ml.predict import get_loaded_model_version
+
+        version = get_loaded_model_version()
+        result["ml_model"] = version if version else "not loaded"
+    except Exception:
+        result["ml_model"] = "not loaded"
+
+    if not db_ok:
+        result["status"] = "degraded"
+
+    return result

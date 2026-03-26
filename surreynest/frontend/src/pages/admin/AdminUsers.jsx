@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Search, Crown, Filter, Mail, Calendar, LogIn, ChevronLeft, ChevronRight, Check } from 'lucide-react'
+import { Search, Calendar, LogIn, ChevronLeft, ChevronRight, Check } from 'lucide-react'
 import { adminApi } from '../../services/adminApi'
 
 export default function AdminUsers() {
@@ -12,7 +12,6 @@ export default function AdminUsers() {
     // Filters
     const [search, setSearch] = useState('')
     const [role, setRole] = useState('')
-    const [isPro, setIsPro] = useState('')
 
     // Debounce search state
     const [debouncedSearch, setDebouncedSearch] = useState('')
@@ -31,7 +30,6 @@ export default function AdminUsers() {
             }
             if (debouncedSearch) params.search = debouncedSearch
             if (role) params.role = role
-            if (isPro) params.is_pro = isPro === 'true'
 
             const res = await adminApi.getUsers(params)
             setUsers(res.users)
@@ -42,7 +40,7 @@ export default function AdminUsers() {
         } finally {
             setLoading(false)
         }
-    }, [page, debouncedSearch, role, isPro])
+    }, [page, debouncedSearch, role])
 
     useEffect(() => {
         fetchUsers()
@@ -51,7 +49,7 @@ export default function AdminUsers() {
     // Reset page on filter change
     useEffect(() => {
         setPage(1)
-    }, [debouncedSearch, role, isPro])
+    }, [debouncedSearch, role])
 
     async function handleRoleChange(userId, newRole) {
         if (!confirm(`Change user role to ${newRole}?`)) return
@@ -63,25 +61,12 @@ export default function AdminUsers() {
         }
     }
 
-    async function handleProToggle(userId, currentStatus) {
-        const action = currentStatus ? 'Remove Pro status' : 'Grant Pro status'
-        if (!confirm(`${action} for this user?`)) return
-        try {
-            // For granting pro, arbitrarily add 30 days if null, or just let DB handle if backend doesn't require pro_expires_at
-            // Here we just toggle is_pro. In reality, billing sets expiration.
-            await adminApi.updateUser(userId, { is_pro: !currentStatus })
-            fetchUsers()
-        } catch (err) {
-            alert('Failed to update Pro status')
-        }
-    }
-
     return (
         <div className="space-y-6 max-w-7xl mx-auto">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Users</h1>
-                    <p className="text-sm text-slate-500 mt-1">Manage all {total} registered accounts.</p>
+                    <p className="text-sm text-slate-500 mt-1">Manage all {total} tracked user accounts.</p>
                 </div>
             </div>
 
@@ -108,16 +93,6 @@ export default function AdminUsers() {
                         <option value="student">Student</option>
                         <option value="landlord">Landlord</option>
                         <option value="admin">Admin</option>
-                    </select>
-
-                    <select
-                        value={isPro}
-                        onChange={(e) => setIsPro(e.target.value)}
-                        className="flex-1 md:w-40 border border-slate-300 rounded-lg text-sm py-2 pl-3 pr-8 focus:ring-2 focus:ring-primary outline-none"
-                    >
-                        <option value="">All Plans</option>
-                        <option value="true">Pro Only</option>
-                        <option value="false">Free Only</option>
                     </select>
                 </div>
             </div>
@@ -168,16 +143,12 @@ export default function AdminUsers() {
                                             <div className="flex flex-col items-start gap-2">
                                                 <span className={`inline-flex px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md border
                                                     ${u.role === 'admin' ? 'bg-red-50 text-red-700 border-red-200' : 
+                                                      u.role === 'guest' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
                                                       u.role === 'landlord' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 
                                                       'bg-slate-100 text-slate-600 border-slate-200'}`}
                                                 >
                                                     {u.role}
                                                 </span>
-                                                {u.is_pro && (
-                                                    <span className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-bold uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200 rounded-md">
-                                                        <Crown size={12} /> PRO
-                                                    </span>
-                                                )}
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-xs space-y-1">
@@ -200,16 +171,6 @@ export default function AdminUsers() {
                                                 <option value="landlord">Landlord</option>
                                                 <option value="admin">Admin</option>
                                             </select>
-                                            <button
-                                                onClick={() => handleProToggle(u.id, u.is_pro)}
-                                                className={`text-xs px-3 py-1.5 rounded-md font-medium border transition-colors ${
-                                                    u.is_pro 
-                                                    ? 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200' 
-                                                    : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
-                                                }`}
-                                            >
-                                                {u.is_pro ? 'Revoke Pro' : 'Make Pro'}
-                                            </button>
                                         </td>
                                     </tr>
                                 ))

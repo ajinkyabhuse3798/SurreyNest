@@ -27,9 +27,9 @@ logger = logging.getLogger(__name__)
 engine = create_engine(
     settings.database_url,
     pool_pre_ping=True,
-    pool_size=10,                                   # Base connections
-    max_overflow=20,                                # Burst capacity (total: 30)
-    echo=(settings.environment == "development"),   # Log SQL in dev only
+    pool_size=settings.db_pool_size,               # Set via DB_POOL_SIZE env var
+    max_overflow=settings.db_max_overflow,         # Set via DB_MAX_OVERFLOW env var
+    echo=(settings.environment == "development"),  # Log SQL in dev only
 )
 
 # ── Session factory ───────────────────────────────────────────────────────────
@@ -59,8 +59,14 @@ def _enable_postgis(dbapi_connection, connection_record) -> None:  # type: ignor
     This is a no-op if PostGIS is already enabled, so safe to run every time.
     """
     cursor = dbapi_connection.cursor()
-    cursor.execute("CREATE EXTENSION IF NOT EXISTS postgis;")
-    cursor.close()
+    try:
+        cursor.execute("CREATE EXTENSION IF NOT EXISTS postgis;")
+        dbapi_connection.commit()
+    except Exception as exc:
+        dbapi_connection.rollback()
+        logger.warning("Could not ensure PostGIS extension on connect: %s", exc)
+    finally:
+        cursor.close()
 
 
 # ── FastAPI dependency ────────────────────────────────────────────────────────

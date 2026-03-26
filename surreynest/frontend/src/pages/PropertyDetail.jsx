@@ -1,5 +1,5 @@
 /**
- * PropertyDetail — Stitch-aligned Property Insights Dashboard.
+ * PropertyDetail, Stitch-aligned Property Insights Dashboard.
  *
  * Layout: 12-column grid
  *   Left (4 cols): Property Specifics, Fair Rent Score gauge, HMO License, Safety
@@ -20,7 +20,7 @@ import api from '../services/api'
 import {
     KEY_LOCATIONS,
     haversine, walkingTime, cyclingTime,
-    estimateEnergy, epcImpact, safetyVerdict, floorAreaContext,
+    epcImpact, safetyVerdict,
 } from '../utils/propertyUtils'
 
 // ── Stitch-style card wrapper ────────────────────────────────────────────────
@@ -87,7 +87,6 @@ export default function PropertyDetail() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
     const [safetyDetail, setSafetyDetail] = useState(null)
-    const [safetyLoading, setSafetyLoading] = useState(true)
     const [hmoDetail, setHmoDetail] = useState(null)
     const [hmoLoading, setHmoLoading] = useState(true)
     const [showReviews, setShowReviews] = useState(false)
@@ -102,11 +101,9 @@ export default function PropertyDetail() {
         api.get(`/api/properties/${uprn}`)
             .then((res) => {
                 setProperty(res.data)
-                setSafetyLoading(true)
                 api.get('/api/scores/safety', { params: { postcode: res.data.postcode } })
                     .then((r) => setSafetyDetail(r.data))
                     .catch(() => { })
-                    .finally(() => setSafetyLoading(false))
             })
             .catch(() => setError('Property not found.'))
             .finally(() => setLoading(false))
@@ -150,12 +147,15 @@ export default function PropertyDetail() {
     // ── Derived from property ────────────────────────────────────────
     const p = property
     const weeklyRent = p.rent_prediction?.predicted_weekly_rent
-    const monthlyRent = weeklyRent ? Math.round((weeklyRent * 52) / 12) : null
-    const energyCost = estimateEnergy(p.energy_rating)
-    const totalMonthly = monthlyRent ? monthlyRent + energyCost + 30 + 25 : null
-    const perPerson = totalMonthly && p.num_rooms >= 2 ? Math.round(totalMonthly / p.num_rooms) : null
+    const rentLow = p.rent_prediction?.rent_low
+    const rentHigh = p.rent_prediction?.rent_high
+    const rentConfidence = p.rent_prediction?.confidence
+    const effectiveLow = rentLow ?? (weeklyRent ? weeklyRent * 0.84 : null)
+    const effectiveHigh = rentHigh ?? (weeklyRent ? weeklyRent * 1.18 : null)
+    const totalMonthlyLow = effectiveLow ? Math.round((effectiveLow * 52) / 12) : null
+    const totalMonthlyHigh = effectiveHigh ? Math.round((effectiveHigh * 52) / 12) : null
+
     const verdict = safetyVerdict(p.safety_score)
-    const areaCtx = floorAreaContext(p.floor_area_m2, p.num_rooms)
     const epcCtx = epcImpact(p.energy_rating)
     const hasCoords = p.lat && p.lng
     const hmoStatus = hmoDetail?.status || (p.hmo?.is_hmo ? (p.hmo.is_active ? 'licensed' : 'expired') : 'not_found')
@@ -163,8 +163,10 @@ export default function PropertyDetail() {
     // Rent radar sector
     const postcodeSector = (() => {
         if (!p.postcode) return null
-        const parts = p.postcode.trim().toUpperCase().split(/\s+/)
-        return parts.length === 2 && parts[1].length >= 1 ? `${parts[0]} ${parts[1][0]}` : null
+        // Robust split: "GU2 7NW" or "GU27NW" -> "GU2 7"
+        const clean = p.postcode.replace(/\s+/g, '').toUpperCase()
+        if (clean.length < 5) return null
+        return `${clean.slice(0, -3)} ${clean.slice(-3, -2)}`
     })()
 
     // EPC color mapping
@@ -203,11 +205,11 @@ export default function PropertyDetail() {
                             <p className="text-slate-500 mt-1 flex items-center gap-2 flex-wrap">
                                 {p.property_type || 'Property'}{p.built_form ? ` · ${p.built_form}` : ''}
                                 {p.tenure && (
-                                    <span className={`inline-flex items-center text-xs font-bold rounded-full px-3 py-1 leading-none ${p.tenure.includes('rental') || p.tenure.includes('rented')
+                                    <span className={`inline-flex items-center text-xs font-bold rounded-full px-3 py-1 leading-none ${p.tenure.toLowerCase().includes('rental') || p.tenure.toLowerCase().includes('rented')
                                         ? 'bg-green-100 text-green-700'
                                         : 'bg-slate-100 text-slate-500'
                                         }`}>
-                                        {p.tenure.includes('rental') || p.tenure.includes('rented') ? 'Rental' : p.tenure.includes('owner') ? 'Owner' : 'Unknown'}
+                                        {p.tenure.toLowerCase().includes('rental') || p.tenure.toLowerCase().includes('rented') ? 'Rental' : p.tenure.toLowerCase().includes('owner') ? 'Owner' : 'Unknown'}
                                     </span>
                                 )}
                             </p>
@@ -233,6 +235,51 @@ export default function PropertyDetail() {
                     </div>
                 </div>
 
+                {/* ══════════ RENT ESTIMATE STRIP ══════════ */}
+                {weeklyRent && (
+                    <div className="mb-8 max-w-2xl space-y-2">
+                        <div className="grid grid-cols-3 gap-3">
+                            {/* Low */}
+                            <div className="bg-emerald-50 border border-emerald-100 rounded-2xl px-4 py-3 text-center">
+                                <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-0.5">Low Estimate</p>
+                                <p className="text-2xl font-black text-emerald-700">
+                                    £{Math.round(rentLow ?? weeklyRent * 0.84)}
+                                </p>
+                                <p className="text-[10px] text-emerald-500">per week</p>
+                                <p className="text-[10px] font-bold text-emerald-700/70 mt-1.5">
+                                    £{Math.round((rentLow ?? weeklyRent * 0.84) * 52 / 12)}/mo
+                                </p>
+                                <p className="text-[9px] text-emerald-600/60 mt-1 leading-tight">Ambitious, less likely to negotiate</p>
+                            </div>
+                            {/* Mid */}
+                            <div className="bg-orange-50 border-2 border-orange-200 rounded-2xl px-4 py-3 text-center shadow-sm">
+                                <p className="text-[10px] font-bold text-primary uppercase tracking-wider mb-0.5">Mid · Fair Market</p>
+                                <p className="text-2xl font-black text-orange-700">£{Math.round(weeklyRent)}</p>
+                                <p className="text-[10px] text-orange-500">per week</p>
+                                <p className="text-[10px] font-bold text-orange-700/70 mt-1.5">
+                                    £{Math.round(weeklyRent * 52 / 12)}/mo
+                                </p>
+                                <p className="text-[9px] text-primary/60 mt-1 leading-tight">Best anchor to negotiate from</p>
+                            </div>
+                            {/* High */}
+                            <div className="bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3 text-center">
+                                <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider mb-0.5">High Estimate</p>
+                                <p className="text-2xl font-black text-amber-700">
+                                    £{Math.round(rentHigh ?? weeklyRent * 1.18)}
+                                </p>
+                                <p className="text-[10px] text-amber-500">per week</p>
+                                <p className="text-[10px] font-bold text-amber-700/70 mt-1.5">
+                                    £{Math.round((rentHigh ?? weeklyRent * 1.18) * 52 / 12)}/mo
+                                </p>
+                                <p className="text-[9px] text-amber-600/60 mt-1 leading-tight">Above market, push back here</p>
+                            </div>
+                        </div>
+                        <p className="text-[10px] text-slate-400 px-1">
+                            Estimates only. Actual rent varies by landlord, agency, furnished/unfurnished condition &amp; demand.
+                        </p>
+                    </div>
+                )}
+
                 {/* ══════════ MAIN GRID ══════════ */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
@@ -245,7 +292,7 @@ export default function PropertyDetail() {
                             <div className="grid grid-cols-2 gap-4">
                                 {[
                                     { label: 'Type', value: p.property_type || 'N/A' },
-                                    { label: 'Rooms', value: p.num_rooms ? `${p.num_rooms} Bedrooms` : 'N/A' },
+                                    { label: 'Rooms', value: p.num_rooms ? `${p.num_rooms} Habitable Rooms` : 'N/A' },
                                     { label: 'Size', value: p.floor_area_m2 ? `${p.floor_area_m2} m²` : 'N/A' },
                                     { label: 'EPC Rating', value: p.energy_rating || 'N/A' },
                                 ].map(({ label, value }) => (
@@ -257,37 +304,55 @@ export default function PropertyDetail() {
                             </div>
                         </Card>
 
-                        {/* Fair Rent Score */}
-                        <Card className="flex flex-col items-center text-center p-8">
-                            <h3 className="text-lg font-bold text-slate-800 mb-6">Fair Rent Score</h3>
-                            {/* Gauge */}
-                            <div className="relative w-40 h-20 overflow-hidden mb-4">
-                                <div className="w-40 h-40 rounded-full border-[15px] border-primary/10" />
-                                <div
-                                    className="absolute top-0 left-0 w-40 h-40 rounded-full border-[15px] border-primary border-b-transparent border-l-transparent"
-                                    style={{ transform: `rotate(${weeklyRent ? Math.min(45 + (p.rent_prediction?.fairness_score || 75) * 1.35, 225) : 45}deg)` }}
-                                />
-                                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 flex flex-col items-center">
-                                    <span className="text-4xl font-black text-primary">{p.rent_prediction?.fairness_score || (weeklyRent ? '—' : '—')}</span>
-                                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                                        {weeklyRent ? 'Optimal' : 'N/A'}
-                                    </span>
+                        {/* Prediction Confidence Gauge */}
+                        <Card className="flex flex-col items-center text-center p-6">
+                            <h3 className="text-lg font-bold text-slate-800 mb-0.5">Prediction Confidence</h3>
+                            <p className="text-[10px] text-slate-400 mb-4">How complete is the data for this property</p>
+                            {rentConfidence != null ? (() => {
+                                // Arc: M 20 90 A 70 70 0 0 1 180 90 → length = π × 70 ≈ 219.9
+                                const score = Math.round(rentConfidence)
+                                const arcLen = 219.9
+                                const filled = (Math.min(score, 100) / 100) * arcLen
+                                const gaugeColor = score >= 70 ? '#10b981' : score >= 58 ? '#ea871d' : '#f59e0b'
+                                const textColor = score >= 70 ? '#10b981' : score >= 58 ? '#ea871d' : '#f59e0b'
+                                const label = score >= 70 ? 'High quality' : score >= 58 ? 'Good' : 'Moderate'
+                                return (
+                                    <div className="relative mb-3">
+                                        <svg viewBox="0 0 200 100" className="w-44 h-[88px]">
+                                            {/* Track */}
+                                            <path d="M 20 90 A 70 70 0 0 1 180 90" fill="none" stroke="#f1f5f9" strokeWidth="14" strokeLinecap="round" />
+                                            {/* Filled arc */}
+                                            <path d="M 20 90 A 70 70 0 0 1 180 90" fill="none" stroke={gaugeColor} strokeWidth="14" strokeLinecap="round"
+                                                strokeDasharray={`${filled} ${arcLen}`} />
+                                            <text x="18" y="99" fontSize="8" fill="#cbd5e1" textAnchor="middle">0</text>
+                                            <text x="182" y="99" fontSize="8" fill="#cbd5e1" textAnchor="middle">80</text>
+                                        </svg>
+                                        <div className="absolute inset-x-0 bottom-2 flex flex-col items-center">
+                                            <span className="text-3xl font-black" style={{ color: textColor }}>{score}</span>
+                                            <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">{label}</span>
+                                        </div>
+                                    </div>
+                                )
+                            })() : (
+                                <div className="w-44 h-[88px] flex flex-col items-center justify-center mb-3 rounded-2xl border border-dashed border-slate-200 bg-slate-50">
+                                    <p className="text-sm font-semibold text-slate-500">Awaiting more data</p>
+                                    <p className="mt-1 text-xs text-slate-400">Confidence appears once the rent model has enough property detail.</p>
                                 </div>
-                            </div>
-                            <p className="text-sm text-slate-500 max-w-[200px]">
+                            )}
+                            <p className="text-[11px] text-slate-500 max-w-[200px]">
                                 {weeklyRent
-                                    ? `Estimated fair rent: £${Math.round(weeklyRent)}/wk based on AI market analysis.`
+                                    ? `Mid: £${Math.round(weeklyRent)}/wk · Range: £${rentLow ? Math.round(rentLow) : 'N/A'} to £${rentHigh ? Math.round(rentHigh) : 'N/A'}/wk`
                                     : 'Rent prediction not available for this property.'}
                             </p>
                             {weeklyRent && (
-                                <div className="mt-6 w-full pt-6 border-t border-slate-100 flex justify-between">
+                                <div className="mt-4 w-full pt-4 border-t border-slate-100 flex justify-between">
                                     <div className="text-left">
-                                        <p className="text-xs text-slate-400 font-bold uppercase">Confidence</p>
-                                        <p className="text-xl font-bold text-slate-800">{p.rent_prediction?.confidence ? `${Math.round(p.rent_prediction.confidence)}%` : '—'}</p>
+                                        <p className="text-[10px] text-slate-400 font-bold uppercase">Model</p>
+                                        <p className="text-sm font-bold text-slate-600">{p.rent_prediction?.model_version || 'N/A'}</p>
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-xs text-slate-400 font-bold uppercase">Est. Weekly</p>
-                                        <p className="text-xl font-bold text-slate-800">£{Math.round(weeklyRent)}</p>
+                                        <p className="text-[10px] text-slate-400 font-bold uppercase">Est. Monthly</p>
+                                        <p className="text-sm font-bold text-slate-800">£{Math.round(weeklyRent * 52 / 12)}</p>
                                     </div>
                                 </div>
                             )}
@@ -332,23 +397,53 @@ export default function PropertyDetail() {
                                     <div className="flex items-center gap-4 mb-4">
                                         <div className="text-4xl font-black text-primary">{safetyScore}<span className="text-sm text-slate-400">/100</span></div>
                                         <div className="text-xs text-slate-500">
-                                            Safety score based on police.uk data for crime incidents in the {p.postcode} area.
+                                            {safetyDetail?.label || verdict?.text || 'Crime frequency assessment'}, based on nearby police.uk incidents around a representative point for the {p.postcode?.split(' ')[0]} {p.postcode?.split(' ')[1]?.[0]} area.
                                         </div>
                                     </div>
-                                    <div className="space-y-2">
-                                        <div className="flex justify-between text-xs">
-                                            <span className="text-slate-500">{verdict?.text || 'Crime frequency assessment'}</span>
-                                            <span className={`font-bold ${safetyScore >= 60 ? 'text-green-600' : safetyScore >= 40 ? 'text-amber-600' : 'text-red-600'}`}>
-                                                {safetyScore >= 60 ? 'High Confidence' : safetyScore >= 40 ? 'Moderate' : 'Low'}
-                                            </span>
-                                        </div>
+                                    <div className="space-y-1.5 mb-4">
                                         <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                            <div className="bg-primary h-full rounded-full transition-all" style={{ width: `${safetyScore}%` }} />
+                                            <div
+                                                className={`h-full rounded-full transition-all ${safetyScore >= 60 ? 'bg-emerald-500' : safetyScore >= 40 ? 'bg-amber-500' : 'bg-rose-500'}`}
+                                                style={{ width: `${safetyScore}%` }}
+                                            />
+                                        </div>
+                                        <div className="flex justify-between text-[10px] text-slate-400">
+                                            <span>0, High Crime</span>
+                                            <span>100, Very Safe</span>
                                         </div>
                                     </div>
+
+                                    {/* Crime category breakdown bars */}
+                                    {safetyDetail?.breakdown?.length > 0 && (() => {
+                                        const maxCount = Math.max(...safetyDetail.breakdown.map(b => b.total_count))
+                                        const catLabel = c => c.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+                                        const catColor = c => ['violent-crime', 'robbery'].includes(c)
+                                            ? 'bg-rose-400'
+                                            : ['anti-social-behaviour', 'burglary'].includes(c)
+                                                ? 'bg-amber-400'
+                                                : 'bg-orange-400'
+                                        return (
+                                            <div className="space-y-1.5 mb-4">
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Crime breakdown · last 12 months</p>
+                                                {safetyDetail.breakdown.slice(0, 6).map(b => (
+                                                    <div key={b.category} className="flex items-center gap-2">
+                                                        <span className="text-[10px] text-slate-500 w-28 shrink-0 truncate">{catLabel(b.category)}</span>
+                                                        <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                                            <div
+                                                                className={`h-full rounded-full ${catColor(b.category)}`}
+                                                                style={{ width: `${(b.total_count / maxCount) * 100}%` }}
+                                                            />
+                                                        </div>
+                                                        <span className="text-[10px] font-bold text-slate-500 w-8 text-right shrink-0">{b.total_count}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )
+                                    })()}
+
                                     <Link
                                         to={`/safety/${encodeURIComponent(p.postcode)}`}
-                                        className="mt-4 text-xs font-bold text-primary flex items-center gap-1 hover:underline"
+                                        className="text-xs font-bold text-primary flex items-center gap-1 hover:underline"
                                     >
                                         <span className="material-symbols-outlined text-sm">open_in_new</span> Full safety report
                                     </Link>
@@ -402,7 +497,7 @@ export default function PropertyDetail() {
                                                 { label: 'Value', value: p.reviews.avg_value },
                                             ].map(r => (
                                                 <div key={r.label} className="bg-primary/5 rounded-lg p-2">
-                                                    <p className="text-lg font-bold text-slate-800">{r.value ? r.value.toFixed(1) : '—'}</p>
+                                                    <p className="text-lg font-bold text-slate-800">{r.value ? r.value.toFixed(1) : 'N/A'}</p>
                                                     <p className="text-[10px] text-slate-400 font-bold uppercase">{r.label}</p>
                                                 </div>
                                             ))}
@@ -436,25 +531,112 @@ export default function PropertyDetail() {
 
                         {/* Cost Breakdown */}
                         <Card>
-                            <CardHeader icon="payments" title="Estimated Cost Breakdown" />
+                            <CardHeader icon="payments" title="Monthly Rent Breakdown" />
                             {weeklyRent ? (
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                    <div className="md:border-r border-slate-100 md:pr-6">
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Weekly Rent</p>
-                                        <p className="text-2xl font-bold text-slate-800">£{Math.round(weeklyRent)}</p>
+                                <div className="space-y-5">
+
+                                    {/* ── Monthly calculation formula ── */}
+                                    <div className="bg-slate-50 rounded-xl p-4">
+                                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-3">How we get to monthly</p>
+                                        <div className="flex items-center justify-center gap-2 flex-wrap">
+                                            <div className="text-center">
+                                                <p className="text-xl font-black text-slate-700">£{Math.round(weeklyRent)}</p>
+                                                <p className="text-[9px] text-slate-400 font-medium">per week</p>
+                                            </div>
+                                            <span className="text-slate-300 text-lg font-bold">×</span>
+                                            <div className="text-center">
+                                                <p className="text-xl font-black text-slate-700">52</p>
+                                                <p className="text-[9px] text-slate-400 font-medium">weeks/yr</p>
+                                            </div>
+                                            <span className="text-slate-300 text-lg font-bold">÷</span>
+                                            <div className="text-center">
+                                                <p className="text-xl font-black text-slate-700">12</p>
+                                                <p className="text-[9px] text-slate-400 font-medium">months</p>
+                                            </div>
+                                            <span className="text-slate-300 text-lg font-bold">=</span>
+                                            <div className="text-center bg-orange-50 border border-orange-100 rounded-xl px-4 py-2">
+                                                <p className="text-xl font-black text-orange-700">£{Math.round(weeklyRent * 52 / 12)}</p>
+                                                <p className="text-[9px] text-primary font-medium">mid / mo</p>
+                                            </div>
+                                        </div>
+                                        {/* Low / Mid / High monthly */}
+                                        <div className="flex justify-between mt-3 pt-3 border-t border-slate-200">
+                                            <div className="text-center">
+                                                <p className="text-[9px] font-bold text-emerald-600 uppercase">Low / mo</p>
+                                                <p className="text-base font-black text-emerald-700">£{totalMonthlyLow?.toLocaleString() || 'N/A'}</p>
+                                            </div>
+                                            <div className="text-center">
+                                                <p className="text-[9px] font-bold text-primary uppercase">Mid / mo</p>
+                                                <p className="text-base font-black text-orange-700">£{Math.round(weeklyRent * 52 / 12).toLocaleString()}</p>
+                                            </div>
+                                            <div className="text-center">
+                                                <p className="text-[9px] font-bold text-amber-600 uppercase">High / mo</p>
+                                                <p className="text-base font-black text-amber-700">£{totalMonthlyHigh?.toLocaleString() || 'N/A'}</p>
+                                            </div>
+                                        </div>
+                                        <p className="text-[9px] text-slate-400 text-center mt-2">Rent only · bills not included</p>
                                     </div>
-                                    <div className="md:border-r border-slate-100 md:pr-6">
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Est. Energy / Mo</p>
-                                        <p className="text-2xl font-bold text-slate-800">£{energyCost}</p>
-                                        <p className="text-[10px] text-green-600 font-bold">
-                                            {p.energy_rating && ['A', 'B', 'C'].includes(p.energy_rating) ? `-${15 - (p.energy_rating.charCodeAt(0) - 65) * 5}% vs Avg` : ''}
-                                            {p.energy_rating ? ` (EPC ${p.energy_rating})` : ''}
+
+                                    {/* ── It's on you to negotiate ── */}
+                                    <div>
+                                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2.5">It's on you to negotiate</p>
+                                        <div className="space-y-2">
+                                            {[
+                                                {
+                                                    dot: 'bg-emerald-400',
+                                                    label: `Low · £${Math.round(rentLow ?? weeklyRent * 0.84)}/wk`,
+                                                    tip: 'Ambitious ask. Landlords are less likely to accept below our estimated market rate.',
+                                                },
+                                                {
+                                                    dot: 'bg-orange-400',
+                                                    label: `Mid · £${Math.round(weeklyRent)}/wk`,
+                                                    tip: 'Your strongest anchor. Quote the mid estimate as the fair market rate to justify your offer.',
+                                                },
+                                                {
+                                                    dot: 'bg-amber-400',
+                                                    label: `High · £${Math.round(rentHigh ?? weeklyRent * 1.18)}/wk`,
+                                                    tip: 'Above our estimate. If the asking price is here, you have a good case to negotiate down.',
+                                                },
+                                            ].map(({ dot, label, tip }) => (
+                                                <div key={label} className="flex items-start gap-3 bg-slate-50 rounded-xl p-3">
+                                                    <span className={`w-2 h-2 rounded-full mt-1 flex-shrink-0 ${dot}`} />
+                                                    <div>
+                                                        <p className="text-xs font-bold text-slate-700 mb-0.5">{label}</p>
+                                                        <p className="text-[10px] text-slate-500 leading-relaxed">{tip}</p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* ── Rent varies disclaimer ── */}
+                                    <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl">
+                                        <p className="text-[10px] font-bold text-amber-800 mb-2">Actual rent depends on:</p>
+                                        <div className="flex flex-wrap gap-1.5 mb-2">
+                                            {['Landlord', 'Letting agency', 'Furnished vs unfurnished', 'Property condition', 'Market demand'].map(f => (
+                                                <span key={f} className="text-[9px] font-semibold text-amber-800 bg-amber-100 rounded-full px-2 py-0.5">{f}</span>
+                                            ))}
+                                        </div>
+                                        <p className="text-[9px] text-amber-700 leading-relaxed">
+                                            These are ML-based estimates, not listed asking prices. Always verify with current listings and use the mid estimate as your negotiation benchmark.
                                         </p>
                                     </div>
-                                    <div>
-                                        <p className="text-[10px] font-bold text-primary uppercase mb-1">Total Monthly Cost</p>
-                                        <p className="text-3xl font-black text-primary">£{totalMonthly?.toLocaleString() || '—'}</p>
-                                    </div>
+
+                                    {/* ── Confidence bar ── */}
+                                    {rentConfidence != null && (
+                                        <div>
+                                            <div className="flex justify-between items-center mb-1.5">
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Prediction Confidence</p>
+                                                <p className="text-xs font-bold text-slate-600">{Math.round(rentConfidence)}%</p>
+                                            </div>
+                                            <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                                <div
+                                                    className="h-full rounded-full bg-gradient-to-r from-primary/60 to-primary"
+                                                    style={{ width: `${rentConfidence}%` }}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             ) : (
                                 <p className="text-sm text-slate-500">Rent prediction not available for this property.</p>
@@ -482,7 +664,7 @@ export default function PropertyDetail() {
                                     <span className="material-symbols-outlined text-white/80">gavel</span>
                                     <div className="flex-1">
                                         <p className="text-sm font-bold">Challenge a rent increase</p>
-                                        <p className="text-xs text-white/70">Section 13 analysis · Renters' Rights Act</p>
+                                        <p className="text-xs text-white/70">Section 13 market check + timing guide</p>
                                     </div>
                                     <span className="material-symbols-outlined text-white/60">chevron_right</span>
                                 </Link>
@@ -561,7 +743,7 @@ export default function PropertyDetail() {
                         {/* Rent Radar (market trend chart) */}
                         {postcodeSector && (
                             <Card>
-                                <CardHeader icon="trending_up" title="RentRadar — Market Price Trend" />
+                                <CardHeader icon="trending_up" title="RentRadar, Market Price Trend" />
                                 <p className="text-sm text-slate-500 mb-4">Postal area {postcodeSector} rental yield analysis</p>
                                 <RentRadarChart postcodeSector={postcodeSector} />
                             </Card>

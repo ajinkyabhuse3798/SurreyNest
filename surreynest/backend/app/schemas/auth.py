@@ -6,7 +6,7 @@ from app.schemas.user import UserResponse
 
 
 class Token(BaseModel):
-    """JWT token — used internally only (never exposed to API clients).
+    """JWT token, used internally only (never exposed to API clients).
 
     Attributes:
         access_token: The JWT string.
@@ -18,7 +18,7 @@ class Token(BaseModel):
 
 
 class LoginResponse(BaseModel):
-    """Login response — returns user info only (JWT is in httpOnly cookie).
+    """Login response, returns user info only (JWT is in httpOnly cookie).
 
     Attributes:
         user: Authenticated user info.
@@ -27,6 +27,14 @@ class LoginResponse(BaseModel):
 
     user: UserResponse
     message: str = "Login successful"
+
+
+class RegisterResponse(BaseModel):
+    """Registration response with verification guidance."""
+
+    user: UserResponse
+    requires_verification: bool = True
+    message: str = "Account created"
 
 
 class TokenData(BaseModel):
@@ -67,10 +75,22 @@ class VerifyEmailRequest(BaseModel):
     """Request body for email verification.
 
     Attributes:
-        token: Raw verification token from the email link.
+        email: Email address of the account to verify.
+        token: 6-digit verification code.
     """
 
+    email: EmailStr
     token: str
+
+
+class ResendVerificationRequest(BaseModel):
+    """Request body for resending verification code.
+
+    Attributes:
+        email: Email address to resend the code to.
+    """
+
+    email: EmailStr
 
 
 class MessageResponse(BaseModel):

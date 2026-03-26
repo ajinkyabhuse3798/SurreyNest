@@ -1,9 +1,9 @@
 /**
- * SafetySection — Safety score gauge, verdict card, and CTA to full safety report.
+ * SafetySection, Safety score gauge, verdict card, and CTA to full safety report.
  *
  * Props:
- *   property — needs safety_score, postcode
- *   verdict  — result of safetyVerdict(score) or null
+ *   property, needs safety_score, postcode
+ *   verdict , result of safetyVerdict(score) or null
  */
 import { Link } from 'react-router-dom'
 import { Shield, ChevronRight } from 'lucide-react'
@@ -27,8 +27,8 @@ export default function SafetySection({ property: p, verdict }) {
                         </div>
                     )}
                     <p className="text-sm text-slate-500 leading-relaxed font-medium">
-                        Based on reported crime in the <span className="font-bold text-slate-800">{p.postcode}</span> area.
-                        Covers the whole postcode sector, not just this street.
+                        Based on nearby police.uk incidents around a representative point for <span className="font-bold text-slate-800">{p.postcode}</span>.
+                        SurreyNest keeps the view tight so nearby areas can be compared fairly.
                     </p>
                 </div>
             </div>
@@ -55,4 +55,3 @@ export default function SafetySection({ property: p, verdict }) {
         </div>
     )
 }
-

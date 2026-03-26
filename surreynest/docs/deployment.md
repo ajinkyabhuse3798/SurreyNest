@@ -59,7 +59,13 @@ ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_DAYS=30
 ENVIRONMENT=production
 ALLOWED_ORIGINS=https://your-app.vercel.app
-ML_MODEL_VERSION=v1.0.0
+FRONTEND_URL=https://your-app.vercel.app
+ML_MODEL_VERSION=v7.0.0
+SMTP_HOST=
+SMTP_PORT=587
+SMTP_USER=
+SMTP_PASSWORD=
+SMTP_FROM="SurreyNest <noreply@surreynest.com>"
 ```
 
 ### 1.5 Configure start command
@@ -68,6 +74,9 @@ In Railway service settings → Start Command:
 uvicorn app.main:app --host 0.0.0.0 --port $PORT
 ```
 (Railway injects `$PORT` automatically)
+
+The backend can still run multiple workers for request concurrency; only one
+worker will acquire the APScheduler lock and register cron jobs.
 
 ### 1.6 Run database migrations
 In Railway → your backend service → "Open shell" (or use Railway CLI):
@@ -115,6 +124,7 @@ Click "Deploy". Vercel builds and deploys automatically.
 ### 2.5 Update Railway ALLOWED_ORIGINS
 Once you have the Vercel URL (`https://surreynest.vercel.app`):
 - Update Railway environment variable: `ALLOWED_ORIGINS=https://surreynest.vercel.app`
+- Update Railway environment variable: `FRONTEND_URL=https://surreynest.vercel.app`
 - Railway auto-redeploys
 
 ---

@@ -149,3 +149,26 @@ def require_admin(current_user: User = Depends(get_current_user)) -> User:
             detail="Admin access required",
         )
     return current_user
+
+
+def require_registered_user(current_user: User = Depends(get_current_user)) -> User:
+    """Require an authenticated user for trusted actions like review submission."""
+    return current_user
+
+
+def get_optional_user(
+    request: Request = None,
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db),
+) -> Optional[User]:
+    """Return the authenticated user when present, otherwise None.
+
+    Useful for routes that are public but can attach trusted identity metadata
+    when a signed-in user is available.
+    """
+    try:
+        return get_current_user(request=request, token=token, db=db)
+    except HTTPException as exc:
+        if exc.status_code == status.HTTP_401_UNAUTHORIZED:
+            return None
+        raise

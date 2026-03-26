@@ -1,5 +1,5 @@
 /**
- * HolidayAlert — Holiday break-in risk warning.
+ * HolidayAlert, Holiday break-in risk warning.
  */
 import { AlertTriangle, CheckCircle2 } from 'lucide-react'
 
@@ -18,9 +18,9 @@ export default function HolidayAlert({ risk }) {
                 }
                 <div>
                     <p className={`text-sm font-bold ${isHigh ? 'text-amber-800' : 'text-emerald-800'}`}>
-                        {risk.risk_level === 'high' ? 'Higher break-in risk during holidays' :
-                            risk.risk_level === 'moderate' ? 'Moderate holiday risk' :
-                                'Low holiday break-in risk'}
+                        {risk.risk_level === 'high' ? 'This area has a higher break-in risk when students leave' :
+                            risk.risk_level === 'moderate' ? 'Some increase in break-ins during the holidays' :
+                                'Low holiday break-in risk here'}
                     </p>
                     {risk.explanation && (
                         <p className={`text-xs mt-1.5 leading-relaxed ${isHigh ? 'text-amber-700' : 'text-emerald-700'}`}>
@@ -32,7 +32,7 @@ export default function HolidayAlert({ risk }) {
 
             {risk.tips?.length > 0 && (
                 <div className="space-y-1.5">
-                    <h4 className="text-xs font-bold text-slate-500">Before you leave:</h4>
+                    <h4 className="text-xs font-bold text-slate-500">A few things before you go:</h4>
                     {risk.tips.map((tip, i) => (
                         <p key={i} className="text-xs text-slate-600 flex items-start gap-2">
                             <span className="text-primary/80">•</span>{tip}

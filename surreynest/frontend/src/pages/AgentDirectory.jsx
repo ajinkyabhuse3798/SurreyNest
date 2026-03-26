@@ -1,15 +1,14 @@
 /**
- * AgentDirectory page — browse all letting agents with scores.
+ * AgentDirectory page, browse all letting agents with scores.
  * Route: /agent
  */
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import { listAgents } from '../services/agentApi'
-import { Building2, ShieldCheck, ChevronRight, Lock } from 'lucide-react'
-import { useAuth } from '../hooks/useAuth'
+import { Building2, ShieldCheck, ChevronRight } from 'lucide-react'
 
-function AgentCard({ agent, isPro }) {
+function AgentCard({ agent }) {
     const score = agent.stats.agent_score
     const scoreColour =
         score >= 75 ? 'text-emerald-600' :
@@ -37,19 +36,8 @@ function AgentCard({ agent, isPro }) {
                 </p>
             </div>
             <div className="text-right flex-shrink-0">
-                {isPro ? (
-                    <>
-                        <p className={`text-2xl font-extrabold ${scoreColour}`}>{score}</p>
-                        <p className="text-xs text-slate-400">/ 100</p>
-                    </>
-                ) : (
-                    <div className="flex flex-col items-center gap-1">
-                        <div className="w-10 h-7 rounded-lg bg-slate-100 flex items-center justify-center">
-                            <Lock size={13} className="text-slate-400" />
-                        </div>
-                        <p className="text-xs text-slate-400">Pro</p>
-                    </div>
-                )}
+                <p className={`text-2xl font-extrabold ${scoreColour}`}>{score}</p>
+                <p className="text-xs text-slate-400">/ 100</p>
             </div>
             <ChevronRight size={18} className="text-slate-300 flex-shrink-0" />
         </Link>
@@ -57,8 +45,6 @@ function AgentCard({ agent, isPro }) {
 }
 
 export default function AgentDirectory() {
-    const { user } = useAuth()
-    const isPro = user?.is_pro ?? false
     const [agents, setAgents] = useState([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
@@ -101,17 +87,9 @@ export default function AgentDirectory() {
                     </div>
                 )}
 
-                {!isPro && agents.length > 0 && (
-                    <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-                        <Lock size={15} className="text-amber-600 flex-shrink-0" />
-                        <p className="text-sm text-amber-800">
-                            Reputation scores are visible on <Link to="/pricing" className="font-bold underline underline-offset-2">Pro</Link>.
-                        </p>
-                    </div>
-                )}
                 <div className="space-y-3">
                     {agents.map(agent => (
-                        <AgentCard key={agent.name} agent={agent} isPro={isPro} />
+                        <AgentCard key={agent.name} agent={agent} />
                     ))}
                 </div>
             </div>

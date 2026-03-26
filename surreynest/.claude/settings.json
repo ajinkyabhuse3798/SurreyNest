@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/ajinkyabhuse/Downloads/Aj Projects/surreynest/.claude/hooks/check-duplicate-queries.sh",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

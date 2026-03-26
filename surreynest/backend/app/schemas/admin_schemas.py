@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 
 
 # ── Overview Stats ────────────────────────────────────────────────────────────
@@ -14,7 +14,8 @@ class OverviewStats(BaseModel):
     """High-level KPIs for the admin dashboard."""
 
     total_users: int
-    pro_users: int
+    registered_users: int
+    guest_users: int
     total_properties: int
     reviews_pending: int
     reviews_approved: int
@@ -38,40 +39,6 @@ class SignupChartResponse(BaseModel):
     total_period: int  # Total signups in the period
 
 
-# ── Subscription analytics ───────────────────────────────────────────────────
-
-
-class SubscriptionStats(BaseModel):
-    """Pro subscription analytics."""
-
-    active_pro: int
-    expiring_soon: int  # expiring within 7 days
-    total_revenue_monthly: float  # active_pro × monthly price
-    recent_conversions: int  # became pro in last 30 days
-
-
-class ProUserRow(BaseModel):
-    """Single subscriber in the subscriber list."""
-
-    id: uuid.UUID
-    email: str
-    is_pro: bool
-    pro_expires_at: Optional[datetime] = None
-    created_at: datetime
-    last_login: Optional[datetime] = None
-
-    model_config = {"from_attributes": True}
-
-
-class SubscriptionListResponse(BaseModel):
-    """Response for the pro subscribers list."""
-
-    subscribers: list[ProUserRow]
-    total: int
-    page: int
-    pages: int
-
-
 # ── User management ──────────────────────────────────────────────────────────
 
 
@@ -81,9 +48,7 @@ class AdminUserRow(BaseModel):
     id: uuid.UUID
     email: str
     role: str
-    is_pro: bool
     is_verified: bool
-    pro_expires_at: Optional[datetime] = None
     created_at: datetime
     last_login: Optional[datetime] = None
 
@@ -103,5 +68,3 @@ class UserUpdateRequest(BaseModel):
     """Request body for updating a user (admin action)."""
 
     role: Optional[str] = None
-    is_pro: Optional[bool] = None
-    pro_expires_at: Optional[datetime] = None

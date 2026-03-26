@@ -36,7 +36,7 @@ class PropertyResponse(BaseModel):
         distance_m: Distance from search postcode in metres (only in search results).
         safety_score: Area safety score 0-100 derived from crime data (null if no data).
         fairness_score: Rent fairness score 0-100 (null until user reviews supply actual rent).
-        hmo_status: HMO licence status — 'licensed', 'unlicensed', or 'not_found'.
+        hmo_status: HMO licence status, 'licensed', 'unlicensed', or 'not_found'.
     """
 
     uprn: str
@@ -97,12 +97,18 @@ class RentPredictionSummary(BaseModel):
     """Cached rent prediction summary embedded in property detail.
 
     Attributes:
-        predicted_weekly_rent: Model output in £/week.
+        predicted_weekly_rent: Mid-point model output in £/week.
+        rent_low: Lower bound of the calibrated market band for similar homes.
+        rent_high: Upper bound of the calibrated market band for similar homes.
+        confidence: Data-quality score describing how tailored the prediction is.
         model_version: Version of the model that generated this prediction.
         computed_at: When this prediction was generated.
     """
 
-    predicted_weekly_rent: float
+    predicted_weekly_rent: Optional[float] = None
+    rent_low: Optional[float] = None
+    rent_high: Optional[float] = None
+    confidence: Optional[float] = None
     model_version: str
     computed_at: datetime
 

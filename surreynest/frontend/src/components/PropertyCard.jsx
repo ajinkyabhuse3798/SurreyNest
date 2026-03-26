@@ -1,11 +1,10 @@
 /**
- * PropertyCard — Stitch-inspired premium card for search results.
+ * PropertyCard, Stitch-inspired premium card for search results.
  * Supports hover highlighting for bidirectional card↔map interaction.
  * Optional compare checkbox for side-by-side comparison workflow.
  */
 import { Link } from 'react-router-dom'
 import { MapPin, Bed, Maximize2, Zap, ChevronRight, CheckCircle2 } from 'lucide-react'
-import ScoreBadge from './ScoreBadge'
 import HMOBadge from './HMOBadge'
 
 function formatDistance(m) {
@@ -120,12 +119,12 @@ export default function PropertyCard({
                     {/* Fair Rent */}
                     <div className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border ${scoreColor(fairness_score)}`}>
                         <span className={`w-1.5 h-1.5 rounded-full ${scoreDot(fairness_score)}`} />
-                        Fair Rent: {fairness_score ?? '—'}
+                        Fair Rent: {fairness_score ?? 'N/A'}
                     </div>
                     {/* Safety */}
                     <div className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border ${scoreColor(safety_score)}`}>
                         <span className={`w-1.5 h-1.5 rounded-full ${scoreDot(safety_score)}`} />
-                        Safety: {safety_score ?? '—'}
+                        Safety: {safety_score ?? 'N/A'}
                     </div>
                     {/* HMO */}
                     <HMOBadge status={hmo_status || 'not_found'} />

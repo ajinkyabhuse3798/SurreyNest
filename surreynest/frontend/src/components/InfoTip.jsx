@@ -1,5 +1,5 @@
 /**
- * InfoTip — reusable (i) tooltip for technical terms.
+ * InfoTip, reusable (i) tooltip for technical terms.
  * Mobile-friendly: click/tap to show, tap-outside to dismiss.
  *
  * @param {{ text: string, className?: string }} props

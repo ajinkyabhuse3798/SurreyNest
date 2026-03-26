@@ -1,5 +1,5 @@
 /**
- * CrimeBreakdown — horizontal bars for crime categories.
+ * CrimeBreakdown, horizontal bars for crime categories.
  * Student-friendly category names, bars sized relative to max count.
  *
  * @param {{ breakdown: Array<{category: string, total_count: number}>, className?: string }} props

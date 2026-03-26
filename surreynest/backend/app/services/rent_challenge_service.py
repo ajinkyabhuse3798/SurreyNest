@@ -5,8 +5,9 @@ Produces a verdict and optional tribunal brief for Renters' Rights Act 2025
 Section 13 challenges.
 """
 
+import calendar
 import logging
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Optional
 
 from sqlalchemy import func
@@ -22,6 +23,8 @@ from app.schemas.rent_challenge import (
 )
 
 logger = logging.getLogger(__name__)
+
+_RRA_PHASE_1_START = date(2026, 5, 1)
 
 
 def _extract_sector(postcode: str) -> str:
@@ -44,6 +47,23 @@ def _normalise_postcode(postcode: str) -> str:
     return postcode.strip().upper()
 
 
+def _add_months(value: date, months: int) -> date:
+    """Return a date shifted by a whole number of calendar months."""
+    month_index = value.month - 1 + months
+    year = value.year + month_index // 12
+    month = month_index % 12 + 1
+    day = min(value.day, calendar.monthrange(year, month)[1])
+    return date(year, month, day)
+
+
+def _add_year(value: date) -> date:
+    """Return the same calendar date one year later."""
+    try:
+        return value.replace(year=value.year + 1)
+    except ValueError:
+        return value.replace(year=value.year + 1, month=2, day=28)
+
+
 def _compute_verdict(
     market_excess_pct: float,
 ) -> tuple[str, str, str]:
@@ -64,7 +84,7 @@ def _compute_verdict(
     elif market_excess_pct <= 8:
         return (
             "BORDERLINE",
-            "Close to market rate — a challenge may not succeed.",
+            "Close to market rate, a challenge may not succeed.",
             "WEAK",
         )
     elif market_excess_pct <= 20:
@@ -76,7 +96,7 @@ def _compute_verdict(
     else:
         return (
             "SIGNIFICANTLY_ABOVE_MARKET",
-            "Substantially above market rate — strong grounds to challenge.",
+            "Substantially above market rate, strong grounds to challenge.",
             "STRONG",
         )
 
@@ -96,7 +116,7 @@ def _get_sector_comparables(
     Returns:
         List of up to 10 ComparableProperty objects.
     """
-    # Match ONLY this exact sector (e.g. "GU2 7%") — not the full outward code.
+    # Match ONLY this exact sector (e.g. "GU2 7%"), not the full outward code.
     # "GU2 %" would still show GU2 4, GU2 8, GU2 9 which are different markets.
     query = db.query(AreaValue).filter(
         AreaValue.postcode.like(f"{postcode_sector}%")
@@ -139,6 +159,10 @@ def _generate_tribunal_brief(
     proposed_rent: float,
     ml_predicted: float,
     comparables: list[ComparableProperty],
+    legal_summary: str,
+    apply_before_date: Optional[date],
+    minimum_notice_detail: Optional[str],
+    annual_limit_detail: Optional[str],
 ) -> str:
     """Generate a plain-text tribunal brief for a Section 13 challenge.
 
@@ -148,6 +172,10 @@ def _generate_tribunal_brief(
         proposed_rent: Proposed weekly rent in £.
         ml_predicted: ML-predicted market weekly rent in £.
         comparables: List of comparable properties.
+        legal_summary: Human-readable timing summary for the current ruleset.
+        apply_before_date: Date the tenant should apply before, if known.
+        minimum_notice_detail: Result of the 2-month notice check.
+        annual_limit_detail: Result of the once-per-year check.
 
     Returns:
         Formatted plain text brief.
@@ -185,14 +213,18 @@ COMPARABLE PROPERTIES IN THE AREA
 GROUNDS FOR CHALLENGE
 The proposed rent increase of {increase_pct}% results in a weekly rent that is
 approximately {excess_pct:.1f}% above the estimated market rate for comparable
-properties in this postcode sector. Under the Renters' Rights Act 2025, a
-landlord may only increase rent to the market rate. Where the proposed rent
-exceeds market value, a tenant has the right to challenge via this Tribunal.
+properties in this postcode sector.
+
+RULES CHECK
+{legal_summary}
+{minimum_notice_detail or "Notice timing check: add the dates from the notice if you want this checked."}
+{annual_limit_detail or "Annual limit check: add the date of the last increase if you want this checked."}
 
 NEXT STEPS
-• Submit this application within 6 weeks of receiving the Section 13 notice.
+• Apply before the new rent start date shown on the notice{f" ({apply_before_date.isoformat()})" if apply_before_date else ""}.
 • Attach your Section 13 notice as supporting evidence.
-• The Tribunal will assess the market rent and may reduce the proposed increase.
+• Under the Phase 1 Renters' Rights Act rules, the Tribunal decides the open-market rent but cannot set a figure above the landlord's proposed rent.
+• If paying the new rent from the notice date would cause hardship, ask the Tribunal to defer the start date by up to 2 months.
 • For free advice: Citizens Advice (0800 144 8848) or Shelter (0808 800 4444).
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -304,7 +336,7 @@ def analyse_rent_increase(
             logger.warning("ML prediction via postcode failed: %s", e)
 
     if ml_predicted is None:
-        raise RuntimeError("ML prediction unavailable — please try again later.")
+        raise RuntimeError("ML prediction unavailable, please try again later.")
 
     # Step 3: Get sector median from rent_history
     sector_median: Optional[float] = None
@@ -350,6 +382,52 @@ def analyse_rent_increase(
     )
     verdict, verdict_detail, challenge_strength = _compute_verdict(market_excess_pct)
 
+    today = datetime.now(timezone.utc).date()
+    minimum_notice_ok: Optional[bool] = None
+    minimum_notice_detail: Optional[str] = None
+    annual_limit_ok: Optional[bool] = None
+    annual_limit_detail: Optional[str] = None
+    apply_before_date = request.proposed_effective_date
+
+    if request.notice_served_on and request.proposed_effective_date:
+        minimum_notice_ok = request.proposed_effective_date >= _add_months(
+            request.notice_served_on, 2
+        )
+        minimum_notice_detail = (
+            "2-month notice check: passes the minimum notice window."
+            if minimum_notice_ok
+            else "2-month notice check: this looks short of the minimum 2 calendar months."
+        )
+
+    if request.last_increase_effective_date and request.proposed_effective_date:
+        annual_limit_ok = request.proposed_effective_date >= _add_year(
+            request.last_increase_effective_date
+        )
+        annual_limit_detail = (
+            "Annual limit check: the proposed increase is at least a year after the last increase."
+            if annual_limit_ok
+            else "Annual limit check: this looks sooner than the once-per-year limit."
+        )
+
+    if request.proposed_effective_date and request.proposed_effective_date < _RRA_PHASE_1_START:
+        legal_summary = (
+            "This notice appears to take effect before 1 May 2026. SurreyNest can still compare "
+            "the proposed rent with local market evidence, but the Phase 1 Renters' Rights Act "
+            "section 13 rules were not yet in force on that date."
+        )
+    elif today < _RRA_PHASE_1_START:
+        legal_summary = (
+            "This checker is aligned to the Phase 1 Renters' Rights Act rules for England that "
+            "start on 1 May 2026: section 13/Form 4A, at least 2 months' notice, and usually "
+            "no more than one increase a year."
+        )
+    else:
+        legal_summary = (
+            "This checker is aligned to the Phase 1 Renters' Rights Act rules for England: rent "
+            "increases should use section 13/Form 4A, give at least 2 months' notice, and usually "
+            "happen no more than once a year."
+        )
+
     # Step 6: Generate tribunal brief
     tribunal_brief = _generate_tribunal_brief(
         postcode=postcode,
@@ -357,6 +435,10 @@ def analyse_rent_increase(
         proposed_rent=request.proposed_weekly_rent,
         ml_predicted=ml_predicted,
         comparables=comparables,
+        legal_summary=legal_summary,
+        apply_before_date=apply_before_date,
+        minimum_notice_detail=minimum_notice_detail,
+        annual_limit_detail=annual_limit_detail,
     )
 
     increase_amount = round(request.proposed_weekly_rent - request.current_weekly_rent, 2)
@@ -383,5 +465,12 @@ def analyse_rent_increase(
         tribunal_brief=tribunal_brief,
         postcode=postcode,
         postcode_sector=postcode_sector,
+        rules_effective_from=_RRA_PHASE_1_START,
+        legal_summary=legal_summary,
+        apply_before_date=apply_before_date,
+        minimum_notice_ok=minimum_notice_ok,
+        minimum_notice_detail=minimum_notice_detail,
+        annual_limit_ok=annual_limit_ok,
+        annual_limit_detail=annual_limit_detail,
         analysed_at=datetime.now(timezone.utc),
     )

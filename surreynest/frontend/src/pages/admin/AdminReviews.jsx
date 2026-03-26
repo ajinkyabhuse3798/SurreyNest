@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Star, CheckCircle, XCircle, Search } from 'lucide-react'
+import { Star, CheckCircle, XCircle } from 'lucide-react'
 import { adminApi } from '../../services/adminApi'
 
 function StarRating({ value }) {

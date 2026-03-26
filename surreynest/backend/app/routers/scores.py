@@ -1,6 +1,6 @@
 """Score routes: GET /scores/safety, GET /scores/rent-fairness.
 
-Thin route layer — delegates to score_service for all computation.
+Thin route layer, delegates to score_service for all computation.
 """
 
 import logging
@@ -14,26 +14,11 @@ from app.rate_limit import limiter
 from app.schemas.score import RentFairnessResponse, SafetyScoreResponse
 from app.services import score_service
 from app.services.geocoding_service import _normalise_postcode
+from app.utils.postcode import extract_postcode_sector
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-
-
-def _extract_postcode_sector(postcode: str) -> str:
-    """Extract postcode sector from full postcode.
-
-    Args:
-        postcode: Full normalised postcode, e.g. "GU2 7XH".
-
-    Returns:
-        Postcode sector, e.g. "GU2 7".
-    """
-    normalised = _normalise_postcode(postcode)
-    parts = normalised.strip().split()
-    if len(parts) == 2 and len(parts[1]) >= 1:
-        return parts[0] + " " + parts[1][0]
-    return normalised
 
 
 @router.get(
@@ -51,10 +36,10 @@ async def get_safety_score(
 
     Returns a 0-100 score (higher = safer) with crime category breakdown.
     """
-    sector = _extract_postcode_sector(postcode)
+    sector = extract_postcode_sector(_normalise_postcode(postcode))
     result = score_service.get_safety_score(sector, db)
 
-    if not result:
+    if not result or not result.get("available"):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"No crime data available for postcode sector {sector}",

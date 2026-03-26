@@ -1,5 +1,5 @@
 /**
- * AgentDetail page — full agent profile with reviews.
+ * AgentDetail page, full agent profile with reviews.
  * Route: /agent/:agentName
  */
 import { useState, useEffect } from 'react'

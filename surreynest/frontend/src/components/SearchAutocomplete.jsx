@@ -1,5 +1,5 @@
 /**
- * SearchAutocomplete — typeahead property search with dropdown suggestions.
+ * SearchAutocomplete, typeahead property search with dropdown suggestions.
  *
  * Fires on every keystroke (debounced 300ms) and shows matching properties
  * from the suggest endpoint. Clicking a suggestion navigates to the property

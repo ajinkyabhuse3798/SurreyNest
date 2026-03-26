@@ -1,11 +1,8 @@
-/**
- * Login page — centred form, email + password.
- * Per design-system.md: max-w-sm, white bg, border inputs.
- */
 import { useState } from 'react'
-import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { useAuth } from '../hooks/useAuth'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+
 import Navbar from '../components/Navbar'
+import { useAuth } from '../hooks/useAuth'
 
 export default function Login() {
     const { login } = useAuth()
@@ -14,19 +11,19 @@ export default function Login() {
     const returnTo = location.state?.from?.pathname || '/'
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
-    const [error, setError] = useState(null)
+    const [error, setError] = useState('')
     const [loading, setLoading] = useState(false)
 
-    async function handleSubmit(e) {
-        e.preventDefault()
-        setError(null)
+    async function handleSubmit(event) {
+        event.preventDefault()
+        setError('')
         setLoading(true)
+
         try {
             await login(email, password)
             navigate(returnTo, { replace: true })
-            // Do not setLoading(false) here — navigate() unmounts this component
         } catch (err) {
-            setError(err.response?.data?.detail || 'Login failed. Check your credentials.')
+            setError(err.detail || err.response?.data?.detail || 'Login failed. Check your credentials.')
             setLoading(false)
         }
     }
@@ -49,7 +46,7 @@ export default function Login() {
                         <input
                             type="email"
                             value={email}
-                            onChange={(e) => setEmail(e.target.value)}
+                            onChange={(event) => setEmail(event.target.value)}
                             required
                             autoComplete="email"
                             placeholder="you@surrey.ac.uk"
@@ -66,7 +63,7 @@ export default function Login() {
                         <input
                             type="password"
                             value={password}
-                            onChange={(e) => setPassword(e.target.value)}
+                            onChange={(event) => setPassword(event.target.value)}
                             required
                             autoComplete="current-password"
                             placeholder="••••••••"
@@ -83,7 +80,7 @@ export default function Login() {
                 </form>
 
                 <p className="text-sm text-gray-500 mt-6 text-center">
-                    Don't have an account?{' '}
+                    Don&apos;t have an account?{' '}
                     <Link to="/register" className="text-primary font-medium">
                         Register
                     </Link>

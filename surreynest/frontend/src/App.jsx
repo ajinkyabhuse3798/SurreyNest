@@ -9,7 +9,7 @@
  * - Footer: site-wide footer on all routes
  */
 import React, { Suspense, Component } from 'react'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom'
 import { AuthProvider, RequireAuth } from './hooks/useAuth'
 
 import { CompareProvider } from './hooks/useCompare'
@@ -22,28 +22,26 @@ const SearchResults = React.lazy(() => import('./pages/SearchResults'))
 const PropertyDetail = React.lazy(() => import('./pages/PropertyDetail'))
 const CompareProperties = React.lazy(() => import('./pages/CompareProperties'))
 const About = React.lazy(() => import('./pages/About'))
+const RightsGuide = React.lazy(() => import('./pages/RightsGuide'))
 const Login = React.lazy(() => import('./pages/Login'))
 const Register = React.lazy(() => import('./pages/Register'))
-const RightsGuide = React.lazy(() => import('./pages/RightsGuide'))
+const ForgotPassword = React.lazy(() => import('./pages/ForgotPassword'))
+const ResetPassword = React.lazy(() => import('./pages/ResetPassword'))
+const VerifyEmail = React.lazy(() => import('./pages/VerifyEmail'))
 const AdminLogin = React.lazy(() => import('./pages/admin/AdminLogin'))
 const AdminLayout = React.lazy(() => import('./pages/admin/AdminLayout'))
 const AdminOverview = React.lazy(() => import('./pages/admin/AdminOverview'))
 const AdminUsers = React.lazy(() => import('./pages/admin/AdminUsers'))
-const AdminSubscriptions = React.lazy(() => import('./pages/admin/AdminSubscriptions'))
 const AdminReviews = React.lazy(() => import('./pages/admin/AdminReviews'))
 const AdminPipelines = React.lazy(() => import('./pages/admin/AdminPipelines'))
 const CheckListing = React.lazy(() => import('./pages/CheckListing'))
 const StreetSmarts = React.lazy(() => import('./pages/StreetSmarts'))
+const SafetyOverview = React.lazy(() => import('./pages/SafetyOverview'))
 const SafetyDetail = React.lazy(() => import('./pages/SafetyDetail'))
 const RentDetail = React.lazy(() => import('./pages/RentDetail'))
 const AgentDirectory = React.lazy(() => import('./pages/AgentDirectory'))
 const AgentDetail = React.lazy(() => import('./pages/AgentDetail'))
 const RentChallengePage = React.lazy(() => import('./pages/RentChallengePage'))
-const ContractChecker = React.lazy(() => import('./pages/ContractChecker'))
-const Pricing = React.lazy(() => import('./pages/Pricing'))
-const ForgotPassword = React.lazy(() => import('./pages/ForgotPassword'))
-const ResetPassword = React.lazy(() => import('./pages/ResetPassword'))
-const VerifyEmail = React.lazy(() => import('./pages/VerifyEmail'))
 
 // ── Route-level loading spinner ──────────────────────────────────────────────
 function RouteLoader() {
@@ -55,6 +53,17 @@ function RouteLoader() {
             </div>
         </div>
     )
+}
+
+function ScrollToTop() {
+    const location = useLocation()
+
+    React.useLayoutEffect(() => {
+        if (location.hash) return
+        window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+    }, [location.pathname, location.search, location.hash])
+
+    return null
 }
 
 // ── Error boundary ───────────────────────────────────────────────────────────
@@ -108,6 +117,7 @@ export default function App() {
         <AuthProvider>
             <CompareProvider>
                 <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+                    <ScrollToTop />
                     <div className="flex flex-col min-h-screen">
                         <ErrorBoundary>
                             <Suspense fallback={<RouteLoader />}>
@@ -120,6 +130,7 @@ export default function App() {
                                         <Route path="/about" element={<About />} />
                                         <Route path="/check-listing" element={<CheckListing />} />
                                         <Route path="/best-streets" element={<StreetSmarts />} />
+                                        <Route path="/safety" element={<SafetyOverview />} />
                                         <Route path="/safety/:postcode" element={<SafetyDetail />} />
                                         <Route path="/rent/:uprn" element={<RentDetail />} />
                                         <Route path="/login" element={<Login />} />
@@ -131,14 +142,12 @@ export default function App() {
                                         <Route path="/agent" element={<AgentDirectory />} />
                                         <Route path="/agent/:agentName" element={<AgentDetail />} />
                                         <Route path="/challenge-rent-increase" element={<RentChallengePage />} />
-                                        <Route path="/check-contract" element={<ContractChecker />} />
-                                        <Route path="/pricing" element={<Pricing />} />
+                                        <Route path="/check-contract" element={<Navigate to="/rights" replace />} />
                                         <Route path="/admin/login" element={<AdminLogin />} />
                                         <Route path="/admin" element={<RequireAuth adminOnly><AdminLayout /></RequireAuth>}>
                                             <Route index element={<AdminOverview />} />
                                             <Route path="dashboard" element={<AdminOverview />} />
                                             <Route path="users" element={<AdminUsers />} />
-                                            <Route path="subscriptions" element={<AdminSubscriptions />} />
                                             <Route path="reviews" element={<AdminReviews />} />
                                             <Route path="pipelines" element={<AdminPipelines />} />
                                         </Route>

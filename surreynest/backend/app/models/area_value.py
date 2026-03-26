@@ -17,9 +17,9 @@ class AreaValue(Base):
     """Land Registry area value index per postcode.
 
     Attributes:
-        postcode: Primary key — normalised UK postcode, e.g. "GU2 7XH".
+        postcode: Primary key, normalised UK postcode, e.g. "GU2 7XH".
         median_sale_price: Median sale price from PPD (post-2020).
-        area_value_index: Min-max normalised to 0.0–1.0 across all GU postcodes.
+        area_value_index: Min-max normalised to 0.0 to 1.0 across all GU postcodes.
         updated_at: Last pipeline update timestamp.
     """
 

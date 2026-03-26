@@ -1,5 +1,5 @@
 /**
- * ReviewList — paginated list of moderated reviews for a property.
+ * ReviewList, paginated list of moderated reviews for a property.
  * Fetches from GET /api/reviews/{uprn}.
  *
  * @param {{ uprn: string }} props

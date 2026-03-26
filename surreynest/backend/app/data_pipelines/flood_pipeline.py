@@ -213,7 +213,7 @@ def run_flood_pipeline(db: Optional[Session] = None) -> int:
         logger.info("Found %d postcodes with coordinates", len(all_postcodes))
 
         if not all_postcodes:
-            logger.warning("No postcodes with coordinates — skipping flood pipeline")
+            logger.warning("No postcodes with coordinates, skipping flood pipeline")
             return 0
 
         # ── Step 2: Deduplicate by geographic grid ────────────────────────
@@ -264,7 +264,7 @@ def run_flood_pipeline(db: Optional[Session] = None) -> int:
                     closest_area = area
 
             if closest_area is None:
-                # No flood areas nearby — still record as no risk
+                # No flood areas nearby, still record as no risk
                 for pc in grid_postcodes.get(grid_key, [rep_pc]):
                     records_to_upsert.append({
                         "postcode": pc,

@@ -1,7 +1,7 @@
 """ORM model for the `auth_tokens` table.
 
 Stores one-time tokens for email verification and password reset.
-Raw tokens are NEVER stored — only their SHA-256 hash.
+Raw tokens are NEVER stored, only their SHA-256 hash.
 """
 
 import uuid
@@ -42,13 +42,13 @@ class AuthToken(Base):
         index=True,
     )
     token_hash: Mapped[str] = mapped_column(
-        String(64),  # SHA-256 hex digest = 64 chars
+        String(64), # SHA-256 hex digest = 64 chars
         unique=True,
         index=True,
         nullable=False,
     )
     token_type: Mapped[str] = mapped_column(
-        String(20),  # "reset" | "verify"
+        String(20), # "reset" | "verify"
         nullable=False,
     )
     expires_at: Mapped[datetime] = mapped_column(

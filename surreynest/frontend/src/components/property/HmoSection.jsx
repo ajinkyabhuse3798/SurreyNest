@@ -1,11 +1,11 @@
 /**
- * HmoSection — HMO explainer, licence status, and licence details grid.
+ * HmoSection, HMO explainer, licence status, and licence details grid.
  *
  * Props:
- *   hmoStatus  — 'licensed' | 'expired' | 'not_found'
- *   hmoDetail  — API response object (or null)
- *   hmoLoading — boolean
- *   property   — needs property.hmo fallback
+ *   hmoStatus , 'licensed' | 'expired' | 'not_found'
+ *   hmoDetail , API response object (or null)
+ *   hmoLoading, boolean
+ *   property  , needs property.hmo fallback
  */
 import { CheckCircle2, AlertTriangle, Info as InfoIcon } from 'lucide-react'
 
@@ -27,7 +27,7 @@ export default function HmoSection({ hmoStatus, hmoDetail, hmoLoading, property:
             <div className="bg-primary/10/50 border border-primary/10/80 rounded-2xl p-4 flex items-start gap-3">
                 <InfoIcon size={18} className="text-primary/80 flex-shrink-0 mt-0.5 drop-shadow-sm" />
                 <p className="text-xs text-primary-900 leading-relaxed font-medium">
-                    An <strong>HMO</strong> (House in Multiple Occupation) is a property rented by 3+ people from different households — like a typical student house share.
+                    An <strong>HMO</strong> (House in Multiple Occupation) is a property rented by 3+ people from different households, like a typical student house share.
                 </p>
             </div>
 
@@ -40,7 +40,7 @@ export default function HmoSection({ hmoStatus, hmoDetail, hmoLoading, property:
                         <div>
                             <p className="text-sm font-extrabold text-emerald-900">Licensed HMO ✓</p>
                             <p className="text-xs text-emerald-700/80 mt-1.5 leading-relaxed font-medium">
-                                This property has a valid HMO licence — your landlord has met safety requirements including fire alarms, escape routes, and minimum room sizes.
+                                This property has a valid HMO licence, your landlord has met safety requirements including fire alarms, escape routes, and minimum room sizes.
                             </p>
                         </div>
                     </div>

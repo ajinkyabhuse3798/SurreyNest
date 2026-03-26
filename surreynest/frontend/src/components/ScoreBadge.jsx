@@ -1,7 +1,7 @@
 /**
- * ScoreBadge — small coloured dot (8px) + numeric score + label.
+ * ScoreBadge, small coloured dot (8px) + numeric score + label.
  * Per design-system.md: green ≥70, amber 40-69, red <40.
- * No rings, no gauges — just a dot.
+ * No rings, no gauges, just a dot.
  *
  * @param {{ score: number|null, label: string }} props
  */

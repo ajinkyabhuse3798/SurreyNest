@@ -1,7 +1,7 @@
 """Geocoding service: cache-first postcode → lat/lng lookup via Postcodes.io.
 
 Always checks the postcode_cache table before calling the external API.
-If is_valid=False in cache, do not retry — postcode is terminated or invalid.
+If is_valid=False in cache, do not retry, postcode is terminated or invalid.
 Provides both single-lookup (get_lat_lng) and batch (geocode_batch) functions.
 """
 
@@ -67,7 +67,7 @@ def get_lat_lng(
             logger.debug("Postcode %s is cached as invalid", normalised)
             return None
 
-    # Cache miss — call Postcodes.io
+    # Cache miss, call Postcodes.io
     logger.info("Geocoding postcode %s via Postcodes.io", normalised)
     try:
         resp = requests.get(
@@ -94,7 +94,7 @@ def get_lat_lng(
                 db.commit()
                 return (lat, lng)
 
-        # Postcode not found — cache as invalid
+        # Postcode not found, cache as invalid
         cache_entry = PostcodeCache(
             postcode=normalised,
             lat=0.0,

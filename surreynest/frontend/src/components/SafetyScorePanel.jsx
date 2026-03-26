@@ -1,5 +1,5 @@
 /**
- * SafetyScorePanel — crime breakdown for a postcode.
+ * SafetyScorePanel, crime breakdown for a postcode.
  * Fetches from GET /api/scores/safety?postcode=...
  *
  * @param {{ postcode: string }} props

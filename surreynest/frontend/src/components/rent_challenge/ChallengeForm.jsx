@@ -1,5 +1,5 @@
 /**
- * ChallengeForm — form to submit rent increase details for analysis.
+ * ChallengeForm, form to submit rent increase details for analysis.
  *
  * @param {{ onSubmit: Function, loading: boolean, initialPostcode?: string, initialUprn?: string }} props
  */
@@ -12,6 +12,9 @@ export default function ChallengeForm({ onSubmit, loading, initialPostcode = '',
     const [proposedRent, setProposedRent] = useState('')
     const [propertyType, setPropertyType] = useState('')
     const [bedrooms, setBedrooms] = useState('')
+    const [noticeServedOn, setNoticeServedOn] = useState('')
+    const [proposedEffectiveDate, setProposedEffectiveDate] = useState('')
+    const [lastIncreaseEffectiveDate, setLastIncreaseEffectiveDate] = useState('')
     const [error, setError] = useState(null)
 
     function handleSubmit(e) {
@@ -36,12 +39,19 @@ export default function ChallengeForm({ onSubmit, loading, initialPostcode = '',
             proposed_weekly_rent: parseFloat(proposedRent),
             property_type: propertyType || undefined,
             bedrooms: bedrooms ? parseInt(bedrooms, 10) : undefined,
+            notice_served_on: noticeServedOn || undefined,
+            proposed_effective_date: proposedEffectiveDate || undefined,
+            last_increase_effective_date: lastIncreaseEffectiveDate || undefined,
         })
     }
 
     return (
         <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm space-y-5">
             <h2 className="text-lg font-extrabold text-slate-900">Your Rent Details</h2>
+            <p className="text-sm text-slate-500">
+                Add the dates from the notice if you want SurreyNest to check the new
+                once-a-year and 2-month timing rules as well as the market level.
+            </p>
 
             {error && (
                 <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">
@@ -113,6 +123,36 @@ export default function ChallengeForm({ onSubmit, loading, initialPostcode = '',
                         <option value="Semi-Detached">Semi-Detached</option>
                         <option value="Detached">Detached</option>
                     </select>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-slate-600">Notice given on (optional)</label>
+                    <input
+                        type="date"
+                        value={noticeServedOn}
+                        onChange={e => setNoticeServedOn(e.target.value)}
+                        className="border border-slate-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-primary transition-colors"
+                    />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-slate-600">New rent starts on (optional)</label>
+                    <input
+                        type="date"
+                        value={proposedEffectiveDate}
+                        onChange={e => setProposedEffectiveDate(e.target.value)}
+                        className="border border-slate-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-primary transition-colors"
+                    />
+                </div>
+
+                <div className="flex flex-col gap-1.5 md:col-span-2">
+                    <label className="text-xs font-semibold text-slate-600">Last increase took effect on (optional)</label>
+                    <input
+                        type="date"
+                        value={lastIncreaseEffectiveDate}
+                        onChange={e => setLastIncreaseEffectiveDate(e.target.value)}
+                        className="border border-slate-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-primary transition-colors"
+                    />
                 </div>
             </div>
 

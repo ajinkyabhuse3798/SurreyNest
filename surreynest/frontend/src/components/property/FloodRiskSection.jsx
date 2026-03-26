@@ -1,8 +1,8 @@
 /**
- * FloodRiskSection — Flood severity badge, nearest flood area, and EA attribution.
+ * FloodRiskSection, Flood severity badge, nearest flood area, and EA attribution.
  *
  * Props:
- *   floodRisk — property.flood_risk object (or null/undefined)
+ *   floodRisk, property.flood_risk object (or null/undefined)
  */
 import { Droplets, AlertTriangle, CheckCircle2 } from 'lucide-react'
 

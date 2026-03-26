@@ -1,42 +1,36 @@
-"""ML model training: rent prediction using XGBoost.
+"""ML model training for SurreyNest rent prediction.
 
-MODE G (v3.3.0): Adds 5 new EPC-derived features on top of v3.2.0 XGBoost.
-
-New features over v3.2.0:
-  1. age_band_ordinal — construction era (newer = higher rent)
-  2. has_mains_gas — binary (off-gas = higher running cost = lower rent)
-  3. floor_level_ordinal — upper floors more desirable for flats
-  4. annual_energy_cost — real £/yr running cost (stronger than EPC band)
-  5. energy_improvement_gap — potential minus current rating (condition proxy)
-  1. XGBoost (faster, better regularisation, handles missing values natively)
-  2. Log-transform target: trains on log1p(rent), predicts with expm1()
-     - Skewness 2.60 → 0.24 (near-normal)
-     - Model learns proportional errors, not absolute
-  3. Outlier cap at £1,000/wk: removes 7.1% mansion properties irrelevant
-     to student housing
-
-IMPORTANT: EPC 'num_rooms' = total HABITABLE rooms (bedrooms + living rooms +
-large kitchens), NOT bedrooms. This model derives estimated_bedrooms using:
-  - Flats:  est_bedrooms = max(0, habitable_rooms - 1)
-  - Houses: est_bedrooms = max(1, habitable_rooms - 2)
-
-Keeps v3.0.0 fix: area_value_index is NOT a training feature (prevents
-quasi-circular leakage).
+The v7 series builds on v6 with targeted improvements for the small-market setting:
+- train only on real observed market rents
+- treat implied/sales-derived rent data as priors, not labels
+- LOSO-CV (leave-one-sector-out) for the most honest grouped evaluation
+- StandardScaler removed, XGBoost is invariant to monotonic feature transforms
+- built_form one-hot features (End-Terrace vs Mid-Terrace premium signal)
+- tighter colsample_bytree (0.7) and fewer estimators (150) to reduce overfitting on 547 rows
 """
+
+from __future__ import annotations
 
 import json
 import logging
 from pathlib import Path
-from typing import Dict, Tuple
+from typing import Dict, List, Tuple
 
 import joblib
 import numpy as np
 import pandas as pd
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import GroupKFold, KFold, LeaveOneGroupOut
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
 from xgboost import XGBRegressor
+
+from app.ml.calibration import (
+    apply_prediction_calibration,
+    fit_calibration_artifact,
+    fit_interval_artifact,
+    interval_half_width_for_type,
+    property_type_series_from_frame,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -44,401 +38,517 @@ logger = logging.getLogger(__name__)
 FEATURES_PATH = Path(__file__).resolve().parents[2] / "data" / "processed" / "features.csv"
 MODEL_DIR = Path(__file__).resolve().parent / "models"
 MODEL_PATH = MODEL_DIR / "rent_model_v1.pkl"
+CALIBRATION_PATH = MODEL_DIR / "prediction_calibration.json"
+INTERVAL_PATH = MODEL_DIR / "prediction_intervals.json"
 
 # ── Model version ────────────────────────────────────────────────────────────
-MODEL_VERSION = "v4.6.0"  # station_proximity + accessibility_score + is_student_zone + m2_per_bedroom + flat_floor_premium
+MODEL_VERSION = "v7.0.0"
 
 # Path to processed Land Registry CSV
-LAND_REGISTRY_CSV = Path(__file__).resolve().parents[2] / "data" / "processed" / "land_registry_guildford.csv"
+LAND_REGISTRY_CSV = (
+    Path(__file__).resolve().parents[2] / "data" / "processed" / "land_registry_guildford.csv"
+)
 
-# ── Outlier cap ──────────────────────────────────────────────────────────────
-# Properties above this threshold are luxury mansions, irrelevant to students.
-# Removing them reduces noise and lets the model focus on the £50–1,000 range.
+# ── Training constants ───────────────────────────────────────────────────────
 OUTLIER_CAP_WEEKLY = 1000.0  # £/week
+TARGET_COLUMN = "actual_market_rent_weekly"
+DEFAULT_SECTOR_ANCHOR = 350.0
+CV_FOLDS = 5
 
 
 def estimate_bedrooms(df: pd.DataFrame) -> pd.Series:
-    """Derive estimated bedrooms from EPC habitable rooms + property type.
-
-    EPC 'num_rooms' counts ALL habitable rooms (bedrooms + living rooms +
-    kitchens if > 13m²), NOT just bedrooms. This function estimates the
-    actual bedroom count:
-
-      - Flats:  est_bedrooms = max(0, habitable_rooms - 1)
-                (subtract 1 living room; studios have 0 bedrooms)
-      - Houses: est_bedrooms = max(1, habitable_rooms - 2)
-                (subtract living room + kitchen/dining)
-
-    Args:
-        df: DataFrame with 'num_rooms' and ptype_* one-hot columns.
-
-    Returns:
-        Series of estimated bedroom counts (int).
-    """
+    """Derive estimated bedrooms from EPC habitable rooms + property type."""
     rooms = df["num_rooms"].fillna(3).astype(int)
     is_flat = df.get("ptype_Flat", pd.Series(0, index=df.index)).astype(int)
 
-    # Flats: subtract 1 (living room). Studios (1 hab room) → 0 bedrooms.
     flat_beds = (rooms - 1).clip(lower=0)
-    # Houses: subtract 2 (living room + kitchen/dining). Min 1 bedroom.
     house_beds = (rooms - 2).clip(lower=1)
 
     return (is_flat * flat_beds + (1 - is_flat) * house_beds).astype(int)
 
 
 def compute_real_target(df: pd.DataFrame) -> pd.Series:
-    """Compute hybrid rent target (v4.3.0).
+    """Return the real observed market-rent target used in v6 training."""
+    target = pd.to_numeric(df.get(TARGET_COLUMN), errors="coerce")
 
-    Priority:
-      1. actual_market_rent_weekly (scraped from Zoopla/Rightmove — gold standard)
-      2. implied_weekly_rent (Land Registry proxy — fallback for ~98% of rows)
-
-    This hybrid approach expands training data from 261 scraped rows to ~18k rows,
-    using the Land Registry implied rent as a noisy but broad-coverage proxy.
-
-    Args:
-        df: Feature DataFrame.
-
-    Returns:
-        Series of weekly rent targets (~18k rows vs 261 scraped-only).
-    """
-    target = df["actual_market_rent_weekly"].copy()
-
-    # v5.0.0: Exclude university-managed properties from scraped priority.
-    # University halls (e.g. Millennium House GU2 7JN) are let below market rate.
-    # Using their subsidised rents as training targets would teach the model to
-    # under-predict GU2 flats. Fall through to implied_weekly_rent instead.
     if "is_university" in df.columns:
         uni_mask = df["is_university"].fillna(False).astype(bool)
         n_uni = int(uni_mask.sum())
         if n_uni > 0:
-            target[uni_mask] = np.nan
+            target = target.mask(uni_mask)
             logger.info(
-                "Excluded %d university properties from scraped rent target "
-                "(below-market halls — using implied_weekly_rent fallback)",
+                "Excluded %d university-managed properties from rent target",
                 n_uni,
             )
 
-    n_scraped = target.notna().sum()
-
-    if "implied_weekly_rent" in df.columns:
-        missing_mask = target.isna()
-        target[missing_mask] = df.loc[missing_mask, "implied_weekly_rent"]
-        n_filled = missing_mask.sum() - target.isna().sum()
-        logger.info(
-            "Hybrid target: %d scraped + %d implied = %d total training rows",
-            n_scraped, n_filled, target.notna().sum(),
-        )
-    else:
-        logger.warning("implied_weekly_rent missing — using scraped rents only (%d rows)", n_scraped)
+    n_real = int(target.notna().sum())
+    logger.info("Real-rent training target available for %d rows", n_real)
 
     if target.isna().all():
-        raise ValueError("No valid rent targets: both actual_market_rent_weekly and implied_weekly_rent are null")
+        raise ValueError("No valid actual_market_rent_weekly values available for training")
 
     return target
 
 
+def _ensure_postcode_sector(df: pd.DataFrame) -> pd.DataFrame:
+    """Guarantee a postcode_sector column exists."""
+    working = df.copy()
+    if "postcode_sector" in working.columns:
+        return working
+
+    if "postcode" not in working.columns:
+        working["postcode_sector"] = ""
+        return working
+
+    parts = working["postcode"].fillna("").astype(str).str.strip().str.split()
+    working["postcode_sector"] = parts.apply(
+        lambda value: f"{value[0]} {value[1][0]}"
+        if len(value) >= 2 and value[1]
+        else ""
+    )
+    return working
+
+
+def _anchor_bucket_from_frame(df: pd.DataFrame) -> pd.Series:
+    """Collapse property types into the anchor buckets used at inference."""
+    is_flat = df.get("ptype_Flat", pd.Series(0, index=df.index)).fillna(0).astype(int)
+    return is_flat.map({1: "Flat", 0: "House"})
+
+
+def build_safe_sector_rent_map(df: pd.DataFrame) -> dict:
+    """Build a leakage-safe sector/type anchor map using implied rents only."""
+    working = _ensure_postcode_sector(df)
+    if "implied_weekly_rent" not in working.columns:
+        return {}
+
+    source = pd.DataFrame(
+        {
+            "postcode_sector": working["postcode_sector"].fillna("").astype(str),
+            "anchor_bucket": _anchor_bucket_from_frame(working),
+            "implied_weekly_rent": pd.to_numeric(
+                working["implied_weekly_rent"], errors="coerce"
+            ),
+        }
+    ).dropna(subset=["implied_weekly_rent"])
+
+    sector_rent_map: dict = {}
+    if source.empty:
+        return sector_rent_map
+
+    for (sector, bucket), group in source.groupby(["postcode_sector", "anchor_bucket"]):
+        if not sector:
+            continue
+        sector_rent_map.setdefault(sector, {})[bucket] = round(
+            float(group["implied_weekly_rent"].median()),
+            4,
+        )
+
+    return sector_rent_map
+
+
+def recompute_safe_sector_anchor(df: pd.DataFrame) -> pd.DataFrame:
+    """Replace sector_median_rent with an implied-rent-only sector/type prior."""
+    working = _ensure_postcode_sector(df)
+    if "implied_weekly_rent" not in working.columns:
+        working["sector_median_rent"] = pd.to_numeric(
+            working.get("sector_median_rent", DEFAULT_SECTOR_ANCHOR),
+            errors="coerce",
+        ).fillna(DEFAULT_SECTOR_ANCHOR)
+        return working
+
+    implied = pd.to_numeric(working["implied_weekly_rent"], errors="coerce")
+    global_median = float(implied.dropna().median()) if implied.notna().any() else DEFAULT_SECTOR_ANCHOR
+    sector_rent_map = build_safe_sector_rent_map(working)
+    sector_medians = (
+        pd.DataFrame(
+            {
+                "postcode_sector": working["postcode_sector"].fillna("").astype(str),
+                "implied_weekly_rent": implied,
+            }
+        )
+        .dropna(subset=["implied_weekly_rent"])
+        .groupby("postcode_sector")["implied_weekly_rent"]
+        .median()
+        .to_dict()
+    )
+
+    anchor_bucket = _anchor_bucket_from_frame(working)
+    anchors = []
+    for sector, bucket in zip(working["postcode_sector"].fillna("").astype(str), anchor_bucket):
+        bucket_map = sector_rent_map.get(sector, {})
+        anchor = bucket_map.get(bucket, sector_medians.get(sector, global_median))
+        anchors.append(float(anchor))
+
+    working["sector_median_rent"] = anchors
+    return working
+
+
 def get_feature_columns(df: pd.DataFrame) -> list:
-    """Get the list of numeric feature columns for training.
-
-    v3.2.0 features (same as v3.1.0):
-    - NO area_value_index (quasi-circular with target via sale prices)
-    - NO iphrp_growth_pct (constant across all rows = zero information)
-    - NO is_hmo (0.00% importance, inaccurate postcode-level matching)
-    - estimated_bedrooms (v3.1.0: derived from habitable rooms)
-    - rooms_per_m2 (v3.0.0: space efficiency signal)
-
-    Note: implied_weekly_rent is the training TARGET — it must NEVER
-    appear here as a feature.
-
-    Args:
-        df: Feature DataFrame.
-
-    Returns:
-        List of column names to use as features.
-    """
+    """Get the list of numeric feature columns for training."""
     feature_cols = [
         "floor_area_m2",
-        "actual_bedrooms",           # v4.1.0: Sub-model / Ground Truth Bedrooms
-        "rooms_per_m2",              # v3.0.0: space efficiency
+        "actual_bedrooms",
+        "rooms_per_m2",
         "energy_rating_ordinal",
         "potential_rating_ordinal",
         "distance_to_town_km",
         "distance_to_uni_km",
         "distance_to_station_km",
-        "town_proximity_score",      # v4.4.0: Gaussian proximity to town, σ=1.5km
-        "uni_proximity_score",       # v4.4.0: Gaussian proximity to uni, σ=1.5km
-        "station_proximity_score",   # v4.6.0: Gaussian proximity to station, σ=1.5km
-        "accessibility_score",       # v4.6.0: max(town, uni, station) [0,1]
+        "town_proximity_score",
+        "uni_proximity_score",
+        "station_proximity_score",
+        "accessibility_score",
         "safety_score",
         "sale_count",
-        "sector_median_rent",        # v4.3.0: postcode-sector implied rent anchor
-        # v3.3.0: new EPC-derived features
-        "age_band_ordinal",          # construction era (0=pre-1900, 11=2012+)
-        "has_mains_gas",             # 1=gas, 0=no gas
-        "flat_floor_premium",        # v4.6.0: floor_level_ordinal × ptype_Flat (flats only)
-        "annual_energy_cost",        # £/year running cost from EPC
-        "energy_improvement_gap",    # potential - current EPC ordinal
-        # v4.0.0: Scraped real rents and price drops
-        "price_drop_pct",            # % price drops on listings
-        # v4.5.0: explicit studio flag
-        "is_studio",                 # ptype_Flat AND actual_bedrooms==0
-        # v4.6.0: new interaction features
-        "is_student_zone",           # GU1/GU2=1 (student market), else 0
-        "m2_per_bedroom",            # floor_area_m2 / actual_bedrooms
+        "sector_median_rent",
+        "has_mains_gas",
+        "flat_floor_premium",
+        "annual_energy_cost",
+        "energy_improvement_gap",
+        "price_drop_pct",
+        "is_studio",
+        "is_student_zone",
+        "m2_per_bedroom",
     ]
 
-    # Add one-hot property type columns
-    ptype_cols = [c for c in df.columns if c.startswith("ptype_")]
+    # One-hot property type columns (ptype_*) and built form columns (bform_*)
+    ptype_cols = [column for column in df.columns if column.startswith("ptype_")]
+    bform_cols = [column for column in df.columns if column.startswith("bform_")]
     feature_cols.extend(ptype_cols)
+    feature_cols.extend(bform_cols)
 
-    # Only include columns that exist in the DataFrame
-    return [c for c in feature_cols if c in df.columns]
+    return [column for column in feature_cols if column in df.columns]
 
 
-def train_model(df: pd.DataFrame) -> Tuple[Pipeline, Dict[str, float], list]:
-    """Train the rent prediction model using XGBoost with log-transformed target.
+def prepare_training_frame(
+    df: pd.DataFrame,
+) -> Tuple[pd.DataFrame, pd.DataFrame, pd.Series, List[str], pd.Series]:
+    """Prepare the small real-rent training dataset and grouped-CV labels."""
+    working = recompute_safe_sector_anchor(df.copy())
+    target = compute_real_target(working)
+    feature_cols = get_feature_columns(working)
+    X = working[feature_cols].copy()
+    y = target.astype(float)
 
-    Pipeline:
-      1. Compute target from implied_weekly_rent
-      2. Cap outliers at £OUTLIER_CAP_WEEKLY/wk (remove luxury mansions)
-      3. Log-transform: y_train = log1p(target)
-      4. Train XGBRegressor on log-space target
-      5. Evaluate on original scale: expm1(y_pred) vs y_test
-
-    Args:
-        df: Feature DataFrame (output of features.py).
-
-    Returns:
-        Tuple of (trained pipeline, metrics dict, feature_cols list).
-    """
-    logger.info("MODE F: XGBoost + log-transform + outlier cap (version %s)", MODEL_VERSION)
-
-    # ── Add derived features ─────────────────────────────────────────────
-    df = df.copy()
-    df["rooms_per_m2"] = (df["num_rooms"] / df["floor_area_m2"].clip(lower=10)).round(4)
-    # We now use actual_bedrooms from the database / RF classifier!
-    # df["estimated_bedrooms"] = estimate_bedrooms(df)
-
-    # ── Compute target ─────────────────────────────────────────────────
-    target = compute_real_target(df)
-
-    # ── Get features ─────────────────────────────────────────────────────
-    feature_cols = get_feature_columns(df)
-    X = df[feature_cols].copy()
-    y = target
-
-    # Drop rows with NaN in features or target
     valid_mask = X.notna().all(axis=1) & y.notna()
-    X = X[valid_mask]
-    y = y[valid_mask]
+    X = X.loc[valid_mask].copy()
+    y = y.loc[valid_mask].copy()
+    working = working.loc[valid_mask].copy()
 
-    # ── Cap outliers ─────────────────────────────────────────────────────
-    # Remove luxury properties above cap — irrelevant to student housing.
     cap_mask = y <= OUTLIER_CAP_WEEKLY
-    n_removed = (~cap_mask).sum()
-    X = X[cap_mask]
-    y = y[cap_mask]
+    n_removed = int((~cap_mask).sum())
+    X = X.loc[cap_mask].copy()
+    y = y.loc[cap_mask].copy()
+    working = working.loc[cap_mask].copy()
+
+    groups = working["postcode_sector"].fillna("").astype(str)
+    fallback_groups = working.get("postcode", pd.Series(working.index.astype(str), index=working.index))
+    groups = groups.mask(groups.eq(""), fallback_groups.astype(str))
+
     logger.info(
-        "Outlier cap: removed %d properties > £%.0f/wk (%.1f%%), %d remain",
-        n_removed, OUTLIER_CAP_WEEKLY,
-        n_removed / (len(y) + n_removed) * 100, len(y),
+        "Prepared real-rent training frame: %d rows, %d features, removed %d outliers",
+        len(X),
+        len(feature_cols),
+        n_removed,
     )
 
-    # ── Log-transform target ─────────────────────────────────────────────
-    # Reduces skewness from ~2.6 to ~0.2 (near-normal distribution).
-    # Model trains on log1p(rent), predictions are inverse-transformed
-    # with expm1() in predict.py.
-    y_log = np.log1p(y)
+    return working, X, y, feature_cols, groups
 
-    logger.info("Training data: %d samples, %d features", len(X), len(feature_cols))
-    logger.info("Features: %s", feature_cols)
-    logger.info(
-        "Target stats (original): mean=%.1f, median=%.1f, std=%.1f, min=%.1f, max=%.1f",
-        y.mean(), y.median(), y.std(), y.min(), y.max(),
-    )
-    logger.info(
-        "Target stats (log-space): mean=%.2f, median=%.2f, std=%.2f, skew=%.2f",
-        y_log.mean(), y_log.median(), y_log.std(), y_log.skew(),
-    )
 
-    # ── Train/test split ─────────────────────────────────────────────────
-    X_train, X_test, y_train_log, y_test_log = train_test_split(
-        X, y_log, test_size=0.2, random_state=42
-    )
-    # Keep original-scale test values for metric computation
-    y_test_orig = np.expm1(y_test_log)
+def build_model() -> Pipeline:
+    """Build the core XGBoost pipeline used for v7 training.
 
-    logger.info("Train: %d, Test: %d", len(X_train), len(X_test))
+    StandardScaler is intentionally omitted: XGBoost uses decision tree splits
+    which are invariant to monotonic feature transformations, so scaling has zero
+    effect on predictions or feature importances.
 
-    # ── Build pipeline ───────────────────────────────────────────────────
-    # StandardScaler kept for consistency, though XGBoost handles unscaled
-    # features well. The scaler helps with feature interpretation.
-    pipeline = Pipeline(
+    Hyperparameter changes vs v6:
+    - n_estimators: 250 → 150  (fewer rounds suit the ~550 training row regime)
+    - colsample_bytree: 0.9 → 0.7  (more feature subsampling reduces collinearity overfitting)
+    """
+    return Pipeline(
         [
-            ("scaler", StandardScaler()),
             (
                 "model",
                 XGBRegressor(
-                    n_estimators=500,
-                    max_depth=6,
+                    n_estimators=150,
+                    max_depth=4,
                     learning_rate=0.05,
-                    subsample=0.8,
-                    colsample_bytree=0.8,
-                    reg_alpha=0.1,        # L1 regularisation
-                    reg_lambda=1.0,       # L2 regularisation
-                    min_child_weight=5,   # Prevent overfitting on small groups
+                    subsample=0.9,
+                    colsample_bytree=0.7,
+                    reg_alpha=0.2,
+                    reg_lambda=2.0,
+                    min_child_weight=4,
                     random_state=42,
-                    n_jobs=-1,            # Use all CPU cores
-                    verbosity=0,          # Suppress XGBoost warnings
+                    n_jobs=-1,
+                    verbosity=0,
                 ),
             ),
         ]
     )
 
-    # ── Train on log-space target ────────────────────────────────────────
-    logger.info("Training XGBRegressor on log-transformed target...")
-    pipeline.fit(X_train, y_train_log)
 
-    # ── Evaluate on original scale ───────────────────────────────────────
-    y_pred_log = pipeline.predict(X_test)
-    y_pred_orig = np.expm1(y_pred_log)  # Inverse transform
+def build_cv_splits(
+    X: pd.DataFrame,
+    groups: pd.Series,
+    n_splits: int = CV_FOLDS,
+) -> Tuple[list[Tuple[np.ndarray, np.ndarray]], str]:
+    """Create LOSO (leave-one-sector-out) CV splits when possible.
 
-    mae = mean_absolute_error(y_test_orig, y_pred_orig)
-    rmse = np.sqrt(mean_squared_error(y_test_orig, y_pred_orig))
-    r2 = r2_score(y_test_orig, y_pred_orig)
-    mape = np.mean(np.abs((y_test_orig - y_pred_orig) / y_test_orig.clip(lower=1))) * 100
+    LOSO holds out exactly one postcode sector per fold, which is the most
+    honest evaluation for a small-market model with 11 sectors, each fold
+    tests whether the model generalises to a completely unseen sector.
 
-    metrics = {
-        "mae": round(mae, 2),
-        "rmse": round(rmse, 2),
-        "r2": round(r2, 4),
-        "mape": round(mape, 2),
-        "train_size": len(X_train),
-        "test_size": len(X_test),
-        "n_features": len(feature_cols),
-        "model_version": MODEL_VERSION,
-        "outlier_cap": OUTLIER_CAP_WEEKLY,
-        "log_target": True,
+    Falls back to GroupKFold(n_splits) when there are fewer groups than
+    samples needed for LOSO, and to shuffled KFold for very small datasets.
+    """
+    unique_groups = int(pd.Series(groups).nunique())
+
+    # LOSO: one sector held out per fold, most honest with ≤20 sectors
+    if unique_groups >= 3:
+        splitter = LeaveOneGroupOut()
+        return list(splitter.split(X, groups=groups)), f"LOSO({unique_groups})"
+
+    fallback_splits = min(n_splits, len(X))
+    if fallback_splits < 3:
+        raise ValueError("Need at least 3 samples to build cross-validation folds")
+
+    splitter = KFold(n_splits=fallback_splits, shuffle=True, random_state=42)
+    return list(splitter.split(X)), f"KFold({fallback_splits})"
+
+
+def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, float]:
+    """Compute standard regression metrics on the original rent scale."""
+    mae = mean_absolute_error(y_true, y_pred)
+    rmse = np.sqrt(mean_squared_error(y_true, y_pred))
+    r2 = r2_score(y_true, y_pred)
+    mape = np.mean(np.abs((y_true - y_pred) / np.clip(y_true, 1.0, None))) * 100
+
+    return {
+        "mae": round(float(mae), 2),
+        "rmse": round(float(rmse), 2),
+        "r2": round(float(r2), 4),
+        "mape": round(float(mape), 2),
     }
 
-    logger.info("=" * 60)
-    logger.info("MODEL EVALUATION RESULTS (MODE G — v3.3.0)")
-    logger.info("=" * 60)
-    logger.info("MAE:  £%.2f/week", mae)
-    logger.info("RMSE: £%.2f/week", rmse)
-    logger.info("R²:   %.4f", r2)
-    logger.info("MAPE: %.1f%%", mape)
-    logger.info("=" * 60)
 
-    # ── Feature importance ───────────────────────────────────────────────
+def cross_validate_model(
+    X: pd.DataFrame,
+    y: pd.Series,
+    groups: pd.Series,
+    property_types: pd.Series,
+    postcode_sectors: pd.Series,
+    postcodes: pd.Series,
+) -> Tuple[Dict[str, float], np.ndarray, np.ndarray, Dict, Dict]:
+    """Generate honest out-of-fold predictions, calibration, and intervals."""
+    splits, cv_method = build_cv_splits(X, groups)
+    y_arr = y.to_numpy(dtype=float)
+    raw_oof = np.zeros(len(X), dtype=float)
+
+    for train_idx, test_idx in splits:
+        pipeline = build_model()
+        pipeline.fit(X.iloc[train_idx], np.log1p(y.iloc[train_idx]))
+        raw_oof[test_idx] = np.expm1(pipeline.predict(X.iloc[test_idx]))
+
+    calibration_artifact = fit_calibration_artifact(
+        raw_oof,
+        y_arr,
+        property_types,
+        postcode_sectors=postcode_sectors,
+        postcodes=postcodes,
+    )
+    calibrated_oof = np.array(
+        [
+            apply_prediction_calibration(
+                prediction,
+                property_type,
+                calibration_artifact,
+                postcode_sector,
+                postcode,
+            )
+            for prediction, property_type, postcode_sector, postcode in zip(
+                raw_oof,
+                property_types,
+                postcode_sectors,
+                postcodes,
+            )
+        ],
+        dtype=float,
+    )
+    interval_artifact = fit_interval_artifact(y_arr, calibrated_oof, property_types)
+
+    metrics = compute_metrics(y_arr, calibrated_oof)
+    raw_metrics = compute_metrics(y_arr, raw_oof)
+
+    coverage = np.mean(
+        [
+            abs(float(actual) - float(prediction))
+            <= interval_half_width_for_type(property_type, interval_artifact)
+            for actual, prediction, property_type in zip(y_arr, calibrated_oof, property_types)
+        ]
+    )
+
+    metrics.update(
+        {
+            "raw_mae": raw_metrics["mae"],
+            "raw_rmse": raw_metrics["rmse"],
+            "raw_r2": raw_metrics["r2"],
+            "raw_mape": raw_metrics["mape"],
+            "interval_coverage": round(float(coverage), 4),
+            "cv_method": cv_method,
+        }
+    )
+
+    return metrics, raw_oof, calibrated_oof, calibration_artifact, interval_artifact
+
+
+def train_model(df: pd.DataFrame) -> Tuple[Pipeline, Dict[str, float], list, Dict, Dict]:
+    """Train the final rent model and its post-processing artifacts."""
+    training_df, X, y, feature_cols, groups = prepare_training_frame(df)
+    property_types = property_type_series_from_frame(training_df)
+    postcode_sectors = training_df["postcode_sector"].fillna("").astype(str)
+    postcodes = training_df["postcode"].fillna("").astype(str)
+
+    metrics, raw_oof, calibrated_oof, calibration_artifact, interval_artifact = (
+        cross_validate_model(X, y, groups, property_types, postcode_sectors, postcodes)
+    )
+
+    logger.info("Primary evaluation (%s)", metrics["cv_method"])
+    logger.info(
+        "Calibrated OOF metrics: MAE=£%.2f RMSE=£%.2f R²=%.4f MAPE=%.2f%%",
+        metrics["mae"],
+        metrics["rmse"],
+        metrics["r2"],
+        metrics["mape"],
+    )
+    logger.info(
+        "Raw OOF metrics: MAE=£%.2f RMSE=£%.2f R²=%.4f",
+        metrics["raw_mae"],
+        metrics["raw_rmse"],
+        metrics["raw_r2"],
+    )
+
+    pipeline = build_model()
+    pipeline.fit(X, np.log1p(y))
+
+    metrics.update(
+        {
+            "train_size": int(len(X)),
+            "group_count": int(pd.Series(groups).nunique()),
+            "n_features": int(len(feature_cols)),
+            "model_version": MODEL_VERSION,
+            "outlier_cap": OUTLIER_CAP_WEEKLY,
+            "log_target": True,
+            "target_column": TARGET_COLUMN,
+        }
+    )
+
     xgb_model = pipeline.named_steps["model"]
     importances = sorted(
         zip(feature_cols, xgb_model.feature_importances_),
-        key=lambda x: x[1],
+        key=lambda item: item[1],
         reverse=True,
     )
     logger.info("Top feature importances:")
-    for feat, imp in importances[:10]:
-        logger.info("  %s: %.4f", feat, imp)
+    for feature_name, importance in importances[:10]:
+        logger.info("  %s: %.4f", feature_name, importance)
 
-    return pipeline, metrics, feature_cols
+    return pipeline, metrics, feature_cols, calibration_artifact, interval_artifact
 
 
 def save_model(
     pipeline: Pipeline,
     feature_cols: list,
-    metrics: Dict[str, float] = None,
+    metrics: Dict[str, float],
+    calibration_artifact: Dict,
+    interval_artifact: Dict,
     model_path: Path = MODEL_PATH,
 ) -> None:
-    """Serialize trained model, feature columns, and metadata to disk.
-
-    Args:
-        pipeline: Trained sklearn Pipeline.
-        feature_cols: List of feature column names used for training.
-        metrics: Optional metrics dict with log_target flag.
-        model_path: Destination path for the .pkl file.
-    """
+    """Serialize trained model, metadata, and post-processing artifacts."""
     model_path.parent.mkdir(parents=True, exist_ok=True)
     joblib.dump(pipeline, str(model_path))
     logger.info("Model saved to %s", model_path)
 
-    # Save feature columns for predict.py alignment
     columns_path = model_path.parent / "feature_columns.json"
     columns_path.write_text(json.dumps(feature_cols, indent=2))
-    logger.info("Feature columns saved to %s (%d columns)", columns_path, len(feature_cols))
+    logger.info("Feature columns saved to %s", columns_path)
 
-    # Save model metadata (log_target flag, outlier cap, etc.)
-    if metrics:
-        meta = {
-            "model_version": metrics.get("model_version", MODEL_VERSION),
-            "log_target": metrics.get("log_target", False),
-            "outlier_cap": metrics.get("outlier_cap", None),
-            "n_features": metrics.get("n_features"),
-            "r2": metrics.get("r2"),
-            "mae": metrics.get("mae"),
-        }
-        meta_path = model_path.parent / "model_metadata.json"
-        meta_path.write_text(json.dumps(meta, indent=2))
-        logger.info("Model metadata saved to %s", meta_path)
+    meta = {
+        "model_version": metrics.get("model_version", MODEL_VERSION),
+        "log_target": metrics.get("log_target", True),
+        "outlier_cap": metrics.get("outlier_cap", OUTLIER_CAP_WEEKLY),
+        "n_features": metrics.get("n_features"),
+        "train_size": metrics.get("train_size"),
+        "group_count": metrics.get("group_count"),
+        "target_column": metrics.get("target_column", TARGET_COLUMN),
+        "evaluation_method": metrics.get("cv_method"),
+        "mae": metrics.get("mae"),
+        "rmse": metrics.get("rmse"),
+        "r2": metrics.get("r2"),
+        "mape": metrics.get("mape"),
+        "raw_mae": metrics.get("raw_mae"),
+        "raw_rmse": metrics.get("raw_rmse"),
+        "raw_r2": metrics.get("raw_r2"),
+        "interval_coverage": metrics.get("interval_coverage"),
+    }
+    meta_path = model_path.parent / "model_metadata.json"
+    meta_path.write_text(json.dumps(meta, indent=2))
+    logger.info("Model metadata saved to %s", meta_path)
+
+    CALIBRATION_PATH.write_text(json.dumps(calibration_artifact, indent=2))
+    logger.info("Prediction calibration saved to %s", CALIBRATION_PATH)
+
+    INTERVAL_PATH.write_text(json.dumps(interval_artifact, indent=2))
+    logger.info("Prediction intervals saved to %s", INTERVAL_PATH)
 
 
 def run_training() -> Dict[str, float]:
-    """Execute the full training pipeline using MODE F (XGBoost + log-transform).
-
-    Returns:
-        Metrics dict with MAE, RMSE, R², MAPE.
-
-    Raises:
-        FileNotFoundError: If features.csv or land_registry_guildford.csv is missing.
-    """
-    logger.info("Starting model training (MODE F — XGBoost + log + cap, v3.2.0)")
+    """Execute the full v6 rent-model training pipeline."""
+    logger.info("Starting rent model training (%s)", MODEL_VERSION)
 
     if not LAND_REGISTRY_CSV.exists():
         raise FileNotFoundError(
-            f"Land Registry CSV not found at {LAND_REGISTRY_CSV} — "
-            "run land_registry_pipeline first"
+            f"Land Registry CSV not found at {LAND_REGISTRY_CSV}, run land_registry_pipeline first"
         )
 
     if not FEATURES_PATH.exists():
-        logger.error("Features file not found at %s — run features.py first", FEATURES_PATH)
+        logger.error("Features file not found at %s, run features.py first", FEATURES_PATH)
         raise FileNotFoundError(f"Features not found: {FEATURES_PATH}")
 
-    df = pd.read_csv(str(FEATURES_PATH))
+    df = pd.read_csv(str(FEATURES_PATH), low_memory=False)
     logger.info("Loaded feature matrix: shape=%s", df.shape)
 
-    # Save sector rent map (v5.1.0: derive from feature matrix to capture scraped-blend).
-    # Prior approach (v4.3.0) used raw Land Registry implied_weekly_rent from
-    # load_land_registry_features() — but features.py blends scraped market rents
-    # into sector_median_rent for sectors with ≥5 scraped records.  Saving the raw
-    # implied values caused a systematic train/inference mismatch: model was trained
-    # with blended anchors (e.g. GU2 8 £535, GU1 4 £381) but got raw implied anchors
-    # at inference (GU2 8 £276, GU1 4 £274), causing -£68/wk systematic underprediction.
-    # Fix: derive the map from the feature matrix median per sector — same values the
-    # model actually saw during training.
-    if "postcode_sector" in df.columns and "sector_median_rent" in df.columns:
-        sector_rent_map = (
-            df.groupby("postcode_sector")["sector_median_rent"]
-            .median()
-            .round(4)
-            .to_dict()
-        )
-        sector_map_path = MODEL_DIR / "sector_rent_map.json"
-        sector_map_path.write_text(json.dumps(sector_rent_map, indent=2))
-        logger.info("Saved sector rent map: %d sectors → %s", len(sector_rent_map), sector_map_path)
-    else:
-        logger.warning("postcode_sector/sector_median_rent not in feature matrix — sector_rent_map.json not updated")
+    safe_df = recompute_safe_sector_anchor(df)
+    sector_rent_map = build_safe_sector_rent_map(safe_df)
+    sector_map_path = MODEL_DIR / "sector_rent_map.json"
+    sector_map_path.write_text(json.dumps(sector_rent_map, indent=2))
+    logger.info(
+        "Saved leakage-safe sector rent map: %d sectors → %s",
+        len(sector_rent_map),
+        sector_map_path,
+    )
 
-    # Train
-    pipeline, metrics, feature_cols = train_model(df)
+    pipeline, metrics, feature_cols, calibration_artifact, interval_artifact = train_model(df)
 
-    # Save versioned archive (e.g. rent_model_v4.3.0.pkl)
     versioned_path = MODEL_DIR / f"rent_model_{MODEL_VERSION}.pkl"
-    save_model(pipeline, feature_cols, metrics, versioned_path)
+    save_model(
+        pipeline,
+        feature_cols,
+        metrics,
+        calibration_artifact,
+        interval_artifact,
+        versioned_path,
+    )
 
-    # Also save to the fixed MODEL_PATH so evaluate.py / predict.py always find it
     if versioned_path != MODEL_PATH:
-        save_model(pipeline, feature_cols, metrics, MODEL_PATH)
+        save_model(
+            pipeline,
+            feature_cols,
+            metrics,
+            calibration_artifact,
+            interval_artifact,
+            MODEL_PATH,
+        )
 
     return metrics
 
@@ -448,5 +558,5 @@ if __name__ == "__main__":
         level=logging.INFO,
         format="%(asctime)s %(name)s %(levelname)s %(message)s",
     )
-    metrics = run_training()
-    logger.info("Training complete. Metrics: %s", metrics)
+    result_metrics = run_training()
+    logger.info("Training complete. Metrics: %s", result_metrics)
