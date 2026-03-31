@@ -20,7 +20,7 @@ function getVerdict(safetyScore, diffPct) {
             tone: 'emerald',
             headline: 'This area looks fine for most students',
             subline:
-                "Crime levels here are broadly in line with — or below — the Guildford average. No unusual patterns stand out in the data.",
+                "Crime levels here are broadly in line with or below the Guildford average. No unusual patterns stand out in the data.",
             Icon: CheckCircle2,
         }
     }

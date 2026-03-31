@@ -8,21 +8,21 @@ const CAT_PLAIN_ENGLISH = {
     'violent-crime':
         'Fights, assaults, or harassment. The higher this is, the more care you should take when walking home at night or on busy weekend evenings.',
     'anti-social-behaviour':
-        'Noise, rowdiness, and public disturbances. Common in student areas — annoying to live near, but usually not a physical danger to you.',
+        'Noise, rowdiness, and public disturbances. Common in student areas, annoying to live near, but usually not a physical danger to you.',
     'burglary':
         'Break-ins to homes or outbuildings. Highly relevant for students in shared housing. Ask your landlord about door and window locks before you move in.',
     'theft-from-the-person':
-        'Phone or wallet snatching in public. Keep valuables out of sight on busy streets and at night — especially after bars close.',
+        'Phone or wallet snatching in public. Keep valuables out of sight on busy streets and at night, especially after bars close.',
     'public-order':
         'Threatening or disruptive behaviour in public spaces. Higher counts often indicate a livelier, rowdier area rather than a genuinely dangerous one.',
     'vehicle-crime':
-        'Car or bike theft and damage. Less of a concern if you don\'t own a car, but relevant for cyclists — always lock your bike.',
+        'Car or bike theft and damage. Less of a concern if you don\'t own a car, but relevant for cyclists. Always lock your bike.',
     'drugs':
         'Drug-related incidents logged by police. Presence in the data doesn\'t necessarily affect your daily safety, but it\'s worth knowing.',
     'robbery':
-        'Theft using force or threat of force. More serious than ordinary theft — worth noting if the count is elevated.',
+        'Theft using force or threat of force. More serious than ordinary theft. Worth noting if the count is elevated.',
     'bicycle-theft':
-        'Bikes stolen from outside homes, racks, or in the street. Very relevant for students who cycle to campus — always use a D-lock and bring your bike inside overnight if you can.',
+        'Bikes stolen from outside homes, racks, or in the street. Very relevant for students who cycle to campus. Always use a D-lock and bring your bike inside overnight if you can.',
 }
 
 export default function CrimeDonut({ breakdown }) {
@@ -133,7 +133,7 @@ export default function CrimeDonut({ breakdown }) {
                                 />
                                 <div className="min-w-0">
                                     <p className="text-xs font-bold text-slate-700">
-                                        {meta.name} &mdash;{' '}
+                                        {meta.name}{' '}
                                         <span className="text-slate-500 font-normal">
                                             {cat.count} incidents over the past year (~{monthlyAvg}/month)
                                         </span>

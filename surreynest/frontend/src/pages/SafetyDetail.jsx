@@ -185,7 +185,7 @@ export default function SafetyDetail() {
                                     <Section
                                         icon={TrendingUp}
                                         title="Is this area getting safer?"
-                                        subtitle="Month by month — is the picture improving, stable, or worsening?"
+                                        subtitle="Month by month. Is the picture improving, stable, or worsening?"
                                     >
                                         <MonthlyChart
                                             data={intel.crime_trend.monthly_data}
@@ -200,7 +200,7 @@ export default function SafetyDetail() {
                                 <Section
                                     icon={MapPin}
                                     title="How does this area compare?"
-                                    subtitle="This area vs the typical Guildford postcode — above or below average?"
+                                    subtitle="This area vs the typical Guildford postcode. Above or below average?"
                                 >
                                     <GuildfordComparison comparison={intel?.compared_to_average} />
                                 </Section>
@@ -227,7 +227,7 @@ export default function SafetyDetail() {
                                     <Section
                                         icon={Train}
                                         title="Nearest train stations"
-                                        subtitle="How far you are from the station — useful before you commit."
+                                        subtitle="How far you are from the station. Useful before you commit."
                                     >
                                         <TrainStations lat={coords.lat} lng={coords.lng} />
                                     </Section>
@@ -251,7 +251,7 @@ export default function SafetyDetail() {
                             <Section
                                 icon={Award}
                                 title="How it ranks across Guildford"
-                                subtitle="Quietest to busiest — see where this area sits."
+                                subtitle="Quietest to busiest. See where this area sits."
                             >
                                 <AreaRankings rankings={rankings} currentSector={sector} />
                             </Section>
@@ -275,7 +275,7 @@ export default function SafetyDetail() {
                             </p>
                             <p>
                                 Tracks 8 crime categories within ~500m of this area's representative point.
-                                Totals are designed for comparing Guildford areas — not official borough-wide figures.
+                                Totals are designed for comparing Guildford areas, not official borough-wide figures.
                             </p>
                         </div>
                     </div>

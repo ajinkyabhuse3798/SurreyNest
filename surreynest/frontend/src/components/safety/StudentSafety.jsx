@@ -9,7 +9,7 @@ function getOverallVerdict(score) {
     if (score >= 70) return { stars: 4, tone: 'emerald', badge: 'Positive', verdict: 'Generally safe for students', detail: 'Normal precautions apply, but the student-weighted risk here is better than most Guildford areas.' }
     if (score >= 50) return { stars: 3, tone: 'amber', badge: 'Check the details', verdict: 'Fine for most, but worth checking', detail: 'This works for most students, but burglary, theft, or night-time activity is worth looking into before you sign.' }
     if (score >= 30) return { stars: 2, tone: 'orange', badge: 'Be cautious', verdict: 'This area needs more caution', detail: 'Student-relevant crime is elevated here. Check the locks, think about your routes home, and ask current tenants what it\'s actually like.' }
-    return { stars: 1, tone: 'rose', badge: 'Think carefully', verdict: 'This is a tougher area for students', detail: 'The profile here is less forgiving for students. Do extra homework before committing — talk to people who already live nearby.' }
+    return { stars: 1, tone: 'rose', badge: 'Think carefully', verdict: 'This is a tougher area for students', detail: 'The profile here is less forgiving for students. Do extra homework before committing. Talk to people who already live nearby.' }
 }
 
 const toneShell = {
@@ -47,7 +47,7 @@ const SCENARIOS = [
         goodText: 'Low risk for night walks',
         cautionText: 'Take care walking home at night',
         highText: 'Be extra careful after dark',
-        description: 'Based on violent incidents and robberies — the types most likely to affect you walking home after a late evening.',
+        description: 'Based on violent incidents and robberies, the types most likely to affect you walking home after a late evening.',
     },
     {
         key: 'shared-house',
@@ -66,7 +66,7 @@ const SCENARIOS = [
         categories: ['theft-from-the-person'],
         goodText: 'Low personal theft recorded',
         cautionText: 'Keep valuables out of sight',
-        highText: 'High personal theft — stay alert',
+        highText: 'High personal theft. Stay alert.',
         description: 'Phone and wallet snatching in public. Relevant on the high street, near bars, or late at night.',
     },
     {
@@ -74,9 +74,9 @@ const SCENARIOS = [
         title: 'Noise and atmosphere',
         Icon: Volume2,
         categories: ['anti-social-behaviour', 'public-order'],
-        goodText: 'Quiet area — good for studying',
+        goodText: 'Quiet area, good for studying',
         cautionText: 'Can be noisy on weekends',
-        highText: 'Quite lively — light sleepers take note',
+        highText: 'Quite lively. Light sleepers take note.',
         description: 'Disturbances and rowdiness. More of a quality-of-life factor than a safety one.',
     },
     {
@@ -86,8 +86,8 @@ const SCENARIOS = [
         categories: ['bicycle-theft'],
         goodText: 'Low bike theft recorded',
         cautionText: 'Always lock your bike well',
-        highText: 'High bike theft — use a D-lock',
-        description: 'Bicycle theft data. Many students cycle to campus — check how safe it is to store your bike outside.',
+        highText: 'High bike theft. Use a D-lock.',
+        description: 'Bicycle theft data. Many students cycle to campus. Check how safe it is to store your bike outside.',
     },
 ]
 

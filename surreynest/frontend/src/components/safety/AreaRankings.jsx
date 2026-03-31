@@ -63,10 +63,10 @@ function RankPositionBanner({ rankings, currentSector }) {
     const isBottom = rank > Math.ceil(total * 0.67)
 
     const label = isTop
-        ? `Ranks ${rank} of ${total} — one of the quieter areas`
+        ? `Ranks ${rank} of ${total}, one of the quieter areas`
         : isBottom
-            ? `Ranks ${rank} of ${total} — one of the busier areas`
-            : `Ranks ${rank} of ${total} — about mid-range`
+            ? `Ranks ${rank} of ${total}, one of the busier areas`
+            : `Ranks ${rank} of ${total}, about mid-range`
 
     const color = isTop ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : isBottom ? 'text-rose-700 bg-rose-50 border-rose-200' : 'text-amber-700 bg-amber-50 border-amber-200'
     const markerColor = isTop ? 'bg-emerald-500' : isBottom ? 'bg-rose-500' : 'bg-amber-500'

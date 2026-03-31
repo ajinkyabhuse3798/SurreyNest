@@ -81,7 +81,7 @@ export default function SafetyHero({
                         )}
 
                         <p className="text-orange-200 text-base sm:text-lg mb-8 max-w-lg leading-relaxed">
-                            Real crime data for this area — recent, local, and put into plain English so it's actually useful when you're deciding where to live.
+                            Real crime data for this area. Recent, local, and put into plain English so it's actually useful when you're deciding where to live.
                         </p>
 
                         {/* Postcode search */}
