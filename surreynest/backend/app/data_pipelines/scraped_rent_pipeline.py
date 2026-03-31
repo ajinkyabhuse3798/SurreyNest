@@ -33,12 +33,11 @@ from pathlib import Path
 from typing import Any, Optional
 
 import pandas as pd
-import numpy as np
 from sqlalchemy import text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
-from app.database import engine, get_db
+from app.database import get_db
 from app.models.property import Property
 
 logger = logging.getLogger(__name__)
@@ -81,7 +80,7 @@ TYPE_REMAP = {
     "Ground Flat": "Flat",
     "Penthouse": "Flat",
     "Maisonette": "Flat",
-    "Studio": "Flat",          # Studio → Flat with actual_bedrooms=0
+    "Studio": "Flat",  # Studio → Flat with actual_bedrooms=0
     "Terraced": "Terraced",
     "End of Terrace": "Terraced",
     "Semi-Detached": "Semi-Detached",
@@ -92,7 +91,7 @@ TYPE_REMAP = {
 }
 
 # ── Outlier thresholds ────────────────────────────────────────────────────────
-MAX_BEDROOMS = 6        # 7+ bedrooms: 3 extreme outliers in dataset
+MAX_BEDROOMS = 6  # 7+ bedrooms: 3 extreme outliers in dataset
 MAX_RENT_WEEKLY = 1200  # matches train.py OUTLIER_CAP_WEEKLY (1000) with margin
 
 # ── Floor area fallback table (type × bedroom → median m²) ───────────────────
@@ -117,11 +116,18 @@ FALLBACK_FLOOR_AREA: dict[tuple[str, int], float] = {
     ("Detached", 5): 175.0,
 }
 _FALLBACK_BY_BEDS: dict[int, float] = {
-    0: 32.0, 1: 50.0, 2: 68.0, 3: 90.0, 4: 115.0, 5: 140.0, 6: 170.0,
+    0: 32.0,
+    1: 50.0,
+    2: 68.0,
+    3: 90.0,
+    4: 115.0,
+    5: 140.0,
+    6: 170.0,
 }
 
 
 # ── Parsing helpers ────────────────────────────────────────────────────────────
+
 
 def _parse_weekly_rent(price_str: str, secondary_str: str) -> Optional[float]:
     """Extract weekly rent from secondaryPrice (£190 pw) or convert pcm.
@@ -171,6 +177,7 @@ def _is_room_listing(property_type: str, description: str) -> bool:
 
 
 # ── File loading ───────────────────────────────────────────────────────────────
+
 
 def _load_json_file(path: Path) -> list[dict[str, Any]]:
     """Load a Rightmove JSON scrape file (list of property dicts).
@@ -317,6 +324,7 @@ def load_all_rightmove_files() -> list[dict[str, Any]]:
 
 # ── Cleaning & classification ──────────────────────────────────────────────────
 
+
 def clean_and_classify(records: list[dict[str, Any]]) -> pd.DataFrame:
     """Apply all cleaning rules and return a DataFrame of whole-property rentals.
 
@@ -352,7 +360,11 @@ def clean_and_classify(records: list[dict[str, Any]]) -> pd.DataFrame:
     )
     n_rooms = room_mask.sum()
     df = df[~room_mask].copy()
-    logger.info("After room exclusion (type+description): %d (excluded %d rooms)", len(df), n_rooms)
+    logger.info(
+        "After room exclusion (type+description): %d (excluded %d rooms)",
+        len(df),
+        n_rooms,
+    )
 
     # 4. Exclude invalid rents
     df = df[df["weekly_rent"].notna()]
@@ -372,8 +384,12 @@ def clean_and_classify(records: list[dict[str, Any]]) -> pd.DataFrame:
     beds_series = pd.to_numeric(df["bedrooms_raw"], errors="coerce")
     is_studio = df["property_type_raw"] == "Studio"
     df["actual_bedrooms"] = beds_series.where(~is_studio, other=0)
-    df["actual_bedrooms"] = df["actual_bedrooms"].where(df["actual_bedrooms"].notna(), other=None)
-    df["actual_bedrooms"] = pd.to_numeric(df["actual_bedrooms"], errors="coerce").astype("Int64")
+    df["actual_bedrooms"] = df["actual_bedrooms"].where(
+        df["actual_bedrooms"].notna(), other=None
+    )
+    df["actual_bedrooms"] = pd.to_numeric(
+        df["actual_bedrooms"], errors="coerce"
+    ).astype("Int64")
 
     # price_drop_pct: real signal from listing metadata
     df["price_drop_pct"] = df["listing_update_reason"].apply(
@@ -388,6 +404,7 @@ def clean_and_classify(records: list[dict[str, Any]]) -> pd.DataFrame:
 
 
 # ── Coordinate-based deduplication ────────────────────────────────────────────
+
 
 def deduplicate_by_coordinates(df: pd.DataFrame) -> pd.DataFrame:
     """Remove duplicate listings at the same physical location.
@@ -433,12 +450,15 @@ def deduplicate_by_coordinates(df: pd.DataFrame) -> pd.DataFrame:
     result = pd.concat([df_with_coords, df_no_coords], ignore_index=True)
     logger.info(
         "Coordinate dedup: %d → %d (removed %d duplicate locations)",
-        before, len(result), before - len(result),
+        before,
+        len(result),
+        before - len(result),
     )
     return result
 
 
 # ── EPC floor area imputation ──────────────────────────────────────────────────
+
 
 def _build_epc_median_map(db: Session) -> dict[tuple[str, int], float]:
     """Build a (mapped_type, bedrooms) → median floor_area_m2 lookup from DB.
@@ -452,7 +472,8 @@ def _build_epc_median_map(db: Session) -> dict[tuple[str, int], float]:
     Returns:
         Dict mapping (property_type, num_rooms) → median floor_area_m2.
     """
-    query = text("""
+    query = text(
+        """
         SELECT
             property_type,
             num_rooms,
@@ -465,7 +486,8 @@ def _build_epc_median_map(db: Session) -> dict[tuple[str, int], float]:
           AND uprn NOT LIKE 'SCR_%'
         GROUP BY property_type, num_rooms
         HAVING COUNT(*) >= 5
-    """)
+    """
+    )
     rows = db.execute(query).fetchall()
     result = {}
     for row in rows:
@@ -488,7 +510,8 @@ def _build_postcode_epc_map(db: Session) -> dict[tuple[str, str, int], dict]:
     Returns:
         Dict mapping (postcode, property_type, num_rooms) → EPC field dict.
     """
-    query = text("""
+    query = text(
+        """
         SELECT
             postcode,
             property_type,
@@ -503,7 +526,8 @@ def _build_postcode_epc_map(db: Session) -> dict[tuple[str, str, int], dict]:
           AND num_rooms IS NOT NULL
           AND uprn NOT LIKE 'SCR_%'
         GROUP BY postcode, property_type, num_rooms
-    """)
+    """
+    )
     rows = db.execute(query).fetchall()
     result = {}
     for row in rows:
@@ -513,10 +537,14 @@ def _build_postcode_epc_map(db: Session) -> dict[tuple[str, str, int], dict]:
             int(row.num_rooms),
         )
         result[key] = {
-            "floor_area_m2": float(row.median_floor_area) if row.median_floor_area else None,
+            "floor_area_m2": (
+                float(row.median_floor_area) if row.median_floor_area else None
+            ),
             "energy_rating": row.modal_energy_rating or "D",
             "construction_age_band": row.modal_age_band or "K",
-            "annual_energy_cost": float(row.median_energy_cost) if row.median_energy_cost else 1200.0,
+            "annual_energy_cost": (
+                float(row.median_energy_cost) if row.median_energy_cost else 1200.0
+            ),
         }
     logger.info("Postcode EPC map: %d (postcode, type, rooms) combos", len(result))
     return result
@@ -565,9 +593,9 @@ def impute_epc_features(
 
         # EPC num_rooms estimate (habitable rooms = bedrooms + living rooms)
         if mapped_type == "Flat":
-            est_num_rooms = max(1, beds + 1)   # 1 living room
+            est_num_rooms = max(1, beds + 1)  # 1 living room
         else:
-            est_num_rooms = max(2, beds + 2)   # living + kitchen/dining
+            est_num_rooms = max(2, beds + 2)  # living + kitchen/dining
 
         floor_area = None
         energy_rating = "D"
@@ -581,7 +609,7 @@ def impute_epc_features(
         # Example: GU2 7 has many 3-4 room EPC records for Victorian terraces
         # (~90m²), biasing 4-5 bed house lookups downward.
         # Fix: skip postcode lookup for large properties → use global DB median.
-        use_postcode_lookup = (beds < 4)
+        use_postcode_lookup = beds < 4
 
         # 1. Exact: (postcode, type, num_rooms), small properties only
         if use_postcode_lookup:
@@ -646,6 +674,7 @@ def impute_epc_features(
 
 # ── Database upsert ────────────────────────────────────────────────────────────
 
+
 def upsert_scraped_properties(df: pd.DataFrame, db: Session) -> tuple[int, int]:
     """Upsert clean scraped properties into the properties table.
 
@@ -675,40 +704,44 @@ def upsert_scraped_properties(df: pd.DataFrame, db: Session) -> tuple[int, int]:
         beds = int(row["actual_bedrooms"]) if pd.notna(row["actual_bedrooms"]) else 2
         uprn = f"SCR_{row['listing_id']}"  # SCR_RM_173196095
 
-        stmt = pg_insert(Property.__table__).values(
-            uprn=uprn,
-            address=str(row["address"])[:500],
-            postcode=str(row["postcode"])[:10],
-            lat=float(row["lat"]) if pd.notna(row["lat"]) else None,
-            lng=float(row["lng"]) if pd.notna(row["lng"]) else None,
-            property_type=str(row["mapped_type"]),
-            built_form="Unknown",
-            floor_area_m2=float(row["floor_area_m2"]),
-            num_rooms=estimate_num_rooms(row["mapped_type"], beds),
-            energy_rating=str(row["energy_rating"]),
-            potential_rating="C",  # Conservative default
-            construction_age_band=str(row["construction_age_band"]),
-            mains_gas_flag=1,      # Most Guildford properties have mains gas
-            annual_energy_cost=float(row["annual_energy_cost"]),
-            actual_market_rent_weekly=float(row["weekly_rent"]),
-            price_drop_pct=float(row["price_drop_pct"]),
-            actual_bedrooms=beds,
-            created_at=now,
-            updated_at=now,
-        ).on_conflict_do_update(
-            index_elements=["uprn"],
-            set_={
-                "actual_market_rent_weekly": float(row["weekly_rent"]),
-                "price_drop_pct": float(row["price_drop_pct"]),
-                "actual_bedrooms": beds,
-                "lat": float(row["lat"]) if pd.notna(row["lat"]) else None,
-                "lng": float(row["lng"]) if pd.notna(row["lng"]) else None,
-                "floor_area_m2": float(row["floor_area_m2"]),
-                "energy_rating": str(row["energy_rating"]),
-                "construction_age_band": str(row["construction_age_band"]),
-                "annual_energy_cost": float(row["annual_energy_cost"]),
-                "updated_at": now,
-            },
+        stmt = (
+            pg_insert(Property.__table__)
+            .values(
+                uprn=uprn,
+                address=str(row["address"])[:500],
+                postcode=str(row["postcode"])[:10],
+                lat=float(row["lat"]) if pd.notna(row["lat"]) else None,
+                lng=float(row["lng"]) if pd.notna(row["lng"]) else None,
+                property_type=str(row["mapped_type"]),
+                built_form="Unknown",
+                floor_area_m2=float(row["floor_area_m2"]),
+                num_rooms=estimate_num_rooms(row["mapped_type"], beds),
+                energy_rating=str(row["energy_rating"]),
+                potential_rating="C",  # Conservative default
+                construction_age_band=str(row["construction_age_band"]),
+                mains_gas_flag=1,  # Most Guildford properties have mains gas
+                annual_energy_cost=float(row["annual_energy_cost"]),
+                actual_market_rent_weekly=float(row["weekly_rent"]),
+                price_drop_pct=float(row["price_drop_pct"]),
+                actual_bedrooms=beds,
+                created_at=now,
+                updated_at=now,
+            )
+            .on_conflict_do_update(
+                index_elements=["uprn"],
+                set_={
+                    "actual_market_rent_weekly": float(row["weekly_rent"]),
+                    "price_drop_pct": float(row["price_drop_pct"]),
+                    "actual_bedrooms": beds,
+                    "lat": float(row["lat"]) if pd.notna(row["lat"]) else None,
+                    "lng": float(row["lng"]) if pd.notna(row["lng"]) else None,
+                    "floor_area_m2": float(row["floor_area_m2"]),
+                    "energy_rating": str(row["energy_rating"]),
+                    "construction_age_band": str(row["construction_age_band"]),
+                    "annual_energy_cost": float(row["annual_energy_cost"]),
+                    "updated_at": now,
+                },
+            )
         )
         db.execute(stmt)
         records_upserted += 1
@@ -719,6 +752,7 @@ def upsert_scraped_properties(df: pd.DataFrame, db: Session) -> tuple[int, int]:
 
 
 # ── Pipeline entry point ───────────────────────────────────────────────────────
+
 
 def run_pipeline() -> dict[str, int]:
     """Execute the full scraped rent ingestion pipeline v5.0.0.
@@ -753,7 +787,9 @@ def run_pipeline() -> dict[str, int]:
     try:
         postcode_epc_map = _build_postcode_epc_map(db)
         type_beds_median = _build_epc_median_map(db)
-        df_enriched = impute_epc_features(df_deduped, postcode_epc_map, type_beds_median)
+        df_enriched = impute_epc_features(
+            df_deduped, postcode_epc_map, type_beds_median
+        )
 
         # Step 5: Upsert
         total_upserted, _ = upsert_scraped_properties(df_enriched, db)

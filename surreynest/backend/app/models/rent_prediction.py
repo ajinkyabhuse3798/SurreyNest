@@ -5,7 +5,6 @@ When the ML model is updated, recompute all predictions via:
     python -m app.ml.predict --all
 """
 
-
 from typing import Optional
 
 from datetime import datetime, timezone

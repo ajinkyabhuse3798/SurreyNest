@@ -6,13 +6,11 @@ import { Link } from 'react-router-dom'
 const PLATFORM = [
     { to: '/search', label: 'Search Listings' },
     { to: '/search', label: 'Fairness Scores' },
-    { to: '/best-streets', label: 'Street Ratings' },
     { to: '/check-listing', label: 'Listing Checker' },
 ]
 
 const RESOURCES = [
     { to: '/rights', label: 'Student Rights Guide' },
-    { to: '/best-streets', label: 'Guildford Rent Index' },
     { to: '/about', label: 'FAQ' },
 ]
 

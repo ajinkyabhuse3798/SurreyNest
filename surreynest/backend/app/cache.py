@@ -48,7 +48,9 @@ def _get_redis() -> Optional[redis.Redis]:
         logger.info("Redis connected: %s", settings.redis_url)
         return _redis
     except Exception as e:
-        logger.warning("Redis unavailable (%s), caching disabled, falling back to DB", e)
+        logger.warning(
+            "Redis unavailable (%s), caching disabled, falling back to DB", e
+        )
         _redis = None
         return None
 

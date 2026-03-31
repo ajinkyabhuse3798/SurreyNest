@@ -15,6 +15,7 @@ CATEGORY_WEIGHTS: Dict[str, float] = {
     "public-order": 1.5,
     "vehicle-crime": 1.0,
     "theft-from-the-person": 1.0,
+    "bicycle-theft": 1.5,
 }
 
 DEFAULT_WEIGHT: float = 0.5

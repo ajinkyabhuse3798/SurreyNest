@@ -36,7 +36,9 @@ def upgrade() -> None:
     # ── users ────────────────────────────────────────────────────────────────
     op.create_table(
         "users",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, nullable=False),
+        sa.Column(
+            "id", postgresql.UUID(as_uuid=True), primary_key=True, nullable=False
+        ),
         sa.Column("email", sa.String(255), nullable=False),
         sa.Column("hashed_password", sa.String(255), nullable=False),
         sa.Column("role", sa.String(20), nullable=False, server_default="student"),
@@ -77,8 +79,15 @@ def upgrade() -> None:
     # ── hmo_records ──────────────────────────────────────────────────────────
     op.create_table(
         "hmo_records",
-        sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True, nullable=False),
-        sa.Column("uprn", sa.String(20), sa.ForeignKey("properties.uprn", ondelete="SET NULL"), nullable=True),
+        sa.Column(
+            "id", sa.Integer(), primary_key=True, autoincrement=True, nullable=False
+        ),
+        sa.Column(
+            "uprn",
+            sa.String(20),
+            sa.ForeignKey("properties.uprn", ondelete="SET NULL"),
+            nullable=True,
+        ),
         sa.Column("raw_address", sa.String(500), nullable=False),
         sa.Column("postcode", sa.String(10), nullable=True),
         sa.Column("lat", sa.Float(), nullable=True),
@@ -96,7 +105,9 @@ def upgrade() -> None:
     # ── crime_data ───────────────────────────────────────────────────────────
     op.create_table(
         "crime_data",
-        sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True, nullable=False),
+        sa.Column(
+            "id", sa.Integer(), primary_key=True, autoincrement=True, nullable=False
+        ),
         sa.Column("postcode_sector", sa.String(10), nullable=False),
         sa.Column("category", sa.String(50), nullable=False),
         sa.Column("month", sa.Date(), nullable=False),
@@ -113,9 +124,21 @@ def upgrade() -> None:
     # ── reviews ──────────────────────────────────────────────────────────────
     op.create_table(
         "reviews",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, nullable=False),
-        sa.Column("user_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
-        sa.Column("uprn", sa.String(20), sa.ForeignKey("properties.uprn", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "id", postgresql.UUID(as_uuid=True), primary_key=True, nullable=False
+        ),
+        sa.Column(
+            "user_id",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("users.id", ondelete="SET NULL"),
+            nullable=True,
+        ),
+        sa.Column(
+            "uprn",
+            sa.String(20),
+            sa.ForeignKey("properties.uprn", ondelete="CASCADE"),
+            nullable=False,
+        ),
         sa.Column("overall_rating", sa.Integer(), nullable=False),
         sa.Column("landlord_rating", sa.Integer(), nullable=False),
         sa.Column("condition_rating", sa.Integer(), nullable=False),
@@ -127,10 +150,19 @@ def upgrade() -> None:
         sa.Column("is_moderated", sa.Boolean(), nullable=False, server_default="false"),
         sa.Column("is_flagged", sa.Boolean(), nullable=False, server_default="false"),
         sa.UniqueConstraint("user_id", "uprn", name="uq_reviews_user_uprn"),
-        sa.CheckConstraint("overall_rating >= 1 AND overall_rating <= 5", name="ck_overall_rating"),
-        sa.CheckConstraint("landlord_rating >= 1 AND landlord_rating <= 5", name="ck_landlord_rating"),
-        sa.CheckConstraint("condition_rating >= 1 AND condition_rating <= 5", name="ck_condition_rating"),
-        sa.CheckConstraint("value_rating >= 1 AND value_rating <= 5", name="ck_value_rating"),
+        sa.CheckConstraint(
+            "overall_rating >= 1 AND overall_rating <= 5", name="ck_overall_rating"
+        ),
+        sa.CheckConstraint(
+            "landlord_rating >= 1 AND landlord_rating <= 5", name="ck_landlord_rating"
+        ),
+        sa.CheckConstraint(
+            "condition_rating >= 1 AND condition_rating <= 5",
+            name="ck_condition_rating",
+        ),
+        sa.CheckConstraint(
+            "value_rating >= 1 AND value_rating <= 5", name="ck_value_rating"
+        ),
     )
     op.create_index("ix_reviews_user_id", "reviews", ["user_id"])
     op.create_index("ix_reviews_uprn", "reviews", ["uprn"])
@@ -150,7 +182,13 @@ def upgrade() -> None:
     # ── rent_predictions ─────────────────────────────────────────────────────
     op.create_table(
         "rent_predictions",
-        sa.Column("uprn", sa.String(20), sa.ForeignKey("properties.uprn", ondelete="CASCADE"), primary_key=True, nullable=False),
+        sa.Column(
+            "uprn",
+            sa.String(20),
+            sa.ForeignKey("properties.uprn", ondelete="CASCADE"),
+            primary_key=True,
+            nullable=False,
+        ),
         sa.Column("predicted_weekly_rent", sa.Float(), nullable=False),
         sa.Column("confidence_low", sa.Float(), nullable=True),
         sa.Column("confidence_high", sa.Float(), nullable=True),
@@ -161,7 +199,9 @@ def upgrade() -> None:
     # ── pipeline_runs ────────────────────────────────────────────────────────
     op.create_table(
         "pipeline_runs",
-        sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True, nullable=False),
+        sa.Column(
+            "id", sa.Integer(), primary_key=True, autoincrement=True, nullable=False
+        ),
         sa.Column("pipeline_name", sa.String(100), nullable=False),
         sa.Column("started_at", sa.DateTime(), nullable=False),
         sa.Column("finished_at", sa.DateTime(), nullable=True),
@@ -169,7 +209,9 @@ def upgrade() -> None:
         sa.Column("rows_processed", sa.Integer(), nullable=True),
         sa.Column("error_message", sa.Text(), nullable=True),
     )
-    op.create_index("ix_pipeline_runs_pipeline_name", "pipeline_runs", ["pipeline_name"])
+    op.create_index(
+        "ix_pipeline_runs_pipeline_name", "pipeline_runs", ["pipeline_name"]
+    )
 
 
 def downgrade() -> None:

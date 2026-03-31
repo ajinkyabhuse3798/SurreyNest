@@ -30,21 +30,15 @@ class PipelineConfig(Base):
 
     __tablename__ = "pipeline_config"
 
-    key: Mapped[str] = mapped_column(
-        String(100), primary_key=True, nullable=False
-    )
+    key: Mapped[str] = mapped_column(String(100), primary_key=True, nullable=False)
     value: Mapped[float] = mapped_column(Float, nullable=False)
-    description: Mapped[str] = mapped_column(
-        Text, nullable=True, default=""
-    )
+    description: Mapped[str] = mapped_column(Text, nullable=True, default="")
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
         default=lambda: datetime.now(timezone.utc),
     )
-    source: Mapped[str] = mapped_column(
-        String(100), nullable=False, default="manual"
-    )
+    source: Mapped[str] = mapped_column(String(100), nullable=False, default="manual")
 
     def __repr__(self) -> str:
         return f"<PipelineConfig key={self.key!r} value={self.value} updated={self.updated_at}>"

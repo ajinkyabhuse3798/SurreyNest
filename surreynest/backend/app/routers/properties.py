@@ -8,6 +8,7 @@ import re
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -34,10 +35,9 @@ def _escape_like(value: str) -> str:
     """
     return value.replace("%", "\\%").replace("_", "\\_")
 
+
 # UK postcode regex, allows optional space between outward and inward parts
-POSTCODE_RE = re.compile(
-    r"^[A-Z]{1,2}[0-9][0-9A-Z]?\s*[0-9][A-Z]{2}$", re.IGNORECASE
-)
+POSTCODE_RE = re.compile(r"^[A-Z]{1,2}[0-9][0-9A-Z]?\s*[0-9][A-Z]{2}$", re.IGNORECASE)
 ALLOWED_RADII = {250, 500, 1000, 2000, 5000}
 
 
@@ -70,7 +70,7 @@ async def suggest_properties(
             (Property.address.ilike(f"%{safe_query}%"))
             | (Property.postcode.ilike(f"%{safe_query}%"))
         )
-        .order_by(Property.address.asc())
+        .order_by(func.lower(Property.address).asc())
         .limit(limit)
         .all()
     )
@@ -89,8 +89,12 @@ async def suggest_properties(
 @limiter.limit(f"{settings.rate_limit_search}/minute")
 async def search_properties(
     request: Request,
-    postcode: str = Query(..., description="Postcode to search near", examples=["GU2 7XH"]),
-    radius: int = Query(default=1000, ge=100, le=5000, description="Search radius in metres"),
+    postcode: str = Query(
+        ..., description="Postcode to search near", examples=["GU2 7XH"]
+    ),
+    radius: int = Query(
+        default=1000, ge=100, le=5000, description="Search radius in metres"
+    ),
     page: int = Query(default=1, ge=1, description="Page number"),
     per_page: int = Query(default=20, ge=1, le=50, description="Results per page"),
     db: Session = Depends(get_db),

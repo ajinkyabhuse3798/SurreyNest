@@ -46,14 +46,17 @@ def _run_spatial_search(
     """Execute the radius search using PostGIS spatial functions."""
     distance_sql = _POSTGIS_DISTANCE_SQL
 
-    count_sql = text(f"""
+    count_sql = text(
+        f"""
         SELECT COUNT(*)
         FROM properties
         WHERE lat IS NOT NULL AND lng IS NOT NULL
           AND ({distance_sql}) <= :radius_m
-    """)
+    """
+    )
 
-    search_sql = text(f"""
+    search_sql = text(
+        f"""
         SELECT uprn, address, postcode, property_type, floor_area_m2,
                num_rooms, energy_rating, tenure, lat, lng,
                ({distance_sql}) AS distance_m
@@ -66,7 +69,8 @@ def _run_spatial_search(
             NULLIF(SUBSTRING(address FROM '[0-9]+'), '')::int NULLS LAST,
             distance_m
         OFFSET :offset LIMIT :per_page
-    """)
+    """
+    )
 
     params = {
         "search_lat": lat,
@@ -82,9 +86,7 @@ def _run_spatial_search(
     return int(total), rows
 
 
-def _batch_safety_scores(
-    sectors: set[str], db: Session
-) -> Dict[str, Optional[float]]:
+def _batch_safety_scores(sectors: set[str], db: Session) -> Dict[str, Optional[float]]:
     """Compute safety scores for multiple sectors in a single DB round-trip.
 
     Instead of calling get_safety_score() per sector (N queries for the
@@ -179,16 +181,17 @@ def search_properties(
     # ── Batch HMO lookup (1 query for all rows) ───────────────────────────
     uprns = [row.uprn for row in rows]
     postcodes = [row.postcode for row in rows if row.postcode]
-    hmo_records = db.query(HmoRecord).filter(
-        (HmoRecord.uprn.in_(uprns)) | (HmoRecord.postcode.in_(postcodes))
-    ).all()
+    hmo_records = (
+        db.query(HmoRecord)
+        .filter((HmoRecord.uprn.in_(uprns)) | (HmoRecord.postcode.in_(postcodes)))
+        .all()
+    )
     hmo_by_uprn = {r.uprn: r for r in hmo_records if r.uprn}
     hmo_by_postcode = {r.postcode: r for r in hmo_records if r.postcode}
 
     # ── Batch safety score lookups (single DB query for all sectors) ─────
     unique_sectors = {
-        extract_postcode_sector(row.postcode)
-        for row in rows if row.postcode
+        extract_postcode_sector(row.postcode) for row in rows if row.postcode
     }
     safety_by_sector: Dict[str, Optional[float]] = {}
     if unique_sectors:
@@ -198,28 +201,32 @@ def search_properties(
     for row in rows:
         # Derive HMO status string
         rec = hmo_by_uprn.get(row.uprn) or hmo_by_postcode.get(row.postcode)
-        hmo_status = "not_found" if not rec else ("licensed" if rec.is_active else "unlicensed")
+        hmo_status = (
+            "not_found" if not rec else ("licensed" if rec.is_active else "unlicensed")
+        )
 
         # Derive safety score from precomputed sector map
         sector = extract_postcode_sector(row.postcode) if row.postcode else ""
         safety_score = safety_by_sector.get(sector)
 
-        results.append({
-            "uprn": row.uprn,
-            "address": row.address,
-            "postcode": row.postcode,
-            "property_type": row.property_type,
-            "floor_area_m2": row.floor_area_m2,
-            "num_rooms": row.num_rooms,
-            "energy_rating": row.energy_rating,
-            "lat": row.lat,
-            "lng": row.lng,
-            "distance_m": round(row.distance_m, 1) if row.distance_m else None,
-            "safety_score": safety_score,
-            "fairness_score": None,
-            "hmo_status": hmo_status,
-            "tenure": row.tenure,
-        })
+        results.append(
+            {
+                "uprn": row.uprn,
+                "address": row.address,
+                "postcode": row.postcode,
+                "property_type": row.property_type,
+                "floor_area_m2": row.floor_area_m2,
+                "num_rooms": row.num_rooms,
+                "energy_rating": row.energy_rating,
+                "lat": row.lat,
+                "lng": row.lng,
+                "distance_m": round(row.distance_m, 1) if row.distance_m else None,
+                "safety_score": safety_score,
+                "fairness_score": None,
+                "hmo_status": hmo_status,
+                "tenure": row.tenure,
+            }
+        )
 
     pages = math.ceil(total / per_page) if total > 0 else 0
 
@@ -250,17 +257,11 @@ def get_property_detail(uprn: str, db: Session) -> Optional[Dict]:
         return None
 
     # ── HMO status ────────────────────────────────────────────────────────
-    hmo_record = (
-        db.query(HmoRecord)
-        .filter(HmoRecord.uprn == uprn)
-        .first()
-    )
+    hmo_record = db.query(HmoRecord).filter(HmoRecord.uprn == uprn).first()
     # Also check by postcode if no UPRN match
     if not hmo_record and prop.postcode:
         hmo_record = (
-            db.query(HmoRecord)
-            .filter(HmoRecord.postcode == prop.postcode)
-            .first()
+            db.query(HmoRecord).filter(HmoRecord.postcode == prop.postcode).first()
         )
 
     hmo_data = {
@@ -287,10 +288,24 @@ def get_property_detail(uprn: str, db: Session) -> Optional[Dict]:
     )
 
     review_data = {
-        "avg_overall": round(float(review_stats.avg_overall), 1) if review_stats.avg_overall else None,
-        "avg_landlord": round(float(review_stats.avg_landlord), 1) if review_stats.avg_landlord else None,
-        "avg_condition": round(float(review_stats.avg_condition), 1) if review_stats.avg_condition else None,
-        "avg_value": round(float(review_stats.avg_value), 1) if review_stats.avg_value else None,
+        "avg_overall": (
+            round(float(review_stats.avg_overall), 1)
+            if review_stats.avg_overall
+            else None
+        ),
+        "avg_landlord": (
+            round(float(review_stats.avg_landlord), 1)
+            if review_stats.avg_landlord
+            else None
+        ),
+        "avg_condition": (
+            round(float(review_stats.avg_condition), 1)
+            if review_stats.avg_condition
+            else None
+        ),
+        "avg_value": (
+            round(float(review_stats.avg_value), 1) if review_stats.avg_value else None
+        ),
         "review_count": review_stats.review_count or 0,
     }
 

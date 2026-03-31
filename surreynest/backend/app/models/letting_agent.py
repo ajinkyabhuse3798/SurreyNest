@@ -5,7 +5,6 @@ reviews (via agent_name on reviews table), not from this table.
 This table is only for verified/premium agent profiles.
 """
 
-import json
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -33,9 +32,13 @@ class LettingAgent(Base):
     __tablename__ = "letting_agents"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    name: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
+    name: Mapped[str] = mapped_column(
+        String(255), unique=True, nullable=False, index=True
+    )
     display_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    postcode_sectors: Mapped[Optional[list]] = mapped_column(JSON, nullable=True, default=list)
+    postcode_sectors: Mapped[Optional[list]] = mapped_column(
+        JSON, nullable=True, default=list
+    )
     website: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     is_verified: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default="false"

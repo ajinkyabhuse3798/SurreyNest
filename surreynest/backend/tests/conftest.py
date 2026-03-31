@@ -1,19 +1,6 @@
 """Pytest fixtures: test database session, test client, seeded data."""
 
 import warnings
-
-# Suppress passlib's internal use of the deprecated 'crypt' module.
-# This is a third-party library issue — cannot be fixed in our code.
-# See: https://github.com/pyca/bcrypt/issues/684
-warnings.filterwarnings(
-    "ignore",
-    message="'crypt' is deprecated",
-    category=DeprecationWarning,
-    module="passlib",
-)
-
-import uuid
-from datetime import datetime
 from typing import Generator
 
 import pytest
@@ -26,7 +13,16 @@ from app.database import Base, get_db
 from app.main import app
 from app.models.property import Property
 from app.models.user import User
-from app.services.auth_service import create_access_token, hash_password
+
+# Suppress passlib's internal use of the deprecated 'crypt' module.
+# This is a third-party library issue — cannot be fixed in our code.
+# See: https://github.com/pyca/bcrypt/issues/684
+warnings.filterwarnings(
+    "ignore",
+    message="'crypt' is deprecated",
+    category=DeprecationWarning,
+    module="passlib",
+)
 
 # ── Test database setup ───────────────────────────────────────────────────────
 # Uses a SEPARATE database (surreynest_test) so tests never touch dev/prod data.
@@ -109,7 +105,7 @@ def test_user(db: Session) -> User:
     """Create and return a test user."""
     user = User(
         email="testuser@surrey.ac.uk",
-        hashed_password=hash_password("TestPass123"),
+        hashed_password="unused-password-hash",
         role="student",
     )
     db.add(user)
@@ -122,7 +118,7 @@ def test_admin(db: Session) -> User:
     """Create and return a test admin user."""
     admin = User(
         email="admin@surrey.ac.uk",
-        hashed_password=hash_password("AdminPass123"),
+        hashed_password="unused-password-hash",
         role="admin",
     )
     db.add(admin)
@@ -130,13 +126,19 @@ def test_admin(db: Session) -> User:
     return admin
 
 
-@pytest.fixture
-def user_token(test_user: User) -> str:
-    """Generate a JWT token for the test user."""
-    return create_access_token(test_user.id, test_user.role)
+@pytest.fixture(scope="session", autouse=True)
+def internal_admin_key() -> Generator[str, None, None]:
+    """Set a stable internal admin key for tests that exercise ops-only routes."""
+    original = getattr(settings, "internal_admin_key", None)
+    settings.internal_admin_key = "test-internal-admin-key"
+    yield settings.internal_admin_key
+    if original is None:
+        delattr(settings, "internal_admin_key")
+    else:
+        settings.internal_admin_key = original
 
 
 @pytest.fixture
-def admin_token(test_admin: User) -> str:
-    """Generate a JWT token for the test admin."""
-    return create_access_token(test_admin.id, test_admin.role)
+def internal_admin_headers(internal_admin_key: str) -> dict[str, str]:
+    """Header payload for internal admin routes."""
+    return {"X-Internal-Admin-Key": internal_admin_key}

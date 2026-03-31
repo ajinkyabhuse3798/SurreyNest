@@ -80,7 +80,9 @@ def test_property_search_without_postcode_returns_422(client):
 
 def test_search_with_invalid_postcode_returns_400(client):
     """Property search with a malformed postcode returns 400."""
-    response = client.get("/api/properties", params={"postcode": "BADCODE", "radius": 500})
+    response = client.get(
+        "/api/properties", params={"postcode": "BADCODE", "radius": 500}
+    )
 
     assert response.status_code == 400
     assert "Invalid UK postcode" in response.json()["detail"]
@@ -88,7 +90,9 @@ def test_search_with_invalid_postcode_returns_400(client):
 
 def test_search_with_invalid_radius_returns_400(client):
     """Property search with a non-allowed radius returns 400."""
-    response = client.get("/api/properties", params={"postcode": "GU2 7XH", "radius": 300})
+    response = client.get(
+        "/api/properties", params={"postcode": "GU2 7XH", "radius": 300}
+    )
 
     assert response.status_code == 400
     assert "Radius must be one of" in response.json()["detail"]
@@ -100,7 +104,9 @@ def test_search_with_valid_postcode_format_is_accepted(client):
     The request may still fail on geocoding (no real DB), but it should
     not fail on postcode format validation — we check for NOT 400.
     """
-    response = client.get("/api/properties", params={"postcode": "GU2 7XH", "radius": 500})
+    response = client.get(
+        "/api/properties", params={"postcode": "GU2 7XH", "radius": 500}
+    )
 
     # Should not be a 400 postcode format error (may be 400 geocoding or 500)
     if response.status_code == 400:

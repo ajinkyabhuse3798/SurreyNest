@@ -11,7 +11,6 @@ Enables PostgreSQL ON CONFLICT DO UPDATE for bulk upserts.
 
 from __future__ import annotations
 
-import sqlalchemy as sa
 
 from alembic import op
 
@@ -26,14 +25,16 @@ def upgrade() -> None:
     """Deduplicate crime_data and add unique constraint."""
     # Step 1: Remove duplicate rows (keep the one with highest id per group,
     # which will be the most recent insert)
-    op.execute("""
+    op.execute(
+        """
         DELETE FROM crime_data a
         USING crime_data b
         WHERE a.id < b.id
           AND a.postcode_sector = b.postcode_sector
           AND a.category = b.category
           AND a.month = b.month
-    """)
+    """
+    )
 
     # Step 2: Drop the old non-unique composite index
     op.execute("DROP INDEX IF EXISTS ix_crime_data_sector_category_month")

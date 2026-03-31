@@ -139,7 +139,7 @@ def register_jobs(scheduler: AsyncIOScheduler) -> None:
         id="crime_pipeline",
         name="Crime pipeline (nightly)",
         replace_existing=True,
-        misfire_grace_time=3600, # 1 hour grace period
+        misfire_grace_time=3600,  # 1 hour grace period
     )
 
     # HMO pipeline, weekly Monday at 2:00 AM

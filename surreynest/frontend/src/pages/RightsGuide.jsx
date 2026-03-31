@@ -363,32 +363,6 @@ export default function RightsGuide() {
                     {/* Sidebar Right (1-col) */}
                     <div className="lg:col-span-1">
                         <div className="sticky top-28 space-y-6">
-                            {/* Need Legal Help */}
-                            <div className="rounded-2xl bg-primary/5 p-6 border border-primary/20">
-                                <h4 className="text-lg font-bold mb-4">Need Legal Help?</h4>
-                                <p className="text-sm text-slate-600 mb-6 leading-relaxed">
-                                    Our team of volunteer legal experts is available for 1-on-1 support for Surrey residents.
-                                </p>
-                                <div className="space-y-3">
-                                    <a
-                                        href="https://www.surrey.ac.uk/student-life/support/advice"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="w-full block text-center rounded-lg bg-primary py-3 text-sm font-bold text-white shadow-md shadow-primary/20 transition-transform active:scale-95 hover:opacity-90"
-                                    >
-                                        Surrey Advice Centre
-                                    </a>
-                                    <a
-                                        href="https://www.citizensadvice.org.uk"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="w-full block text-center rounded-lg border border-primary/30 py-3 text-sm font-bold text-primary transition-colors hover:bg-primary/5"
-                                    >
-                                        Citizens Advice
-                                    </a>
-                                </div>
-                            </div>
-
                             {/* Verified Information */}
                             <div className="rounded-2xl bg-slate-900 p-6 text-white overflow-hidden relative">
                                 <div className="relative z-10">
@@ -440,15 +414,7 @@ export default function RightsGuide() {
                 {/* Disclaimer */}
                 <div className="border-t border-primary/10 pt-6 mb-8">
                     <p className="text-xs text-slate-400">
-                        This guide is for general information only and does not constitute legal
-                        advice. For specific legal issues, contact the{' '}
-                        <a href="https://www.surrey.ac.uk/student-life/support/advice" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                            University of Surrey Advice Centre
-                        </a>{' '}
-                        or{' '}
-                        <a href="https://www.citizensadvice.org.uk" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                            Citizens Advice
-                        </a>.
+                        This guide is for general information only and does not constitute legal advice.
                     </p>
                 </div>
             </div>

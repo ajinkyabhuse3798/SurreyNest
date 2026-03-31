@@ -18,7 +18,6 @@ from app.database import get_db
 from app.models.rent_history import RentHistory
 from app.models.pipeline_config import PipelineConfig
 from app.rate_limit import limiter
-from app.services.geocoding_service import _normalise_postcode
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +28,7 @@ DEFAULT_IPHRP_GROWTH = 6.0
 
 
 # ── Response schemas ─────────────────────────────────────────────────────────
+
 
 class YearlyRent(BaseModel):
     year: int
@@ -47,6 +47,7 @@ class RentTrendResponse(BaseModel):
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
+
 def _extract_sector(postcode: str) -> str:
     """Extract postcode sector from a full or partial postcode."""
     if not postcode:
@@ -60,9 +61,11 @@ def _extract_sector(postcode: str) -> str:
 
 def _get_iphrp_growth(db: Session) -> float:
     """Get latest IPHRP growth % from pipeline_config or fallback."""
-    row = db.query(PipelineConfig).filter(
-        PipelineConfig.key == "iphrp_growth_pct"
-    ).first()
+    row = (
+        db.query(PipelineConfig)
+        .filter(PipelineConfig.key == "iphrp_growth_pct")
+        .first()
+    )
     if row and row.value:
         try:
             return float(row.value)
@@ -72,6 +75,7 @@ def _get_iphrp_growth(db: Session) -> float:
 
 
 # ── Endpoint ─────────────────────────────────────────────────────────────────
+
 
 @router.get(
     "/rent-trends/{postcode_sector}",
@@ -98,9 +102,12 @@ async def get_rent_trends(
         )
 
     # Query historical data
-    rows = db.query(RentHistory).filter(
-        RentHistory.postcode_sector == sector
-    ).order_by(RentHistory.year).all()
+    rows = (
+        db.query(RentHistory)
+        .filter(RentHistory.postcode_sector == sector)
+        .order_by(RentHistory.year)
+        .all()
+    )
 
     if not rows:
         raise HTTPException(
@@ -134,10 +141,12 @@ async def get_rent_trends(
 
     for i in range(1, 3):  # 2 years ahead
         forecast_rent = round(forecast_rent * (1 + iphrp_growth / 100), 1)
-        forecast.append(YearlyRent(
-            year=last_year + i,
-            median_weekly_rent=forecast_rent,
-        ))
+        forecast.append(
+            YearlyRent(
+                year=last_year + i,
+                median_weekly_rent=forecast_rent,
+            )
+        )
 
     return RentTrendResponse(
         postcode_sector=sector,

@@ -19,8 +19,15 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.property import Property
-from app.schemas.listings import CheckListingRequest, CheckListingResponse, NearbyProperty
-from app.services.listing_compliance_service import analyse_listing_compliance, html_to_listing_text
+from app.schemas.listings import (
+    CheckListingRequest,
+    CheckListingResponse,
+    NearbyProperty,
+)
+from app.services.listing_compliance_service import (
+    analyse_listing_compliance,
+    html_to_listing_text,
+)
 from app.services.score_service import get_safety_score, get_rent_prediction
 
 logger = logging.getLogger(__name__)
@@ -43,9 +50,7 @@ ALLOWED_DOMAINS = {
 }
 
 # UK postcode regex (full postcode)
-UK_POSTCODE_RE = re.compile(
-    r"\b([A-Z]{1,2}\d[0-9A-Z]?\s*\d[A-Z]{2})\b", re.IGNORECASE
-)
+UK_POSTCODE_RE = re.compile(r"\b([A-Z]{1,2}\d[0-9A-Z]?\s*\d[A-Z]{2})\b", re.IGNORECASE)
 
 # GU postcodes only
 GU_PREFIX_RE = re.compile(r"^GU\d", re.IGNORECASE)
@@ -58,6 +63,7 @@ HEADERS = {
     "Accept": "text/html,application/xhtml+xml",
     "Accept-Language": "en-GB,en;q=0.9",
 }
+
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 def _normalise_postcode(pc: str) -> str:
@@ -153,7 +159,9 @@ async def check_listing(
     if not best_postcode or not listing_text:
         # Try scraping, best effort; many listing sites block crawlers
         try:
-            resp = http_requests.get(url, headers=HEADERS, timeout=10, allow_redirects=True)
+            resp = http_requests.get(
+                url, headers=HEADERS, timeout=10, allow_redirects=True
+            )
             resp.raise_for_status()
             fetched_html = resp.text
             if not listing_text:
@@ -197,12 +205,7 @@ async def check_listing(
     # Full postcode → derive sector normally.
     # District → pick the most common sector among matching properties.
     if is_district:
-        sector_rows = (
-            db.query(Property.postcode)
-            .filter(pc_filter)
-            .limit(200)
-            .all()
-        )
+        sector_rows = db.query(Property.postcode).filter(pc_filter).limit(200).all()
         sector_counts: Counter = Counter(
             _postcode_sector(r[0]) for r in sector_rows if r[0]
         )
@@ -212,10 +215,7 @@ async def check_listing(
 
     # ── Query our data ───────────────────────────────────────────────────
     properties_count = (
-        db.query(func.count(Property.uprn))
-        .filter(pc_filter)
-        .scalar()
-        or 0
+        db.query(func.count(Property.uprn)).filter(pc_filter).scalar() or 0
     )
 
     nearby_rows = (
@@ -249,12 +249,7 @@ async def check_listing(
 
     # Average rent prediction
     avg_rent = None
-    rent_rows = (
-        db.query(Property)
-        .filter(pc_filter)
-        .limit(20)
-        .all()
-    )
+    rent_rows = db.query(Property).filter(pc_filter).limit(20).all()
     rents = []
     for p in rent_rows:
         pred = get_rent_prediction(p.uprn, db)
@@ -272,12 +267,7 @@ async def check_listing(
         else:
             hmo_filter = HmoRecord.postcode == best_postcode
 
-        hmo_total = (
-            db.query(func.count(HmoRecord.id))
-            .filter(hmo_filter)
-            .scalar()
-            or 0
-        )
+        hmo_total = db.query(func.count(HmoRecord.id)).filter(hmo_filter).scalar() or 0
         hmo_licensed = (
             db.query(func.count(HmoRecord.id))
             .filter(hmo_filter, HmoRecord.is_active == True)  # noqa: E712

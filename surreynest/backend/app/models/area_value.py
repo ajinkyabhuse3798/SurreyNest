@@ -25,13 +25,13 @@ class AreaValue(Base):
 
     __tablename__ = "area_values"
 
-    postcode: Mapped[str] = mapped_column(
-        String(10), primary_key=True, nullable=False
-    )
+    postcode: Mapped[str] = mapped_column(String(10), primary_key=True, nullable=False)
     median_sale_price: Mapped[float] = mapped_column(Float, nullable=True)
     area_value_index: Mapped[float] = mapped_column(Float, nullable=False)
-    implied_weekly_rent: Mapped[float] = mapped_column(Float, nullable=True)   # 3.5% yield, HPI-adj
-    sale_count: Mapped[int] = mapped_column(Float, nullable=True)               # no. of transactions
+    implied_weekly_rent: Mapped[float] = mapped_column(
+        Float, nullable=True
+    )  # 3.5% yield, HPI-adj
+    sale_count: Mapped[int] = mapped_column(Float, nullable=True)  # no. of transactions
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,

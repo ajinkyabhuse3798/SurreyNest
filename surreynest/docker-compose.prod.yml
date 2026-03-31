@@ -1,6 +1,7 @@
 # ─── SurreyNest Production Compose ────────────────────────────────────────────
 # Usage: docker-compose -f docker-compose.prod.yml up -d
-# Requires: POSTGRES_PASSWORD, SECRET_KEY set in environment or .env
+# Requires: POSTGRES_PASSWORD, REDIS_PASSWORD, SECRET_KEY, FRONTEND_URL,
+#           and INTERNAL_ADMIN_KEY set in environment or .env
 # ──────────────────────────────────────────────────────────────────────────────
 
 services:
@@ -48,6 +49,7 @@ services:
       DATABASE_URL: postgresql://surreynest:${POSTGRES_PASSWORD}@postgres:5432/surreynest
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       SECRET_KEY: ${SECRET_KEY}
+      INTERNAL_ADMIN_KEY: "${INTERNAL_ADMIN_KEY:?INTERNAL_ADMIN_KEY must be set}"
       ENVIRONMENT: production
       ALLOWED_ORIGINS: "${ALLOWED_ORIGINS:-https://surreynest.com}"
       FRONTEND_URL: "${FRONTEND_URL:?FRONTEND_URL must be set}"

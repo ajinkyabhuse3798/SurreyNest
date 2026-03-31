@@ -4,9 +4,6 @@
   "rooms_per_m2",
   "energy_rating_ordinal",
   "potential_rating_ordinal",
-  "distance_to_town_km",
-  "distance_to_uni_km",
-  "distance_to_station_km",
   "town_proximity_score",
   "uni_proximity_score",
   "station_proximity_score",
@@ -15,7 +12,6 @@
   "sale_count",
   "sector_median_rent",
   "has_mains_gas",
-  "flat_floor_premium",
   "annual_energy_cost",
   "energy_improvement_gap",
   "price_drop_pct",
@@ -31,8 +27,6 @@
   "bform_Enclosed Mid-Terrace",
   "bform_End-Terrace",
   "bform_Mid-Terrace",
-  "bform_NO DATA!",
-  "bform_Not Recorded",
   "bform_Semi-Detached",
   "bform_Unknown"
 ]

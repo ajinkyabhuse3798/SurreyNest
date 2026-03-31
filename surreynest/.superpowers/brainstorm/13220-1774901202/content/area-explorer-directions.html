@@ -1,0 +1,146 @@
+<h2>Which area explorer feels right for SurreyNest?</h2>
+<p class="subtitle">
+  This is the first product-shaping choice. All three options build on your current safety analysis,
+  but they differ in how interactive the experience feels before a user narrows down to properties.
+</p>
+
+<div class="cards">
+  <div class="card" data-choice="map-first" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">A. Live Safety Map</div>
+        <div class="mockup-body">
+          <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:12px;min-height:220px;">
+            <div style="background:linear-gradient(135deg,#fff7ed 0%,#ffedd5 100%);border:1px solid #fdba74;border-radius:16px;padding:12px;position:relative;">
+              <div style="position:absolute;top:16px;left:18px;background:#ea871d;color:white;padding:6px 10px;border-radius:999px;font-size:12px;font-weight:700;">Interactive map</div>
+              <div style="position:absolute;top:58px;left:26px;width:68px;height:52px;background:rgba(234,135,29,0.28);border:2px solid #ea871d;border-radius:14px;"></div>
+              <div style="position:absolute;top:92px;left:106px;width:92px;height:66px;background:rgba(245,166,35,0.22);border:2px solid #f5a623;border-radius:18px;"></div>
+              <div style="position:absolute;bottom:24px;left:42px;width:78px;height:58px;background:rgba(230,126,34,0.18);border:2px solid #e67e22;border-radius:14px;"></div>
+              <div style="position:absolute;bottom:34px;right:28px;width:96px;height:72px;background:white;border:1px solid rgba(234,135,29,0.25);border-radius:18px;box-shadow:0 8px 22px rgba(234,135,29,0.12);padding:10px;">
+                <div style="font-size:11px;font-weight:700;color:#9a3412;text-transform:uppercase;letter-spacing:.08em;">Quick read</div>
+                <div style="font-size:21px;font-weight:800;color:#111827;margin-top:6px;">72</div>
+                <div style="font-size:12px;color:#6b7280;">Safer than most nearby areas</div>
+              </div>
+            </div>
+            <div style="background:white;border:1px solid rgba(234,135,29,0.18);border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:10px;">
+              <div style="font-size:11px;font-weight:700;color:#9a3412;text-transform:uppercase;letter-spacing:.08em;">Interaction</div>
+              <div style="background:#fff7ed;border-radius:12px;padding:10px;font-size:13px;color:#444;">Hover or tap an area to see a plain-English summary.</div>
+              <div style="background:#fff7ed;border-radius:12px;padding:10px;font-size:13px;color:#444;">Compare nearby areas side by side.</div>
+              <div style="background:#fff7ed;border-radius:12px;padding:10px;font-size:13px;color:#444;">Jump from area to available properties.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A. Map-First Explorer</h3>
+      <p>Best for browsing and discovering patterns fast, but it can feel more like a data tool if we are not careful with the explanations.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="report-first" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">B. Area Report</div>
+        <div class="mockup-body">
+          <div style="display:flex;flex-direction:column;gap:10px;min-height:220px;">
+            <div style="display:grid;grid-template-columns:1fr 140px;gap:10px;">
+              <div style="background:linear-gradient(135deg,#fff 0%,#fff7ed 100%);border:1px solid rgba(234,135,29,0.2);border-radius:16px;padding:14px;">
+                <div style="font-size:11px;font-weight:700;color:#9a3412;text-transform:uppercase;letter-spacing:.08em;">Area snapshot</div>
+                <div style="font-size:24px;font-weight:800;color:#111827;margin-top:4px;">Guildford town side</div>
+                <div style="font-size:13px;color:#6b7280;margin-top:6px;">Calm overall, burglary worth checking during student holidays.</div>
+              </div>
+              <div style="background:#ea871d;border-radius:16px;color:white;padding:14px;display:flex;flex-direction:column;justify-content:center;">
+                <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;">Safety score</div>
+                <div style="font-size:34px;font-weight:800;line-height:1;">74</div>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+              <div style="background:#fff7ed;border-radius:14px;padding:12px;"><div style="font-size:12px;font-weight:700;color:#9a3412;">What happens here?</div><div style="font-size:13px;color:#555;margin-top:6px;">Mostly ASB and theft</div></div>
+              <div style="background:#fff7ed;border-radius:14px;padding:12px;"><div style="font-size:12px;font-weight:700;color:#9a3412;">What is changing?</div><div style="font-size:13px;color:#555;margin-top:6px;">Trending slightly better</div></div>
+              <div style="background:#fff7ed;border-radius:14px;padding:12px;"><div style="font-size:12px;font-weight:700;color:#9a3412;">Public info</div><div style="font-size:13px;color:#555;margin-top:6px;">Police priorities and updates</div></div>
+            </div>
+            <div style="background:white;border:1px dashed rgba(234,135,29,0.3);border-radius:14px;padding:12px;font-size:13px;color:#555;">
+              Clear reading flow, very accessible, easy for non-technical users.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B. Report-First Experience</h3>
+      <p>Best for clarity and readability. It feels reassuring and easy to understand, but it is less playful and less exploratory.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="hybrid" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">C. Hybrid Explorer</div>
+        <div class="mockup-body">
+          <div style="display:grid;grid-template-columns:1.05fr 1.2fr;gap:12px;min-height:220px;">
+            <div style="background:linear-gradient(135deg,#fff7ed 0%,#ffedd5 100%);border:1px solid #fdba74;border-radius:16px;padding:12px;position:relative;">
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+                <span style="background:white;color:#9a3412;border:1px solid rgba(234,135,29,0.2);padding:6px 10px;border-radius:999px;font-size:11px;font-weight:700;">Safest</span>
+                <span style="background:white;color:#9a3412;border:1px solid rgba(234,135,29,0.2);padding:6px 10px;border-radius:999px;font-size:11px;font-weight:700;">Student-friendly</span>
+                <span style="background:white;color:#9a3412;border:1px solid rgba(234,135,29,0.2);padding:6px 10px;border-radius:999px;font-size:11px;font-weight:700;">Burglary focus</span>
+              </div>
+              <div style="position:absolute;top:76px;left:20px;width:66px;height:50px;background:rgba(234,135,29,0.28);border:2px solid #ea871d;border-radius:14px;"></div>
+              <div style="position:absolute;top:122px;left:92px;width:76px;height:58px;background:rgba(245,166,35,0.22);border:2px solid #f5a623;border-radius:16px;"></div>
+              <div style="position:absolute;bottom:18px;right:18px;background:white;border-radius:16px;border:1px solid rgba(234,135,29,0.2);padding:10px 12px;box-shadow:0 10px 24px rgba(234,135,29,0.12);">
+                <div style="font-size:11px;font-weight:700;color:#9a3412;text-transform:uppercase;letter-spacing:.08em;">Selected area</div>
+                <div style="font-size:16px;font-weight:800;color:#111827;margin-top:4px;">GU2 7</div>
+                <div style="font-size:12px;color:#6b7280;">Open full report</div>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <div style="display:grid;grid-template-columns:1fr 90px;gap:10px;">
+                <div style="background:white;border:1px solid rgba(234,135,29,0.18);border-radius:16px;padding:12px;">
+                  <div style="font-size:11px;font-weight:700;color:#9a3412;text-transform:uppercase;letter-spacing:.08em;">Plain-English summary</div>
+                  <div style="font-size:14px;color:#374151;margin-top:6px;">Low overall crime, but bike theft and holiday burglary deserve attention.</div>
+                </div>
+                <div style="background:#ea871d;border-radius:16px;color:white;padding:12px;text-align:center;">
+                  <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;">Score</div>
+                  <div style="font-size:28px;font-weight:800;margin-top:8px;">76</div>
+                </div>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+                <div style="background:#fff7ed;border-radius:14px;padding:10px;font-size:13px;color:#444;">What happens here?</div>
+                <div style="background:#fff7ed;border-radius:14px;padding:10px;font-size:13px;color:#444;">What is changing?</div>
+                <div style="background:#fff7ed;border-radius:14px;padding:10px;font-size:13px;color:#444;">What should I check?</div>
+              </div>
+              <div style="background:white;border:1px dashed rgba(234,135,29,0.3);border-radius:14px;padding:10px;font-size:13px;color:#555;">
+                Recommended: strongest balance between exploration, readability, and decision support.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C. Hybrid Map + Report</h3>
+      <p>Users explore areas visually, then immediately get a readable explanation and an easy path to relevant properties. This is my recommendation.</p>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:22px;">
+  <div class="pros-cons">
+    <div class="pros">
+      <h4>What we are optimizing for</h4>
+      <ul>
+        <li>Easy for non-technical users to understand</li>
+        <li>Interactive enough to compare areas confidently</li>
+        <li>Natural handoff from area research to property decisions</li>
+      </ul>
+    </div>
+    <div class="cons">
+      <h4>What we want to avoid</h4>
+      <ul>
+        <li>Looking like a police dashboard</li>
+        <li>Overwhelming people with raw categories and jargon</li>
+        <li>Breaking away from SurreyNest's warm amber visual style</li>
+      </ul>
+    </div>
+  </div>
+</div>

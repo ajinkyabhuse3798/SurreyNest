@@ -27,8 +27,8 @@ logger = logging.getLogger(__name__)
 engine = create_engine(
     settings.database_url,
     pool_pre_ping=True,
-    pool_size=settings.db_pool_size,               # Set via DB_POOL_SIZE env var
-    max_overflow=settings.db_max_overflow,         # Set via DB_MAX_OVERFLOW env var
+    pool_size=settings.db_pool_size,  # Set via DB_POOL_SIZE env var
+    max_overflow=settings.db_max_overflow,  # Set via DB_MAX_OVERFLOW env var
     echo=(settings.environment == "development"),  # Log SQL in dev only
 )
 

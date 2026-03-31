@@ -24,14 +24,15 @@ logger = logging.getLogger(__name__)
 
 # Student-specific weights (burglary/theft much more relevant)
 STUDENT_WEIGHTS = {
-    "burglary": 4.0,          # Empty student houses during holidays
-    "theft-from-the-person": 3.0, # Walking home from nights out
-    "violent-crime": 3.0,     # Same as general
-    "robbery": 2.5,           # Same
-    "anti-social-behaviour": 1.0, # Students ARE the noise source
-    "public-order": 1.0,      # Less relevant
-    "vehicle-crime": 0.5,     # Most students don't drive
-    "drugs": 0.5,             # Less relevant to housing decision
+    "burglary": 4.0,  # Empty student houses during holidays
+    "theft-from-the-person": 3.0,  # Walking home from nights out
+    "violent-crime": 3.0,  # Same as general
+    "robbery": 2.5,  # Same
+    "bicycle-theft": 3.0,  # Students cycle to campus — highly relevant
+    "anti-social-behaviour": 1.0,  # Students ARE the noise source
+    "public-order": 1.0,  # Less relevant
+    "vehicle-crime": 0.5,  # Most students don't drive
+    "drugs": 0.5,  # Less relevant to housing decision
 }
 
 # Friendly display names
@@ -44,11 +45,12 @@ CATEGORY_LABELS = {
     "public-order": "Public Order",
     "vehicle-crime": "Vehicle Crime",
     "theft-from-the-person": "Theft from Person",
+    "bicycle-theft": "Bicycle Theft",
 }
 
 # University of Surrey approximate term dates (typical academic year)
 HOLIDAY_MONTHS = {6, 7, 8, 9, 12, 1}  # Jun-Sep (summer), Dec-Jan (Christmas)
-TERM_MONTHS = {2, 3, 4, 5, 10, 11}    # Feb-May, Oct-Nov
+TERM_MONTHS = {2, 3, 4, 5, 10, 11}  # Feb-May, Oct-Nov
 GUILDFORD_DISTRICTS = ("GU1", "GU2", "GU3", "GU4", "GU5", "GU7")
 TRACKED_CATEGORIES = tuple(CATEGORY_WEIGHTS.keys())
 SECTOR_RADIUS_M = 500
@@ -76,10 +78,7 @@ def _build_monthly_window(monthly_rows: List, max_months: int = 12) -> List[Dict
     if not monthly_rows:
         return []
 
-    monthly_totals = {
-        _month_start(row.month): int(row.total)
-        for row in monthly_rows
-    }
+    monthly_totals = {_month_start(row.month): int(row.total) for row in monthly_rows}
     first_month = min(monthly_totals)
     last_month = max(monthly_totals)
     window_start = max(first_month, _shift_month(last_month, -(max_months - 1)))
@@ -87,10 +86,12 @@ def _build_monthly_window(monthly_rows: List, max_months: int = 12) -> List[Dict
     series = []
     cursor = window_start
     while cursor <= last_month:
-        series.append({
-            "month": cursor,
-            "count": monthly_totals.get(cursor, 0),
-        })
+        series.append(
+            {
+                "month": cursor,
+                "count": monthly_totals.get(cursor, 0),
+            }
+        )
         cursor = _shift_month(cursor, 1)
 
     return series
@@ -98,10 +99,12 @@ def _build_monthly_window(monthly_rows: List, max_months: int = 12) -> List[Dict
 
 def _guildford_sector_filter():
     """Return a SQLAlchemy filter for SurreyNest's Guildford coverage."""
-    return or_(*[
-        CrimeData.postcode_sector.like(f"{district} %")
-        for district in GUILDFORD_DISTRICTS
-    ])
+    return or_(
+        *[
+            CrimeData.postcode_sector.like(f"{district} %")
+            for district in GUILDFORD_DISTRICTS
+        ]
+    )
 
 
 def _format_month_label(value: Optional[date]) -> Optional[str]:
@@ -120,13 +123,17 @@ def _build_breakdown(rows: List) -> List[Dict]:
     breakdown = []
     for row in rows:
         pct = round(row.total / total_crimes * 100, 1) if total_crimes > 0 else 0
-        breakdown.append({
-            "category": row.category,
-            "label": CATEGORY_LABELS.get(row.category, row.category.replace("-", " ").title()),
-            "count": int(row.total),
-            "percentage": pct,
-            "weight": CATEGORY_WEIGHTS.get(row.category, 0.5),
-        })
+        breakdown.append(
+            {
+                "category": row.category,
+                "label": CATEGORY_LABELS.get(
+                    row.category, row.category.replace("-", " ").title()
+                ),
+                "count": int(row.total),
+                "percentage": pct,
+                "weight": CATEGORY_WEIGHTS.get(row.category, 0.5),
+            }
+        )
 
     return breakdown
 
@@ -157,7 +164,7 @@ def _build_trend_response(series: List[Dict]) -> Dict:
         {"month": point["month"].isoformat(), "count": point["count"]}
         for point in series
     ]
-    earlier_months = series[-(comparison_months * 2):-comparison_months]
+    earlier_months = series[-(comparison_months * 2) : -comparison_months]
     recent_months = series[-comparison_months:]
 
     recent_avg = sum(m["count"] for m in recent_months) / comparison_months
@@ -193,24 +200,27 @@ def _latest_month_for_query(query) -> Optional[date]:
 
 def get_methodology_summary(latest_month: Optional[date]) -> Dict:
     """Describe how SurreyNest turns police.uk data into safety metrics."""
+    tracked_category_count = len(TRACKED_CATEGORIES)
+
     return {
         "source": "data.police.uk",
         "police_api_method": POLICE_STREET_CRIME_METHOD,
         "latest_month": latest_month.isoformat() if latest_month else None,
         "latest_month_label": _format_month_label(latest_month),
         "tracked_categories": list(TRACKED_CATEGORIES),
-        "tracked_category_count": len(TRACKED_CATEGORIES),
+        "tracked_category_count": tracked_category_count,
         "sector_radius_m": SECTOR_RADIUS_M,
         "uses_representative_point": True,
         "summary": (
             "SurreyNest queries police.uk street crime around one representative point "
-            "per postcode sector, keeps eight safety-relevant crime categories, and "
+            f"per postcode sector, keeps {tracked_category_count} safety-relevant crime "
+            "categories, and "
             "counts incidents within roughly 500 metres of that point."
         ),
         "why_counts_look_lower": (
             "Police.uk point queries return a wider surrounding area and many more crime "
-            "categories than SurreyNest uses. After SurreyNest filters to eight tracked "
-            "categories and a roughly 500m local radius, the totals are usually lower than raw "
+            f"categories than SurreyNest uses. After SurreyNest filters to {tracked_category_count} "
+            "tracked categories and a roughly 500m local radius, the totals are usually lower than raw "
             "police.uk totals."
         ),
         "not_official_total": (
@@ -220,9 +230,7 @@ def get_methodology_summary(latest_month: Optional[date]) -> Dict:
     }
 
 
-def get_crime_breakdown(
-    postcode_sector: str, db: Session
-) -> List[Dict]:
+def get_crime_breakdown(postcode_sector: str, db: Session) -> List[Dict]:
     """Get crime breakdown by category for a postcode sector.
 
     Returns:
@@ -242,9 +250,7 @@ def get_crime_breakdown(
     return _build_breakdown(rows)
 
 
-def get_crime_trend(
-    postcode_sector: str, db: Session
-) -> Dict:
+def get_crime_trend(postcode_sector: str, db: Session) -> Dict:
     """Analyse crime trend over time for a postcode sector.
 
     Compares the most recent up-to-6 months vs the previous matching window,
@@ -314,9 +320,9 @@ def get_area_rankings(db: Session) -> Dict:
 
     weighted_by_sector: Dict[str, float] = {}
     for row in all_sector_data:
-        weighted_by_sector[row.postcode_sector] = weighted_by_sector.get(row.postcode_sector, 0.0) + (
-            row.total * CATEGORY_WEIGHTS.get(row.category, 0.5)
-        )
+        weighted_by_sector[row.postcode_sector] = weighted_by_sector.get(
+            row.postcode_sector, 0.0
+        ) + (row.total * CATEGORY_WEIGHTS.get(row.category, 0.5))
 
     sectors = []
     all_totals = []
@@ -327,12 +333,14 @@ def get_area_rankings(db: Session) -> Dict:
             max(0.0, min(100.0, 100.0 - (weighted_sum / max(normaliser, 1) * 100.0))),
             1,
         )
-        sectors.append({
-            "postcode_sector": row.postcode_sector,
-            "total_crimes": int(row.total),
-            "weighted_sum": weighted_sum,
-            "safety_score": safety_score,
-        })
+        sectors.append(
+            {
+                "postcode_sector": row.postcode_sector,
+                "total_crimes": int(row.total),
+                "weighted_sum": weighted_sum,
+                "safety_score": safety_score,
+            }
+        )
         all_totals.append(int(row.total))
 
     # Compute normalised safety score
@@ -341,16 +349,20 @@ def get_area_rankings(db: Session) -> Dict:
     for s in sectors:
         # Comparison to average
         if guildford_avg > 0:
-            diff_pct = round((s["total_crimes"] - guildford_avg) / guildford_avg * 100, 1)
+            diff_pct = round(
+                (s["total_crimes"] - guildford_avg) / guildford_avg * 100, 1
+            )
         else:
             diff_pct = 0
         s["vs_average_percent"] = diff_pct
         s["vs_average_label"] = (
             f"{abs(diff_pct):.0f}% less crime than average"
             if diff_pct < 0
-            else f"{diff_pct:.0f}% more crime than average"
-            if diff_pct > 0
-            else "Average"
+            else (
+                f"{diff_pct:.0f}% more crime than average"
+                if diff_pct > 0
+                else "Average"
+            )
         )
 
     # Sort
@@ -373,9 +385,7 @@ def get_area_rankings(db: Session) -> Dict:
     return result
 
 
-def get_compared_to_average(
-    postcode_sector: str, db: Session
-) -> Dict:
+def get_compared_to_average(postcode_sector: str, db: Session) -> Dict:
     """Compare a sector's crime to the Guildford average.
 
     Returns:
@@ -412,13 +422,15 @@ def get_compared_to_average(
     avg = sum(all_totals) / len(all_totals)
 
     # Percentile: what % of areas have MORE crime than this one
-    safer_count = sum(1 for t in all_totals if t >= sector_total)
+    safer_count = sum(1 for t in all_totals if t > sector_total)
     percentile = round(safer_count / len(all_totals) * 100, 0)
 
     diff_pct = round((sector_total - avg) / max(avg, 1) * 100, 1)
 
     if diff_pct < -50:
-        label = f"Remarkably safe, {abs(diff_pct):.0f}% less crime than Guildford average"
+        label = (
+            f"Remarkably safe, {abs(diff_pct):.0f}% less crime than Guildford average"
+        )
     elif diff_pct < -20:
         label = f"Well below average, {abs(diff_pct):.0f}% less crime"
     elif diff_pct < -5:
@@ -441,9 +453,7 @@ def get_compared_to_average(
     }
 
 
-def get_holiday_burglary_risk(
-    postcode_sector: str, db: Session
-) -> Dict:
+def get_holiday_burglary_risk(postcode_sector: str, db: Session) -> Dict:
     """Analyse burglary risk during university holidays vs term time.
 
     Students leave houses empty during holidays (Jun-Sep, Dec-Jan),
@@ -477,7 +487,11 @@ def get_holiday_burglary_risk(
     term_months_found = 0
 
     for row in burglary_data:
-        month_num = row.month.month if isinstance(row.month, date) else int(str(row.month).split("-")[1])
+        month_num = (
+            row.month.month
+            if isinstance(row.month, date)
+            else int(str(row.month).split("-")[1])
+        )
         if month_num in HOLIDAY_MONTHS:
             holiday_count += row.count
             holiday_months_found += 1
@@ -499,13 +513,17 @@ def get_holiday_burglary_risk(
     if spike_pct > 50:
         risk = "high"
         label = f"⚠️ Burglaries spike {spike_pct:.0f}% during holidays"
-        tip = ("Student houses are targeted when empty. Ask your landlord about "
-               "security measures: smart locks, CCTV, property check-ins during holidays.")
+        tip = (
+            "Student houses are targeted when empty. Ask your landlord about "
+            "security measures: smart locks, CCTV, property check-ins during holidays."
+        )
     elif spike_pct > 20:
         risk = "moderate"
         label = f"Burglaries increase {spike_pct:.0f}% during holidays"
-        tip = ("Consider asking a friend to check on the property. "
-               "Use timer switches for lights when you're away.")
+        tip = (
+            "Consider asking a friend to check on the property. "
+            "Use timer switches for lights when you're away."
+        )
     else:
         risk = "low"
         label = "No significant holiday burglary pattern"
@@ -521,9 +539,7 @@ def get_holiday_burglary_risk(
     }
 
 
-def get_student_vulnerability_index(
-    postcode_sector: str, db: Session
-) -> Dict:
+def get_student_vulnerability_index(postcode_sector: str, db: Session) -> Dict:
     """Compute student-specific safety score using student-weighted crime categories.
 
     Different from general safety: burglary and personal theft weighted much higher,
@@ -550,9 +566,7 @@ def get_student_vulnerability_index(
             "impacts": [],
         }
 
-    student_weighted = sum(
-        r.total * STUDENT_WEIGHTS.get(r.category, 0.5) for r in rows
-    )
+    student_weighted = sum(r.total * STUDENT_WEIGHTS.get(r.category, 0.5) for r in rows)
 
     all_sector_data = (
         db.query(
@@ -567,29 +581,36 @@ def get_student_vulnerability_index(
 
     sector_student = {}
     for r in all_sector_data:
-        sector_student[r.postcode_sector] = sector_student.get(r.postcode_sector, 0) + \
-            r.total * STUDENT_WEIGHTS.get(r.category, 0.5)
+        sector_student[r.postcode_sector] = sector_student.get(
+            r.postcode_sector, 0
+        ) + r.total * STUDENT_WEIGHTS.get(r.category, 0.5)
 
     max_student = max(sector_student.values()) if sector_student else 1
 
     general_result = score_service.get_safety_score(postcode_sector, db)
     general_score = general_result.get("safety_score") if general_result else None
-    student_score = round(max(0, 100 - (student_weighted / max(max_student, 1) * 100)), 1)
+    student_score = round(
+        max(0, 100 - (student_weighted / max(max_student, 1) * 100)), 1
+    )
 
     # Category impacts for students
     impacts = []
-    for r in sorted(rows, key=lambda x: x.total * STUDENT_WEIGHTS.get(x.category, 0.5), reverse=True):
+    for r in sorted(
+        rows, key=lambda x: x.total * STUDENT_WEIGHTS.get(x.category, 0.5), reverse=True
+    ):
         sw = STUDENT_WEIGHTS.get(r.category, 0.5)
         gw = CATEGORY_WEIGHTS.get(r.category, 0.5)
         impact = "high" if sw > gw else "low" if sw < gw else "same"
-        impacts.append({
-            "category": r.category,
-            "label": CATEGORY_LABELS.get(r.category, r.category),
-            "count": r.total,
-            "student_relevance": impact,
-            "student_weight": sw,
-            "general_weight": gw,
-        })
+        impacts.append(
+            {
+                "category": r.category,
+                "label": CATEGORY_LABELS.get(r.category, r.category),
+                "count": r.total,
+                "student_relevance": impact,
+                "student_weight": sw,
+                "general_weight": gw,
+            }
+        )
 
     # Label
     if student_score >= 80:
@@ -610,9 +631,7 @@ def get_student_vulnerability_index(
     }
 
 
-def get_safety_tips(
-    postcode_sector: str, db: Session
-) -> List[Dict]:
+def get_safety_tips(postcode_sector: str, db: Session) -> List[Dict]:
     """Generate contextual safety tips based on actual crime patterns.
 
     Returns:
@@ -642,96 +661,124 @@ def get_safety_tips(
     vehicle_mo = vehicle / _m
 
     if total == 0:
-        tips.append({
-            "type": "positive",
-            "icon": "✅",
-            "text": "No recorded crimes in this area, extremely safe!",
-        })
+        tips.append(
+            {
+                "type": "positive",
+                "icon": "✅",
+                "text": "No recorded crimes in this area, extremely safe!",
+            }
+        )
         return tips
 
     if total_mo <= 5:
-        tips.append({
-            "type": "positive",
-            "icon": "✅",
-            "text": f"Fewer than {round(total_mo + 1)} incidents per month on average, very quiet area",
-        })
+        tips.append(
+            {
+                "type": "positive",
+                "icon": "✅",
+                "text": f"Fewer than {round(total_mo + 1)} incidents per month on average, very quiet area",
+            }
+        )
 
     if burglary == 0:
-        tips.append({
-            "type": "positive",
-            "icon": "🏠",
-            "text": "Zero burglaries recorded, safe to leave bikes outside",
-        })
+        tips.append(
+            {
+                "type": "positive",
+                "icon": "🏠",
+                "text": "Zero burglaries recorded, safe to leave bikes outside",
+            }
+        )
     elif burglary_mo >= 4:
-        tips.append({
-            "type": "warning",
-            "icon": "🔒",
-            "text": f"~{round(burglary_mo)} burglaries/month, ask your landlord about door and window locks",
-        })
+        tips.append(
+            {
+                "type": "warning",
+                "icon": "🔒",
+                "text": f"~{round(burglary_mo)} burglaries/month, ask your landlord about door and window locks",
+            }
+        )
     elif burglary_mo >= 1:
-        tips.append({
-            "type": "warning",
-            "icon": "🔒",
-            "text": f"{burglary} burglaries recorded in the past year, keep windows locked when out",
-        })
+        tips.append(
+            {
+                "type": "warning",
+                "icon": "🔒",
+                "text": f"{burglary} burglaries recorded in the past year, keep windows locked when out",
+            }
+        )
 
     if theft == 0:
-        tips.append({
-            "type": "positive",
-            "icon": "📱",
-            "text": "No personal theft recorded, safe for walking with valuables",
-        })
+        tips.append(
+            {
+                "type": "positive",
+                "icon": "📱",
+                "text": "No personal theft recorded, safe for walking with valuables",
+            }
+        )
     elif theft_mo >= 8:
-        tips.append({
-            "type": "warning",
-            "icon": "📱",
-            "text": f"~{round(theft_mo)} personal thefts/month, keep phone and laptop out of sight",
-        })
+        tips.append(
+            {
+                "type": "warning",
+                "icon": "📱",
+                "text": f"~{round(theft_mo)} personal thefts/month, keep phone and laptop out of sight",
+            }
+        )
     elif theft_mo >= 2:
-        tips.append({
-            "type": "warning",
-            "icon": "📱",
-            "text": f"{theft} personal theft incidents in the past year, stay alert in busy areas",
-        })
+        tips.append(
+            {
+                "type": "warning",
+                "icon": "📱",
+                "text": f"{theft} personal theft incidents in the past year, stay alert in busy areas",
+            }
+        )
 
     if asb_mo >= 20:
-        tips.append({
-            "type": "info",
-            "icon": "🔊",
-            "text": f"~{round(asb_mo)} ASB incidents/month, can be noisy at night, especially weekends",
-        })
+        tips.append(
+            {
+                "type": "info",
+                "icon": "🔊",
+                "text": f"~{round(asb_mo)} ASB incidents/month, can be noisy at night, especially weekends",
+            }
+        )
     elif asb_mo <= 2:
-        tips.append({
-            "type": "positive",
-            "icon": "📚",
-            "text": "Very low anti-social behaviour, quiet area for studying",
-        })
+        tips.append(
+            {
+                "type": "positive",
+                "icon": "📚",
+                "text": "Very low anti-social behaviour, quiet area for studying",
+            }
+        )
 
     if violent_mo >= 15:
-        tips.append({
-            "type": "warning",
-            "icon": "⚠️",
-            "text": f"~{round(violent_mo)} violent incidents/month, be aware at night, stick to lit routes",
-        })
+        tips.append(
+            {
+                "type": "warning",
+                "icon": "⚠️",
+                "text": f"~{round(violent_mo)} violent incidents/month, be aware at night, stick to lit routes",
+            }
+        )
     elif violent_mo >= 5:
-        tips.append({
-            "type": "warning",
-            "icon": "⚠️",
-            "text": f"{violent} violent incidents in the past year, avoid walking alone late at night",
-        })
+        tips.append(
+            {
+                "type": "warning",
+                "icon": "⚠️",
+                "text": f"{violent} violent incidents in the past year, avoid walking alone late at night",
+            }
+        )
     elif violent_mo <= 0.5:
-        tips.append({
-            "type": "positive",
-            "icon": "🚶",
-            "text": "Very low violence, safe for evening walks",
-        })
+        tips.append(
+            {
+                "type": "positive",
+                "icon": "🚶",
+                "text": "Very low violence, safe for evening walks",
+            }
+        )
 
     if vehicle_mo >= 3:
-        tips.append({
-            "type": "info",
-            "icon": "🚗",
-            "text": f"~{round(vehicle_mo)} vehicle crimes/month, park in well-lit areas if you have a car",
-        })
+        tips.append(
+            {
+                "type": "info",
+                "icon": "🚗",
+                "text": f"~{round(vehicle_mo)} vehicle crimes/month, park in well-lit areas if you have a car",
+            }
+        )
 
     return tips
 
@@ -739,9 +786,7 @@ def get_safety_tips(
 _INTELLIGENCE_CACHE_TTL = 1800  # 30 minutes, data changes monthly
 
 
-def get_full_safety_intelligence(
-    postcode_sector: str, db: Session
-) -> Dict:
+def get_full_safety_intelligence(postcode_sector: str, db: Session) -> Dict:
     """Get complete safety intelligence for a postcode sector.
 
     Aggregates all safety analysis into a single response.
@@ -838,8 +883,12 @@ def get_guildford_overview(db: Session) -> Dict:
         "latest_month_label": _format_month_label(latest_month),
         "months_covered": len(monthly_series),
         "total_tracked_crimes_12m": total_tracked,
-        "average_monthly_tracked_crimes": round(total_tracked / max(len(monthly_series), 1), 1),
-        "average_sector_total_12m": round(total_tracked / max(len(sector_totals), 1), 1),
+        "average_monthly_tracked_crimes": round(
+            total_tracked / max(len(monthly_series), 1), 1
+        ),
+        "average_sector_total_12m": round(
+            total_tracked / max(len(sector_totals), 1), 1
+        ),
         "sector_count": len(coverage_sectors),
         "coverage_districts": coverage_districts,
         "coverage_sectors": coverage_sectors,

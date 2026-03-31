@@ -75,10 +75,16 @@ def test_calibration_artifact_can_blend_local_observed_rent_prior() -> None:
         postcodes=postcodes,
     )
 
-    local_high = apply_prediction_calibration(300.0, "Flat", artifact, "GU1 3", "GU1 3JT")
-    local_low = apply_prediction_calibration(300.0, "Flat", artifact, "GU2 9", "GU2 9AA")
+    local_high = apply_prediction_calibration(
+        300.0, "Flat", artifact, "GU1 3", "GU1 3JT"
+    )
+    local_low = apply_prediction_calibration(
+        300.0, "Flat", artifact, "GU2 9", "GU2 9AA"
+    )
 
-    assert artifact["observed_rent_prior"]["method"] == "hierarchical_observed_rent_prior"
+    assert (
+        artifact["observed_rent_prior"]["method"] == "hierarchical_observed_rent_prior"
+    )
     assert local_high > local_low
 
 
@@ -94,7 +100,10 @@ def test_interval_artifact_uses_type_specific_width_when_enough_samples() -> Non
     assert "Flat" in artifact["by_type"]
     assert "Terraced" in artifact["by_type"]
     assert interval_half_width_for_type("Flat", artifact) > 0
-    assert interval_half_width_for_type("Maisonette", artifact) == artifact["global_half_width"]
+    assert (
+        interval_half_width_for_type("Maisonette", artifact)
+        == artifact["global_half_width"]
+    )
 
 
 def test_safe_sector_rent_map_is_type_aware_and_implied_only() -> None:
@@ -147,7 +156,9 @@ class OffsetTransformer:
         return X.to_numpy(dtype=float) + self.amount
 
 
-def test_get_model_internals_keeps_scaler_none_for_model_only_pipeline(monkeypatch) -> None:
+def test_get_model_internals_keeps_scaler_none_for_model_only_pipeline(
+    monkeypatch,
+) -> None:
     """A single-step pipeline should not masquerade as having a scaler."""
     pipeline = Pipeline([("model", XGBRegressor())])
 

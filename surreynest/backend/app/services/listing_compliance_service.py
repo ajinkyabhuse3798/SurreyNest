@@ -14,7 +14,9 @@ from typing import Optional
 
 _PHASE_1_START = date(2026, 5, 1)
 
-_SCRIPT_STYLE_RE = re.compile(r"<(script|style)\b.*?>.*?</\1>", re.IGNORECASE | re.DOTALL)
+_SCRIPT_STYLE_RE = re.compile(
+    r"<(script|style)\b.*?>.*?</\1>", re.IGNORECASE | re.DOTALL
+)
 _TAG_RE = re.compile(r"<[^>]+>")
 _WHITESPACE_RE = re.compile(r"\s+")
 
@@ -52,7 +54,10 @@ _ISSUE_RULES = [
                 r"\b(?:[2-9]|1[0-2])\s+months?\s+(?:rent\s+)?(?:in\s+advance|upfront|up\s*front)\b",
                 re.IGNORECASE,
             ),
-            re.compile(r"\bmore\s+than\s+1\s+month(?:'s)?\s+rent\s+in\s+advance\b", re.IGNORECASE),
+            re.compile(
+                r"\bmore\s+than\s+1\s+month(?:'s)?\s+rent\s+in\s+advance\b",
+                re.IGNORECASE,
+            ),
         ],
         "before": (
             "From 1 May 2026 in England, landlords and agents will not be able to require more "
@@ -74,7 +79,9 @@ _ISSUE_RULES = [
             re.compile(r"\bno\s+dss\b", re.IGNORECASE),
             re.compile(r"\bno\s+housing\s+benefit\b", re.IGNORECASE),
             re.compile(r"\bbenefits?\s+not\s+(?:accepted|allowed)\b", re.IGNORECASE),
-            re.compile(r"\bhousing\s+benefit\s+not\s+(?:accepted|allowed)\b", re.IGNORECASE),
+            re.compile(
+                r"\bhousing\s+benefit\s+not\s+(?:accepted|allowed)\b", re.IGNORECASE
+            ),
         ],
         "before": (
             "From 1 May 2026 in England, landlords and agents will not be able to make a renter "
@@ -95,7 +102,9 @@ _ISSUE_RULES = [
             re.compile(r"\bno\s+children\b", re.IGNORECASE),
             re.compile(r"\bno\s+kids\b", re.IGNORECASE),
             re.compile(r"\bchildren\s+not\s+(?:allowed|accepted)\b", re.IGNORECASE),
-            re.compile(r"\bfamil(?:y|ies)\s+not\s+(?:allowed|accepted)\b", re.IGNORECASE),
+            re.compile(
+                r"\bfamil(?:y|ies)\s+not\s+(?:allowed|accepted)\b", re.IGNORECASE
+            ),
         ],
         "before": (
             "From 1 May 2026 in England, landlords and agents will not be able to make a renter "
@@ -222,7 +231,9 @@ def analyse_listing_compliance(
                     "severity": rule["severity"],
                     "status": rule["status"],
                     "applies_from": _PHASE_1_START,
-                    "summary": rule["after"] if today >= _PHASE_1_START else rule["before"],
+                    "summary": (
+                        rule["after"] if today >= _PHASE_1_START else rule["before"]
+                    ),
                     "guidance": rule["guidance"],
                     "evidence": _snippet(cleaned_text, match),
                 }
@@ -263,7 +274,7 @@ def analyse_listing_compliance(
             "Check the original advert and get advice before relying on it."
             if today < _PHASE_1_START
             else "We spotted wording that may conflict with the current Phase 1 England renting rules. "
-                 "Check the original advert and supporting documents before relying on it."
+            "Check the original advert and supporting documents before relying on it."
         )
     else:
         status = "CLEAR"
@@ -281,4 +292,3 @@ def analyse_listing_compliance(
         "issues": issues,
         "positives": positives,
     }
-

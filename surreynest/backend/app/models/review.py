@@ -5,7 +5,6 @@ is_flagged=True when an admin rejects. Anonymised (user_id set to NULL) when
 a user deletes their account.
 """
 
-
 import uuid
 from typing import Optional
 
@@ -73,7 +72,9 @@ class Review(Base):
     value_rating: Mapped[int] = mapped_column(Integer, nullable=False)
     weekly_rent_paid: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     move_in_year: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    agent_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, index=True)
+    agent_name: Mapped[Optional[str]] = mapped_column(
+        String(255), nullable=True, index=True
+    )
     review_text: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
@@ -97,10 +98,19 @@ class Review(Base):
         # One review per user per property
         UniqueConstraint("user_id", "uprn", name="uq_reviews_user_uprn"),
         # Enforce 1 to 5 star range on all rating columns
-        CheckConstraint("overall_rating >= 1 AND overall_rating <= 5", name="ck_overall_rating"),
-        CheckConstraint("landlord_rating >= 1 AND landlord_rating <= 5", name="ck_landlord_rating"),
-        CheckConstraint("condition_rating >= 1 AND condition_rating <= 5", name="ck_condition_rating"),
-        CheckConstraint("value_rating >= 1 AND value_rating <= 5", name="ck_value_rating"),
+        CheckConstraint(
+            "overall_rating >= 1 AND overall_rating <= 5", name="ck_overall_rating"
+        ),
+        CheckConstraint(
+            "landlord_rating >= 1 AND landlord_rating <= 5", name="ck_landlord_rating"
+        ),
+        CheckConstraint(
+            "condition_rating >= 1 AND condition_rating <= 5",
+            name="ck_condition_rating",
+        ),
+        CheckConstraint(
+            "value_rating >= 1 AND value_rating <= 5", name="ck_value_rating"
+        ),
     )
 
     def __repr__(self) -> str:

@@ -1,6 +1,6 @@
 /**
- * ExploreSection, "Explore the Best Streets" with map image + feature bullets.
- * Matches Stitch interactive map teaser section.
+ * ExploreSection, Guildford safety teaser with map image and feature bullets.
+ * Matches the Stitch-style interactive map teaser section.
  */
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
@@ -56,8 +56,8 @@ export default function ExploreSection() {
                             },
                             {
                                 icon: 'diversity_3',
-                                title: 'Verified Reviews',
-                                text: 'Reviews only from verified student university emails.',
+                                title: 'Tenant Reviews',
+                                text: 'Read first-hand tenant feedback that is moderated before it appears publicly.',
                             },
                         ].map(({ icon, title, text }) => (
                             <motion.div

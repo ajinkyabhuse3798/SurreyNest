@@ -55,7 +55,7 @@ export default function Home() {
             {/* Features, "Everything you need" */}
             <FeaturesSection />
 
-            {/* Explore Best Streets */}
+            {/* Explore Guildford safety */}
             <ExploreSection />
 
             {/* Market timing */}

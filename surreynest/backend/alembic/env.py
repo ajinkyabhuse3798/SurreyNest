@@ -6,7 +6,6 @@ Wires our SQLAlchemy models and settings into Alembic so that:
 """
 
 import sys
-import os
 from logging.config import fileConfig
 from pathlib import Path
 

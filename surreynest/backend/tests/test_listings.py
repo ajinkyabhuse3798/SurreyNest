@@ -3,11 +3,15 @@
 from types import SimpleNamespace
 
 
-def test_listing_check_uses_manual_text_without_fetch(client, seeded_property, monkeypatch):
+def test_listing_check_uses_manual_text_without_fetch(
+    client, seeded_property, monkeypatch
+):
     """Manual postcode + pasted wording should avoid network fetches."""
 
     def _boom(*args, **kwargs):  # pragma: no cover - only called on regression
-        raise AssertionError("requests.get should not be called when postcode and listing text are provided")
+        raise AssertionError(
+            "requests.get should not be called when postcode and listing text are provided"
+        )
 
     monkeypatch.setattr("app.routers.listings.http_requests.get", _boom)
     monkeypatch.setattr(
@@ -39,7 +43,9 @@ def test_listing_check_uses_manual_text_without_fetch(client, seeded_property, m
     assert "pets" in issue_ids
 
 
-def test_listing_check_scrapes_page_text_for_compliance(client, seeded_property, monkeypatch):
+def test_listing_check_scrapes_page_text_for_compliance(
+    client, seeded_property, monkeypatch
+):
     """If listing text is not supplied, the checker should analyse scraped page text."""
 
     html = """
@@ -54,7 +60,9 @@ def test_listing_check_scrapes_page_text_for_compliance(client, seeded_property,
 
     monkeypatch.setattr(
         "app.routers.listings.http_requests.get",
-        lambda *args, **kwargs: SimpleNamespace(text=html, raise_for_status=lambda: None),
+        lambda *args, **kwargs: SimpleNamespace(
+            text=html, raise_for_status=lambda: None
+        ),
     )
     monkeypatch.setattr(
         "app.routers.listings.get_safety_score",

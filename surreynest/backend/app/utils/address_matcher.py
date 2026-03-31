@@ -117,7 +117,7 @@ def extract_number_and_street(normalised: str) -> Tuple[Optional[str], str]:
     match = HOUSE_NUM_REGEX.match(normalised)
     if match:
         number = match.group(1)
-        street = normalised[match.end():].strip()
+        street = normalised[match.end() :].strip()
         return (number, street)
     return (None, normalised)
 
@@ -134,7 +134,9 @@ def _build_property_lookup(
         Dict mapping normalised postcode to list of (uprn, norm_addr, raw_addr).
     """
     rows = db.execute(
-        text("SELECT uprn, address, postcode FROM properties WHERE postcode IS NOT NULL")
+        text(
+            "SELECT uprn, address, postcode FROM properties WHERE postcode IS NOT NULL"
+        )
     ).fetchall()
 
     lookup: Dict[str, List[Tuple[str, str, str]]] = {}
@@ -142,7 +144,9 @@ def _build_property_lookup(
         norm = normalise_address(address)
         lookup.setdefault(postcode, []).append((uprn, norm, address))
 
-    logger.info("Built property lookup: %d postcodes, %d properties", len(lookup), len(rows))
+    logger.info(
+        "Built property lookup: %d postcodes, %d properties", len(lookup), len(rows)
+    )
     return lookup
 
 
@@ -166,8 +170,14 @@ def match_hmo_to_properties(db: Session) -> Dict[str, str]:
     hmo_records = db.query(HmoRecord).all()
     if not hmo_records:
         logger.info("No HMO records to match")
-        return {"total": 0, "matched": 0, "exact": 0, "fuzzy": 0,
-                "unmatched_no_postcode": 0, "unmatched_no_address": 0}
+        return {
+            "total": 0,
+            "matched": 0,
+            "exact": 0,
+            "fuzzy": 0,
+            "unmatched_no_postcode": 0,
+            "unmatched_no_address": 0,
+        }
 
     logger.info("Matching %d HMO records to properties", len(hmo_records))
 
@@ -217,8 +227,7 @@ def match_hmo_to_properties(db: Session) -> Dict[str, str]:
             for uprn, prop_norm, _raw in candidates:
                 # Check if the HMO number appears anywhere and street matches
                 prop_num, prop_street = extract_number_and_street(prop_norm)
-                if (prop_street == hmo_street and
-                        hmo_num in prop_norm.split()):
+                if prop_street == hmo_street and hmo_num in prop_norm.split():
                     matched_uprn = uprn
                     confidence = "fuzzy"
                     break
@@ -251,7 +260,9 @@ def match_hmo_to_properties(db: Session) -> Dict[str, str]:
         "  Matched:    %d (exact=%d, fuzzy=%d)\n"
         "  Unmatched:  %d (no postcode=%d, no address match=%d)",
         stats["total"],
-        stats["matched"], stats["exact"], stats["fuzzy"],
+        stats["matched"],
+        stats["exact"],
+        stats["fuzzy"],
         stats["unmatched_no_postcode"] + stats["unmatched_no_address"],
         stats["unmatched_no_postcode"],
         stats["unmatched_no_address"],

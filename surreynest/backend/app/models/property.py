@@ -4,7 +4,6 @@ Core property records sourced from the EPC register.
 Spatial queries use PostGIS via a GIST index on (lat, lng).
 """
 
-
 from typing import Optional
 
 from datetime import date, datetime, timezone
@@ -69,9 +68,11 @@ class Property(Base):
     mains_gas_flag: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     floor_level: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     annual_energy_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
-    
+
     # v4.0.0 Scraped features, populated by scraped_rent_pipeline.py
-    actual_market_rent_weekly: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    actual_market_rent_weekly: Mapped[Optional[float]] = mapped_column(
+        Float, nullable=True
+    )
     price_drop_pct: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
 
     # v4.1.0: Real bedrooms ground truth
@@ -101,9 +102,7 @@ class Property(Base):
     # Note: a plain composite index is defined here; the DBA step
     # `CREATE INDEX ... USING GIST (ST_Point(lng, lat))` is handled in
     # the Alembic migration for full spatial support.
-    __table_args__ = (
-        Index("ix_properties_lat_lng", "lat", "lng"),
-    )
+    __table_args__ = (Index("ix_properties_lat_lng", "lat", "lng"),)
 
     def __repr__(self) -> str:
         return f"<Property uprn={self.uprn} postcode={self.postcode}>"

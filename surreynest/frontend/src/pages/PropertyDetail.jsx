@@ -345,12 +345,8 @@ export default function PropertyDetail() {
                                     : 'Rent prediction not available for this property.'}
                             </p>
                             {weeklyRent && (
-                                <div className="mt-4 w-full pt-4 border-t border-slate-100 flex justify-between">
-                                    <div className="text-left">
-                                        <p className="text-[10px] text-slate-400 font-bold uppercase">Model</p>
-                                        <p className="text-sm font-bold text-slate-600">{p.rent_prediction?.model_version || 'N/A'}</p>
-                                    </div>
-                                    <div className="text-right">
+                                <div className="mt-4 w-full pt-4 border-t border-slate-100 text-right">
+                                    <div>
                                         <p className="text-[10px] text-slate-400 font-bold uppercase">Est. Monthly</p>
                                         <p className="text-sm font-bold text-slate-800">£{Math.round(weeklyRent * 52 / 12)}</p>
                                     </div>
@@ -503,7 +499,7 @@ export default function PropertyDetail() {
                                             ))}
                                         </div>
                                         <p className="text-[11px] text-slate-400 text-center">
-                                            Based on {p.reviews.review_count} verified review{p.reviews.review_count !== 1 ? 's' : ''}
+                                            Based on {p.reviews.review_count} published review{p.reviews.review_count !== 1 ? 's' : ''}
                                         </p>
                                     </div>
                                 ) : (

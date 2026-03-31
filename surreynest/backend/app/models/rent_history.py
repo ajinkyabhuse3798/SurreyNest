@@ -32,9 +32,7 @@ class RentHistory(Base):
     postcode_sector: Mapped[str] = mapped_column(
         String(10), primary_key=True, nullable=False
     )
-    year: Mapped[int] = mapped_column(
-        Integer, primary_key=True, nullable=False
-    )
+    year: Mapped[int] = mapped_column(Integer, primary_key=True, nullable=False)
     median_sale_price: Mapped[float] = mapped_column(Float, nullable=False)
     implied_weekly_rent: Mapped[float] = mapped_column(Float, nullable=False)
     transaction_count: Mapped[int] = mapped_column(Integer, nullable=False)

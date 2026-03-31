@@ -99,7 +99,7 @@ async def get_public_stats(
         properties_indexed=properties,
         hmo_licensed=hmo_licensed,
         districts_covered=districts,
-        data_sources=4, # police.uk, EPC register, Land Registry, GBC HMO, always 4
+        data_sources=4,  # police.uk, EPC register, Land Registry, GBC HMO, always 4
         reviews_published=reviews,
         registered_users=users,
     )

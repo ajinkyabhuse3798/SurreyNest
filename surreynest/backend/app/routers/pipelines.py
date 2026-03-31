@@ -10,13 +10,13 @@ from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.pipeline_run import PipelineRun
-from app.services.auth_service import require_admin
+from app.services.internal_admin import require_internal_admin_key
 
 logger = logging.getLogger(__name__)
 
@@ -29,15 +29,14 @@ router = APIRouter()
 class PipelineStatusResponse(BaseModel):
     """Status of the last run for a single pipeline."""
 
+    model_config = ConfigDict(from_attributes=True)
+
     pipeline_name: str
     status: str
     started_at: Optional[datetime] = None
     finished_at: Optional[datetime] = None
     rows_processed: Optional[int] = None
     error_message: Optional[str] = None
-
-    class Config:
-        from_attributes = True
 
 
 class TriggerResponse(BaseModel):
@@ -63,11 +62,11 @@ KNOWN_PIPELINES = [
 @router.get(
     "/admin/pipelines/status",
     response_model=list[PipelineStatusResponse],
-    summary="Pipeline status (admin)",
+    summary="Pipeline status (internal only)",
 )
 async def get_pipeline_status(
     db: Session = Depends(get_db),
-    _admin=Depends(require_admin),
+    _internal_admin=Depends(require_internal_admin_key),
 ) -> list[PipelineStatusResponse]:
     """Return the most recent run for each known pipeline.
 
@@ -128,11 +127,11 @@ async def get_pipeline_status(
     "/admin/pipelines/{pipeline_name}/trigger",
     response_model=TriggerResponse,
     status_code=status.HTTP_202_ACCEPTED,
-    summary="Trigger pipeline (admin)",
+    summary="Trigger pipeline (internal only)",
 )
 async def trigger_pipeline(
     pipeline_name: str,
-    _admin=Depends(require_admin),
+    _internal_admin=Depends(require_internal_admin_key),
 ) -> TriggerResponse:
     """Manually trigger a pipeline to run in the background.
 

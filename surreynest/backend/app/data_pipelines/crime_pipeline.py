@@ -8,10 +8,9 @@ and upserts to the crime_data table.
 import logging
 from datetime import date, datetime, timezone
 from dateutil.relativedelta import relativedelta
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import pandas as pd
-from sqlalchemy import func, text
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
@@ -23,6 +22,7 @@ from app.data_pipelines.utils import (
     api_call_with_retry,
     run_pipeline_with_tracking,
 )
+from app.cache import delete_pattern
 from app.models.crime_data import CrimeData
 from app.models.pipeline_config import PipelineConfig
 from app.models.postcode_cache import PostcodeCache
@@ -43,6 +43,7 @@ TRACKED_CATEGORIES = [
     "vehicle-crime",
     "violent-crime",
     "public-order",
+    "bicycle-theft",
 ]
 
 # Safety score weighting (from api-reference.md)
@@ -55,6 +56,7 @@ CATEGORY_WEIGHTS = {
     "public-order": 1.5,
     "vehicle-crime": 1.0,
     "theft-from-the-person": 1.0,
+    "bicycle-theft": 1.5,
 }
 
 # Postcodes.io batch API
@@ -122,7 +124,10 @@ def get_unique_sectors_with_coords(
         for pc in sector_postcodes:
             cached = (
                 db.query(PostcodeCache)
-                .filter(PostcodeCache.postcode == pc, PostcodeCache.is_valid == True)
+                .filter(
+                    PostcodeCache.postcode == pc,
+                    PostcodeCache.is_valid.is_(True),
+                )
                 .first()
             )
             if cached:
@@ -206,12 +211,16 @@ def get_unique_sectors_with_coords(
 def _haversine_m(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
     """Return distance in metres between two lat/lng points."""
     import math
+
     R = 6_371_000
     dlat = math.radians(lat2 - lat1)
     dlng = math.radians(lng2 - lng1)
-    a = (math.sin(dlat / 2) ** 2
-         + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2))
-         * math.sin(dlng / 2) ** 2)
+    a = (
+        math.sin(dlat / 2) ** 2
+        + math.cos(math.radians(lat1))
+        * math.cos(math.radians(lat2))
+        * math.sin(dlng / 2) ** 2
+    )
     return R * 2 * math.asin(math.sqrt(a))
 
 
@@ -265,7 +274,9 @@ def fetch_crimes_for_location(
                     try:
                         clat = float(loc.get("latitude") or 0)
                         clng = float(loc.get("longitude") or 0)
-                        dist = _haversine_m(lat, lng, clat, clng) if (clat and clng) else 0
+                        dist = (
+                            _haversine_m(lat, lng, clat, clng) if (clat and clng) else 0
+                        )
                     except (TypeError, ValueError):
                         dist = 0
 
@@ -276,7 +287,12 @@ def fetch_crimes_for_location(
                         dropped += 1
                 logger.debug(
                     "lat=%.4f lng=%.4f %s: %d kept, %d dropped (>%dm)",
-                    lat, lng, month, kept, dropped, _SECTOR_RADIUS_M,
+                    lat,
+                    lng,
+                    month,
+                    kept,
+                    dropped,
+                    _SECTOR_RADIUS_M,
                 )
         except Exception:
             logger.warning(
@@ -355,7 +371,9 @@ def compute_safety_scores(
     sector_sums = aggregated.groupby("postcode_sector")["weighted_count"].sum()
 
     # Normaliser = 95th percentile
-    normaliser = sector_sums.quantile(0.95) if len(sector_sums) > 1 else sector_sums.max()
+    normaliser = (
+        sector_sums.quantile(0.95) if len(sector_sums) > 1 else sector_sums.max()
+    )
     if normaliser == 0:
         normaliser = 1.0
 
@@ -396,13 +414,15 @@ def upsert_crime_data(aggregated: pd.DataFrame, db: Session) -> int:
     records = []
     for _, row in aggregated.iterrows():
         month_date = datetime.strptime(row["month"], "%Y-%m").date()
-        records.append({
-            "postcode_sector": row["postcode_sector"],
-            "category": row["category"],
-            "month": month_date,
-            "count": int(row["count"]),
-            "updated_at": now,
-        })
+        records.append(
+            {
+                "postcode_sector": row["postcode_sector"],
+                "category": row["category"],
+                "month": month_date,
+                "count": int(row["count"]),
+                "updated_at": now,
+            }
+        )
 
     # Bulk upsert in batches
     num_batches = 0
@@ -458,10 +478,17 @@ def run_crime_pipeline(db: Optional[Session] = None) -> int:
 
         # Generate month range
         months = _get_months_range(12)
-        logger.info("Fetching crime data for %d months: %s to %s", len(months), months[-1], months[0])
+        logger.info(
+            "Fetching crime data for %d months: %s to %s",
+            len(months),
+            months[-1],
+            months[0],
+        )
 
         # Fetch crimes for each sector
-        rate_limiter = RateLimiter(requests_per_second=10.0)  # Police API: ~10 req/sec safe limit
+        rate_limiter = RateLimiter(
+            requests_per_second=10.0
+        )  # Police API: ~10 req/sec safe limit
         all_crimes: Dict[str, List[Dict]] = {}
 
         for i, (sector, (lat, lng)) in enumerate(sector_coords.items()):
@@ -480,7 +507,11 @@ def run_crime_pipeline(db: Optional[Session] = None) -> int:
 
         # Compute safety scores
         scores, normaliser = compute_safety_scores(aggregated)
-        logger.info("Computed safety scores for %d sectors (normaliser=%.2f)", len(scores), normaliser)
+        logger.info(
+            "Computed safety scores for %d sectors (normaliser=%.2f)",
+            len(scores),
+            normaliser,
+        )
 
         # Persist the 95th-percentile normaliser to pipeline_config so
         # score_service can read it at request time instead of re-scanning.
@@ -488,8 +519,8 @@ def run_crime_pipeline(db: Optional[Session] = None) -> int:
             key="safety_normaliser_p95",
             value=normaliser,
             description="95th-percentile weighted crime sum across all sectors. "
-                        "Used by score_service.get_safety_score() to normalise "
-                        "per-sector scores without a full-table scan.",
+            "Used by score_service.get_safety_score() to normalise "
+            "per-sector scores without a full-table scan.",
             updated_at=datetime.now(timezone.utc),
             source="crime_pipeline",
         )
@@ -503,11 +534,30 @@ def run_crime_pipeline(db: Optional[Session] = None) -> int:
         )
         db.execute(config_stmt)
         db.commit()
-        logger.info("Persisted safety_normaliser_p95=%.2f to pipeline_config", normaliser)
+        logger.info(
+            "Persisted safety_normaliser_p95=%.2f to pipeline_config", normaliser
+        )
+
+        # Flush all caches that depend on crime data so they pick up fresh scores.
+        # heatmap:sectors uses _compute_safety_score (now score_service) with the
+        # new normaliser; safety:normaliser_p95 is the Redis-cached normaliser value;
+        # safety:rankings and safety:intelligence:* cache derived safety outputs.
+        for pattern in [
+            "heatmap:*",
+            "safety:normaliser_p95",
+            "safety:rankings",
+            "safety:intelligence:*",
+        ]:
+            deleted = delete_pattern(pattern)
+            logger.info("Flushed cache pattern '%s' (%d keys deleted)", pattern, deleted)
 
         # Log sample scores
         for sector in sorted(scores.keys()):
-            if sector.startswith("GU1 ") or sector.startswith("GU2 ") or sector.startswith("GU3 "):
+            if (
+                sector.startswith("GU1 ")
+                or sector.startswith("GU2 ")
+                or sector.startswith("GU3 ")
+            ):
                 logger.info("Safety score %s: %.1f", sector, scores[sector])
 
         # Upsert to DB

@@ -97,7 +97,9 @@ def _fetch_flood_areas(lat: float, lng: float, dist_km: int = 3) -> List[Dict]:
         return []
 
 
-def _fetch_current_warnings(lat: float, lng: float, dist_km: int = 5) -> Dict[str, Dict]:
+def _fetch_current_warnings(
+    lat: float, lng: float, dist_km: int = 5
+) -> Dict[str, Dict]:
     """Fetch current flood warnings near a location.
 
     Args:
@@ -266,21 +268,23 @@ def run_flood_pipeline(db: Optional[Session] = None) -> int:
             if closest_area is None:
                 # No flood areas nearby, still record as no risk
                 for pc in grid_postcodes.get(grid_key, [rep_pc]):
-                    records_to_upsert.append({
-                        "postcode": pc,
-                        "area_code": "NONE",
-                        "label": "No flood area nearby",
-                        "description": None,
-                        "county": None,
-                        "river_or_sea": None,
-                        "area_lat": None,
-                        "area_lng": None,
-                        "distance_km": None,
-                        "current_severity": None,
-                        "severity_label": None,
-                        "message": None,
-                        "last_updated": now,
-                    })
+                    records_to_upsert.append(
+                        {
+                            "postcode": pc,
+                            "area_code": "NONE",
+                            "label": "No flood area nearby",
+                            "description": None,
+                            "county": None,
+                            "river_or_sea": None,
+                            "area_lat": None,
+                            "area_lng": None,
+                            "distance_km": None,
+                            "current_severity": None,
+                            "severity_label": None,
+                            "message": None,
+                            "last_updated": now,
+                        }
+                    )
                 continue
 
             # Get area code and check for active warnings
@@ -303,21 +307,25 @@ def run_flood_pipeline(db: Optional[Session] = None) -> int:
                     else None
                 )
 
-                records_to_upsert.append({
-                    "postcode": pc,
-                    "area_code": area_code,
-                    "label": closest_area.get("label", ""),
-                    "description": closest_area.get("description"),
-                    "county": closest_area.get("county"),
-                    "river_or_sea": closest_area.get("riverOrSea"),
-                    "area_lat": float(area_lat) if area_lat else None,
-                    "area_lng": float(area_lng) if area_lng else None,
-                    "distance_km": round(dist_km, 2) if dist_km is not None else None,
-                    "current_severity": warning_data.get("severity"),
-                    "severity_label": warning_data.get("severity_label"),
-                    "message": warning_data.get("message"),
-                    "last_updated": now,
-                })
+                records_to_upsert.append(
+                    {
+                        "postcode": pc,
+                        "area_code": area_code,
+                        "label": closest_area.get("label", ""),
+                        "description": closest_area.get("description"),
+                        "county": closest_area.get("county"),
+                        "river_or_sea": closest_area.get("riverOrSea"),
+                        "area_lat": float(area_lat) if area_lat else None,
+                        "area_lng": float(area_lng) if area_lng else None,
+                        "distance_km": (
+                            round(dist_km, 2) if dist_km is not None else None
+                        ),
+                        "current_severity": warning_data.get("severity"),
+                        "severity_label": warning_data.get("severity_label"),
+                        "message": warning_data.get("message"),
+                        "last_updated": now,
+                    }
+                )
 
             # Rate limit
             time.sleep(API_DELAY_SECONDS)

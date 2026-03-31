@@ -22,11 +22,9 @@ class Settings:
 
     Attributes:
         database_url: PostgreSQL connection string including PostGIS-capable DB.
-        secret_key: 64-char hex secret for JWT signing, never hardcode.
-        algorithm: JWT signing algorithm (HS256).
-        access_token_expire_days: JWT lifetime in days.
         environment: One of "development", "staging", "production".
         allowed_origins: Comma-separated CORS origins.
+        internal_admin_key: Shared secret for internal moderation/ops endpoints.
     """
 
     # ── Database ────────────────────────────────────────────────────────────
@@ -43,16 +41,12 @@ class Settings:
     db_pool_size: int = int(os.getenv("DB_POOL_SIZE", "5"))
     db_max_overflow: int = int(os.getenv("DB_MAX_OVERFLOW", "5"))
 
-    # ── Auth ────────────────────────────────────────────────────────────────
-    secret_key: str = os.getenv("SECRET_KEY", "")
-    algorithm: str = os.getenv("ALGORITHM", "HS256")
-    access_token_expire_days: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_DAYS", "30"))
-
     # ── App ─────────────────────────────────────────────────────────────────
     environment: str = os.getenv("ENVIRONMENT", "development")
     allowed_origins: list[str] = os.getenv(
         "ALLOWED_ORIGINS", "http://localhost:5173"
     ).split(",")
+    internal_admin_key: str = os.getenv("INTERNAL_ADMIN_KEY", "")
 
     # ── ML Model ───────────────────────────────────────────────────────────
     ml_model_version: str = os.getenv("ML_MODEL_VERSION", "v7.0.0")
@@ -80,18 +74,10 @@ class Settings:
 
     def __init__(self) -> None:
         """Validate critical settings on startup."""
-        _insecure_keys = {"", "CHANGE_ME_IN_PRODUCTION", "changeme", "secret", "dev"}
-        if not self.secret_key or self.secret_key.lower() in _insecure_keys:
-            if self.environment == "production":
-                raise RuntimeError(
-                    "SECRET_KEY must be set to a secure value in production. "
-                    "Generate one with: python -c \"import secrets; print(secrets.token_hex(32))\""
-                )
-            else:
-                logger.warning(
-                    "SECRET_KEY is not set or is insecure. "
-                    "Set a strong SECRET_KEY before deploying to production."
-                )
+        if self.environment == "production" and not self.internal_admin_key:
+            raise RuntimeError(
+                "INTERNAL_ADMIN_KEY must be set in production for internal ops routes."
+            )
         logger.info("Settings loaded. environment=%s", self.environment)
 
 

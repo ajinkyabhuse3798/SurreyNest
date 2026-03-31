@@ -253,7 +253,11 @@ def get_model_internals() -> Optional[Dict]:
         step_type = type(step).__name__
         if step_type in ("StandardScaler", "RobustScaler", "MinMaxScaler"):
             scaler = step
-        elif step_type in ("XGBRegressor", "XGBClassifier", "GradientBoostingRegressor"):
+        elif step_type in (
+            "XGBRegressor",
+            "XGBClassifier",
+            "GradientBoostingRegressor",
+        ):
             xgb_model = step
 
     # Fallback to positional if type detection fails (backwards compat).
@@ -314,7 +318,9 @@ def _validate_feature(name: str, value: float) -> None:
             )
 
 
-def _compute_location_score(distance_to_town_km: float, distance_to_uni_km: float) -> float:
+def _compute_location_score(
+    distance_to_town_km: float, distance_to_uni_km: float
+) -> float:
     """Gaussian proximity score: max(town_proximity, uni_proximity)."""
     import math
 
@@ -349,9 +355,15 @@ def build_prediction_features(
     energy_ordinal = ENERGY_ORDINAL.get(str(energy_rating).upper(), 3)
     potential_ordinal = ENERGY_ORDINAL.get(str(potential_rating).upper(), 4)
 
-    property_type = normalise_property_type(property_features.get("property_type", "Flat"))
+    property_type = normalise_property_type(
+        property_features.get("property_type", "Flat")
+    )
     num_rooms = property_features.get("num_rooms", FEATURE_DEFAULTS["num_rooms"])
-    rooms_val = float(num_rooms) if num_rooms is not None else float(FEATURE_DEFAULTS["num_rooms"])
+    rooms_val = (
+        float(num_rooms)
+        if num_rooms is not None
+        else float(FEATURE_DEFAULTS["num_rooms"])
+    )
     floor_val = float(floor_area)
     rooms_per_m2 = round(rooms_val / max(floor_val, 10.0), 4)
 
@@ -377,7 +389,9 @@ def build_prediction_features(
     postcode = property_features.get("postcode", "")
     postcode_sector = extract_postcode_sector(postcode) if postcode else ""
     anchor_bucket = "Flat" if property_type == "Flat" else "House"
-    sector_entry = _sector_rent_map.get(postcode_sector, FEATURE_DEFAULTS["sector_median_rent"])
+    sector_entry = _sector_rent_map.get(
+        postcode_sector, FEATURE_DEFAULTS["sector_median_rent"]
+    )
     if isinstance(sector_entry, dict):
         sector_median_rent = float(
             sector_entry.get(anchor_bucket, FEATURE_DEFAULTS["sector_median_rent"])
@@ -398,8 +412,12 @@ def build_prediction_features(
         "uni_proximity_score": uni_proximity_score,
         "station_proximity_score": station_proximity_score,
         "accessibility_score": accessibility_score,
-        "safety_score": float(property_features.get("safety_score", FEATURE_DEFAULTS["safety_score"])),
-        "sale_count": float(property_features.get("sale_count") or FEATURE_DEFAULTS["sale_count"]),
+        "safety_score": float(
+            property_features.get("safety_score", FEATURE_DEFAULTS["safety_score"])
+        ),
+        "sale_count": float(
+            property_features.get("sale_count") or FEATURE_DEFAULTS["sale_count"]
+        ),
         "sector_median_rent": sector_median_rent,
     }
 
@@ -429,10 +447,14 @@ def build_prediction_features(
 
     energy_cost = property_features.get("annual_energy_cost")
     computed["annual_energy_cost"] = float(
-        energy_cost if energy_cost is not None else FEATURE_DEFAULTS["annual_energy_cost"]
+        energy_cost
+        if energy_cost is not None
+        else FEATURE_DEFAULTS["annual_energy_cost"]
     )
 
-    computed["energy_improvement_gap"] = float(max(-3, min(6, potential_ordinal - energy_ordinal)))
+    computed["energy_improvement_gap"] = float(
+        max(-3, min(6, potential_ordinal - energy_ordinal))
+    )
 
     drop_pct = property_features.get("price_drop_pct")
     computed["price_drop_pct"] = float(
@@ -488,7 +510,11 @@ def predict_rent(property_features: Dict) -> Optional[Dict]:
     try:
         computed = build_prediction_features(property_features, _feature_columns)
         if computed is None:
-            logger.warning("Cannot predict: floor_area_m2 is None")
+            logger.warning(
+                "Cannot predict rent for postcode=%s: floor_area_m2 is missing or None "
+                "(required field — prediction aborted)",
+                property_features.get("postcode", "unknown"),
+            )
             return None
 
         for name, value in computed.items():
@@ -500,12 +526,16 @@ def predict_rent(property_features: Dict) -> Optional[Dict]:
                 feature_values.append(float(computed[column]))
             else:
                 default = FEATURE_DEFAULTS.get(column, 0.0)
-                logger.debug("Feature '%s' not in computed, using default %.2f", column, default)
+                logger.debug(
+                    "Feature '%s' not in computed, using default %.2f", column, default
+                )
                 feature_values.append(float(default))
 
         features = pd.DataFrame([feature_values], columns=_feature_columns)
         raw_prediction = _model.predict(features)[0]
-        raw_rent = float(np.expm1(raw_prediction)) if _log_target else float(raw_prediction)
+        raw_rent = (
+            float(np.expm1(raw_prediction)) if _log_target else float(raw_prediction)
+        )
 
         property_type = normalise_property_type(property_features.get("property_type"))
         postcode = property_features.get("postcode", "")
@@ -518,7 +548,9 @@ def predict_rent(property_features: Dict) -> Optional[Dict]:
             postcode,
         )
 
-        interval_half_width = interval_half_width_for_type(property_type, _interval_artifact)
+        interval_half_width = interval_half_width_for_type(
+            property_type, _interval_artifact
+        )
         rent_low = round(max(predicted_rent - interval_half_width, 0.0), 2)
         rent_high = round(predicted_rent + interval_half_width, 2)
 
@@ -549,5 +581,11 @@ def predict_rent(property_features: Dict) -> Optional[Dict]:
         }
 
     except Exception:
-        logger.error("Prediction failed", exc_info=True)
+        logger.error(
+            "Prediction failed for postcode=%s property_type=%s floor_area=%.1f",
+            property_features.get("postcode", "unknown"),
+            property_features.get("property_type", "unknown"),
+            float(property_features.get("floor_area_m2") or 0),
+            exc_info=True,
+        )
         return None

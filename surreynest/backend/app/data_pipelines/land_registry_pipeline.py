@@ -26,17 +26,34 @@ logger = logging.getLogger(__name__)
 DATA_RAW = Path(__file__).resolve().parents[2] / "data" / "raw"
 PP_DIR = DATA_RAW / "land_registry"
 HPI_DIR = DATA_RAW / "hpi"
-PROCESSED_PATH = Path(__file__).resolve().parents[2] / "data" / "processed" / "land_registry_guildford.csv"
+PROCESSED_PATH = (
+    Path(__file__).resolve().parents[2]
+    / "data"
+    / "processed"
+    / "land_registry_guildford.csv"
+)
 
 # ── Allowed Guildford postcode districts ─────────────────────────────────────
 ALLOWED_DISTRICTS = {"GU1", "GU2", "GU3", "GU4", "GU5", "GU7"}
 
 # ── Land Registry CSV columns (no headers in bulk download) ──────────────────
 COLUMN_NAMES = [
-    "transaction_id", "price", "date_of_transfer", "postcode",
-    "property_type", "old_new", "duration", "paon", "saon",
-    "street", "locality", "town", "district", "county",
-    "ppd_category", "record_status",
+    "transaction_id",
+    "price",
+    "date_of_transfer",
+    "postcode",
+    "property_type",
+    "old_new",
+    "duration",
+    "paon",
+    "saon",
+    "street",
+    "locality",
+    "town",
+    "district",
+    "county",
+    "ppd_category",
+    "record_status",
 ]
 
 # Property type code mapping
@@ -61,11 +78,13 @@ YIELD_BY_TYPE = {
 
 # Forward projection: annualised growth rate used when projecting from latest HPI date to today.
 # UK HPI has ~2 month lag; fallback covers periods where trailing 12-month data is absent.
-ANNUAL_FORWARD_GROWTH_FALLBACK = 0.04   # 4% per annum (South East England long-run average)
+ANNUAL_FORWARD_GROWTH_FALLBACK = (
+    0.04  # 4% per annum (South East England long-run average)
+)
 
 # Only project forward if gap is meaningfully large (avoids floating-point noise
 # when HPI data is near-current, e.g. last month's data on a nightly run).
-FORWARD_PROJECTION_MIN_YEARS = 0.05    # ~18 days
+FORWARD_PROJECTION_MIN_YEARS = 0.05  # ~18 days
 
 
 def _normalise_postcode(pc: str) -> str:
@@ -187,7 +206,10 @@ def compute_hpi_adjustment(
 
     # Log which types use type-specific vs blended index
     available_types = list(type_maps.keys())
-    logger.info("Type-specific HPI adjustment enabled for: %s (fallback: blended Index)", available_types)
+    logger.info(
+        "Type-specific HPI adjustment enabled for: %s (fallback: blended Index)",
+        available_types,
+    )
 
     def _get_factor(row):
         dt, ptype = row
@@ -221,7 +243,8 @@ def compute_forward_growth_rate(hpi_df: pd.DataFrame) -> float:
     if len(hpi_df) < 13:
         logger.info(
             "Fewer than 13 HPI months (%d rows), using fallback growth %.1f%%",
-            len(hpi_df), ANNUAL_FORWARD_GROWTH_FALLBACK * 100,
+            len(hpi_df),
+            ANNUAL_FORWARD_GROWTH_FALLBACK * 100,
         )
         return ANNUAL_FORWARD_GROWTH_FALLBACK
 
@@ -235,7 +258,9 @@ def compute_forward_growth_rate(hpi_df: pd.DataFrame) -> float:
     raw_growth = (idx_now / idx_12m_ago) - 1.0
     clamped = max(0.0, min(0.10, raw_growth))
     if raw_growth != clamped:
-        logger.warning("Raw HPI growth %.1f%% clamped to %.1f%%", raw_growth * 100, clamped * 100)
+        logger.warning(
+            "Raw HPI growth %.1f%% clamped to %.1f%%", raw_growth * 100, clamped * 100
+        )
     logger.info("Trailing 12-month HPI growth: %.2f%%", clamped * 100)
     return clamped
 
@@ -297,7 +322,9 @@ def clean_land_registry_data() -> pd.DataFrame:
     df["postcode"] = df["postcode"].apply(_normalise_postcode)
 
     # ── Map property type ────────────────────────────────────────────────
-    df["property_type_label"] = df["property_type"].map(PROPERTY_TYPE_MAP).fillna("Other")
+    df["property_type_label"] = (
+        df["property_type"].map(PROPERTY_TYPE_MAP).fillna("Other")
+    )
 
     # ── HPI time-adjustment ──────────────────────────────────────────────
     hpi_df = load_hpi_guildford()
@@ -307,13 +334,20 @@ def clean_land_registry_data() -> pd.DataFrame:
         )
         df["adjusted_price"] = (df["price"] * df["hpi_factor"]).round(0)
         # Log per-type factor stats to verify type-specific adjustment is working
-        for ptype, label in [("F","Flat"), ("D","Detached"), ("S","Semi"), ("T","Terraced")]:
+        for ptype, label in [
+            ("F", "Flat"),
+            ("D", "Detached"),
+            ("S", "Semi"),
+            ("T", "Terraced"),
+        ]:
             mask = df["property_type"] == ptype
             if mask.any():
                 logger.info(
                     "  HPI factor %s: mean=%.3f, median=%.3f (n=%d)",
-                    label, df.loc[mask, "hpi_factor"].mean(),
-                    df.loc[mask, "hpi_factor"].median(), mask.sum(),
+                    label,
+                    df.loc[mask, "hpi_factor"].mean(),
+                    df.loc[mask, "hpi_factor"].median(),
+                    mask.sum(),
                 )
         logger.info(
             "HPI adjustment applied (type-specific): overall mean factor=%.3f, median=%.3f",
@@ -337,18 +371,27 @@ def clean_land_registry_data() -> pd.DataFrame:
             logger.info(
                 "Forward projection: HPI latest=%s → today=%s, gap=%.2f yrs, "
                 "growth=%.2f%%, factor=%.4f",
-                latest_hpi_date.strftime("%b %Y"), today.strftime("%Y-%m-%d"),
-                years_forward, annual_growth * 100, forward_factor,
+                latest_hpi_date.strftime("%b %Y"),
+                today.strftime("%Y-%m-%d"),
+                years_forward,
+                annual_growth * 100,
+                forward_factor,
             )
         elif years_forward < 0:
-            logger.warning("HPI date %s is future, skipping forward projection", latest_hpi_date)
+            logger.warning(
+                "HPI date %s is future, skipping forward projection", latest_hpi_date
+            )
         else:
-            logger.info("HPI data is current (gap=%.3f yrs), no projection needed", years_forward)
+            logger.info(
+                "HPI data is current (gap=%.3f yrs), no projection needed",
+                years_forward,
+            )
 
     # ── Compute implied weekly rent (tiered by property type) ────────────
     df["implied_weekly_rent"] = df.apply(
         lambda row: round(
-            row["adjusted_price"] * YIELD_BY_TYPE.get(row["property_type"], 0.038) / 52, 2
+            row["adjusted_price"] * YIELD_BY_TYPE.get(row["property_type"], 0.038) / 52,
+            2,
         ),
         axis=1,
     )
@@ -362,13 +405,17 @@ def clean_land_registry_data() -> pd.DataFrame:
     )
 
     # ── Aggregate per postcode ───────────────────────────────────────────
-    agg_df = df.groupby("postcode").agg(
-        median_sale_price=("adjusted_price", "median"),
-        mean_sale_price=("adjusted_price", "mean"),
-        sale_count=("adjusted_price", "count"),
-        median_weekly_rent=("implied_weekly_rent", "median"),
-        mean_weekly_rent=("implied_weekly_rent", "mean"),
-    ).reset_index()
+    agg_df = (
+        df.groupby("postcode")
+        .agg(
+            median_sale_price=("adjusted_price", "median"),
+            mean_sale_price=("adjusted_price", "mean"),
+            sale_count=("adjusted_price", "count"),
+            median_weekly_rent=("implied_weekly_rent", "median"),
+            mean_weekly_rent=("implied_weekly_rent", "mean"),
+        )
+        .reset_index()
+    )
 
     # ── Normalise to 0 to 1 area_value_index ────────────────────────────────
     min_price = agg_df["median_sale_price"].min()
@@ -381,7 +428,9 @@ def clean_land_registry_data() -> pd.DataFrame:
 
     logger.info(
         "Aggregated to %d postcodes. Area value index range: £%d  to  £%d",
-        len(agg_df), int(min_price), int(max_price),
+        len(agg_df),
+        int(min_price),
+        int(max_price),
     )
 
     return agg_df
@@ -417,14 +466,16 @@ def upsert_to_db(df: pd.DataFrame, db: Session) -> int:
 
     records = []
     for _, row in df.iterrows():
-        records.append({
-            "postcode": row["postcode"],
-            "median_sale_price": float(row["median_sale_price"]),
-            "area_value_index": float(row["area_value_index"]),
-            "implied_weekly_rent": float(row["median_weekly_rent"]),
-            "sale_count": float(row["sale_count"]),
-            "updated_at": now,
-        })
+        records.append(
+            {
+                "postcode": row["postcode"],
+                "median_sale_price": float(row["median_sale_price"]),
+                "area_value_index": float(row["area_value_index"]),
+                "implied_weekly_rent": float(row["median_weekly_rent"]),
+                "sale_count": float(row["sale_count"]),
+                "updated_at": now,
+            }
+        )
 
     stmt = insert(AreaValue).values(records)
     stmt = stmt.on_conflict_do_update(
@@ -443,13 +494,13 @@ def upsert_to_db(df: pd.DataFrame, db: Session) -> int:
     elapsed = time.time() - start_time
     logger.info(
         "Upserted %d area values to DB in %.1fs (min=%.4f, max=%.4f, mean=%.4f)",
-        len(records), elapsed,
+        len(records),
+        elapsed,
         df["area_value_index"].min(),
         df["area_value_index"].max(),
         df["area_value_index"].mean(),
     )
     return len(records)
-
 
 
 def run_land_registry_pipeline(db: Optional[Session] = None) -> int:
@@ -477,7 +528,8 @@ def run_land_registry_pipeline(db: Optional[Session] = None) -> int:
             rows = upsert_to_db(df, db)
             logger.info(
                 "Land Registry pipeline complete: %d postcodes, %d upserted",
-                len(df), rows,
+                len(df),
+                rows,
             )
         except Exception:
             logger.error("DB upsert failed, CSV was saved", exc_info=True)

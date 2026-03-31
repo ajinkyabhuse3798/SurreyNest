@@ -130,9 +130,7 @@ def start_pipeline_run(pipeline_name: str, db: Optional[Session] = None) -> int:
         db.add(run)
         db.commit()
         db.refresh(run)
-        logger.info(
-            "Pipeline run started: %s (id=%d)", pipeline_name, run.id
-        )
+        logger.info("Pipeline run started: %s (id=%d)", pipeline_name, run.id)
         return run.id
     except Exception:
         db.rollback()
@@ -209,4 +207,3 @@ def run_pipeline_with_tracking(
         raise
     finally:
         db.close()
-

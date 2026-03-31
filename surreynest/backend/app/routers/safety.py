@@ -74,6 +74,7 @@ async def get_safety_rankings(
     """Get area rankings: top 5 safest and top 5 hotspot areas."""
     return si.get_area_rankings(db)
 
+
 @router.get(
     "/safety/map",
     response_model=dict,

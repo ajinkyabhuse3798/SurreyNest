@@ -9,7 +9,7 @@ import logging
 import re
 from datetime import datetime, date, timezone
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Optional
 
 import pandas as pd
 from sqlalchemy.orm import Session
@@ -79,8 +79,6 @@ def _parse_date(date_str: str) -> Optional[date]:
             continue
     logger.warning("Could not parse date: %s", date_str)
     return None
-
-
 
 
 def load_hmo_register(raw_path: Optional[Path] = None) -> pd.DataFrame:
@@ -158,9 +156,21 @@ def upsert_to_db(df: pd.DataFrame, geocode_map: Dict, db: Session) -> int:
                 postcode=pc,
                 lat=lat,
                 lng=lng,
-                licence_number=str(row.get("Licence number", "")) if pd.notna(row.get("Licence number")) else None,
-                max_occupants=int(row["max_occupants_parsed"]) if pd.notna(row.get("max_occupants_parsed")) else None,
-                licence_holder=str(row.get("Licensee", "")) if pd.notna(row.get("Licensee")) else None,
+                licence_number=(
+                    str(row.get("Licence number", ""))
+                    if pd.notna(row.get("Licence number"))
+                    else None
+                ),
+                max_occupants=(
+                    int(row["max_occupants_parsed"])
+                    if pd.notna(row.get("max_occupants_parsed"))
+                    else None
+                ),
+                licence_holder=(
+                    str(row.get("Licensee", ""))
+                    if pd.notna(row.get("Licensee"))
+                    else None
+                ),
                 expiry_date=row.get("expiry_date_parsed"),
                 is_active=bool(row.get("is_active", False)),
                 last_updated=now,
@@ -205,11 +215,14 @@ def run_hmo_pipeline(db: Optional[Session] = None) -> int:
         # Match HMO records to properties by address
         try:
             from app.utils.address_matcher import match_hmo_to_properties
+
             stats = match_hmo_to_properties(db)
             logger.info(
                 "UPRN matching: %d/%d matched (exact=%d, fuzzy=%d)",
-                stats["matched"], stats["total"],
-                stats["exact"], stats["fuzzy"],
+                stats["matched"],
+                stats["total"],
+                stats["exact"],
+                stats["fuzzy"],
             )
         except Exception:
             logger.error(

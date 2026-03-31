@@ -1,70 +1,85 @@
 # Model Evaluation Report
 
-**Model:** rent_model v7.0.0
-**Generated:** 2026-03-26 00:01
-
-> Note: the calibrated figures below are generated from a calibration artifact fit on the full out-of-fold set. A leakage-free nested audit on 2026-03-26 measured v7 at roughly `MAE £55.73` and `R² 0.8086`, and still preferred v7 over the `v6.2.0` backup.
+**Model:** rent_model v8.0.0
+**Generated:** 2026-03-30 22:28
 
 ---
 
 ## 1. Primary Metrics
 
 - Evaluation method: `LOSO(11)` on real observed rents only
-- MAE: `£52.50/week`
-- RMSE: `£75.43/week`
-- R²: `0.8307`
-- MAPE: `11.53%`
+- MAE: `£53.36/week`
+- RMSE: `£75.91/week`
+- R²: `0.8286`
+- MAPE: `11.71%`
 
 ## 2. Calibration Lift
 
-- Raw out-of-fold MAE: `£55.94/week`
-- Calibrated out-of-fold MAE: `£52.50/week`
-- Raw out-of-fold R²: `0.8008`
-- Calibrated out-of-fold R²: `0.8307`
+- Raw out-of-fold MAE: `£57.54/week`
+- Calibrated out-of-fold MAE: `£53.36/week`
+- Raw out-of-fold R²: `0.7981`
+- Calibrated out-of-fold R²: `0.8286`
 
 ## 3. Interval Quality
 
 - Nominal interval: `80%`
 - Observed coverage: `79.9%`
-- Average half-width: `£79.39/week`
+- Average half-width: `£80.50/week`
 
 ## 4. Dataset
 
 - Training rows: `497`
 - Postcode-sector groups: `11`
-- Feature count: `36`
+- Feature count: `30`
 
 ## 5. Top Features
 
 | Rank | Feature | Importance |
 |------|---------|------------|
-| 1 | ptype_Flat | 0.3733 |
-| 2 | actual_bedrooms | 0.3404 |
-| 3 | floor_area_m2 | 0.1143 |
-| 4 | ptype_Detached | 0.0290 |
-| 5 | rooms_per_m2 | 0.0132 |
-| 6 | ptype_Semi-Detached | 0.0131 |
-| 7 | annual_energy_cost | 0.0113 |
-| 8 | m2_per_bedroom | 0.0108 |
-| 9 | energy_rating_ordinal | 0.0080 |
-| 10 | accessibility_score | 0.0076 |
-| 11 | distance_to_town_km | 0.0071 |
-| 12 | energy_improvement_gap | 0.0068 |
-| 13 | safety_score | 0.0067 |
-| 14 | town_proximity_score | 0.0064 |
-| 15 | station_proximity_score | 0.0063 |
+| 1 | actual_bedrooms | 0.5538 |
+| 2 | ptype_Flat | 0.1403 |
+| 3 | floor_area_m2 | 0.1365 |
+| 4 | energy_improvement_gap | 0.0173 |
+| 5 | is_studio | 0.0165 |
+| 6 | m2_per_bedroom | 0.0159 |
+| 7 | annual_energy_cost | 0.0145 |
+| 8 | ptype_Semi-Detached | 0.0141 |
+| 9 | rooms_per_m2 | 0.0101 |
+| 10 | accessibility_score | 0.0092 |
+| 11 | town_proximity_score | 0.0091 |
+| 12 | safety_score | 0.0089 |
+| 13 | sector_median_rent | 0.0088 |
+| 14 | station_proximity_score | 0.0080 |
+| 15 | energy_rating_ordinal | 0.0076 |
 
 ![Feature Importance](plots/feature_importance.png)
 
 ## 6. Prediction Distribution
 
-- Mean: `£523.79/week`
-- Median: `£513.84/week`
-- Std dev: `£163.82`
-- Range: `£209.73` to `£911.97`
+- Mean: `£523.75/week`
+- Median: `£518.05/week`
+- Std dev: `£161.81`
+- Range: `£215.66` to `£925.74`
 
 ![Prediction Distribution](plots/prediction_distribution.png)
 
 ## 7. Residual View
 
 ![Residuals](plots/residuals.png)
+
+## 8. Per-Sector Performance
+
+Sectors sorted by MAE (best → worst). Any sector with MAE > £80/wk warrants investigation.
+
+| Sector | N | MAE £/wk | RMSE £/wk | Flag |
+|--------|---|----------|-----------|------|
+| GU1 1 | 44 | 30.21 | 44.34 | ✅ |
+| GU2 9 | 50 | 41.82 | 55.73 |  |
+| GU1 4 | 91 | 46.75 | 59.53 |  |
+| GU2 8 | 96 | 46.98 | 66.62 |  |
+| GU2 7 | 79 | 63.49 | 85.38 |  |
+| GU1 2 | 26 | 65.69 | 94.55 |  |
+| GU4 7 | 31 | 67.26 | 114.15 |  |
+| GU2 4 | 23 | 67.33 | 87.46 |  |
+| GU1 3 | 47 | 67.37 | 91.52 |  |
+| GU3 3 | 9 | 71.88 | 85.16 |  |

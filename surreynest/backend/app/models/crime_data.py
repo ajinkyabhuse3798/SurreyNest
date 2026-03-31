@@ -5,7 +5,6 @@ Aggregated crime counts from police.uk API, grouped by postcode sector
 score_service.py, they are not stored here.
 """
 
-
 from datetime import date, datetime, timezone
 
 from sqlalchemy import Date, DateTime, Index, Integer, String, UniqueConstraint
@@ -48,7 +47,9 @@ class CrimeData(Base):
     # and prevents duplicate rows for same sector+category+month
     __table_args__ = (
         UniqueConstraint(
-            "postcode_sector", "category", "month",
+            "postcode_sector",
+            "category",
+            "month",
             name="uq_crime_sector_category_month",
         ),
         # Composite index for the common query pattern: WHERE postcode_sector = X

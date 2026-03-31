@@ -63,7 +63,7 @@ export default function AgentDirectory() {
                 <div>
                     <h1 className="text-3xl font-extrabold text-slate-900 mb-2">Agent Tracker</h1>
                     <p className="text-slate-500 text-sm">
-                        Real tenant reviews of Guildford letting agents. Reputation built from verified reviews.
+                        Real tenant reviews of Guildford letting agents. Reputation built from published tenant feedback.
                     </p>
                 </div>
 

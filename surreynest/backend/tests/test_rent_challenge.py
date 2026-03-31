@@ -1,8 +1,5 @@
 """Tests for the rent increase challenger endpoint."""
 
-import pytest
-from fastapi.testclient import TestClient
-
 
 def test_challenge_requires_uprn_or_postcode(client):
     """POST /api/rent/challenge-increase requires uprn or postcode."""

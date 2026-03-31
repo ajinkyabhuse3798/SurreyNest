@@ -5,7 +5,6 @@ A property can appear here with is_active=False (expired licence) or not at all
 (potentially unlicensed, both cases are flagged in the UI).
 """
 
-
 from typing import Optional
 
 from datetime import date, datetime, timezone
@@ -44,7 +43,9 @@ class HmoRecord(Base):
         index=True,
     )
     raw_address: Mapped[str] = mapped_column(String(500), nullable=False)
-    postcode: Mapped[Optional[str]] = mapped_column(String(10), nullable=True, index=True)
+    postcode: Mapped[Optional[str]] = mapped_column(
+        String(10), nullable=True, index=True
+    )
     lat: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     lng: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     licence_number: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)

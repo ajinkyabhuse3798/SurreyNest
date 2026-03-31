@@ -1,6 +1,5 @@
 """Tests for FastAPI application setup: health check, CORS, exception handler, metadata."""
 
-import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -49,7 +48,9 @@ def test_global_exception_handler_returns_500() -> None:
     assert response.json() == {"detail": "Internal server error"}
 
     # Clean up: remove the test route
-    app.routes[:] = [r for r in app.routes if getattr(r, "path", "") != "/test-broken-route"]
+    app.routes[:] = [
+        r for r in app.routes if getattr(r, "path", "") != "/test-broken-route"
+    ]
 
 
 # ── App metadata ──────────────────────────────────────────────────────────────
@@ -60,19 +61,29 @@ def test_app_metadata() -> None:
 
 
 # ── All routers mounted ──────────────────────────────────────────────────────
-def test_all_routers_mounted() -> None:
-    """All 5 API routers are mounted under /api prefix."""
+def test_public_and_internal_routers_mounted() -> None:
+    """Only the supported public and internal-ops routers should be mounted."""
     route_paths = [getattr(r, "path", "") for r in app.routes]
 
-    # Check that at least one route exists for each router prefix
     expected_prefixes = [
-        "/api/auth/",
         "/api/properties",
         "/api/hmo/",
         "/api/scores/",
         "/api/reviews/",
+        "/api/admin/reviews/",
+        "/api/admin/pipelines/",
     ]
     for prefix in expected_prefixes:
         assert any(
             path.startswith(prefix) for path in route_paths
         ), f"No route found with prefix {prefix}"
+
+    removed_prefixes = [
+        "/api/auth/",
+        "/api/admin/stats/",
+        "/api/admin/users",
+    ]
+    for prefix in removed_prefixes:
+        assert not any(
+            path.startswith(prefix) for path in route_paths
+        ), f"Legacy route still mounted for prefix {prefix}"

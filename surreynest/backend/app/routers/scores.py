@@ -58,7 +58,9 @@ async def get_rent_fairness(
     request: Request,
     uprn: str = Query(..., description="Property UPRN"),
     weekly_rent: float = Query(..., gt=0, description="Weekly rent in £"),
-    bedrooms: Optional[int] = Query(None, description="Override the AI bedroom estimate"),
+    bedrooms: Optional[int] = Query(
+        None, description="Override the AI bedroom estimate"
+    ),
     db: Session = Depends(get_db),
 ) -> RentFairnessResponse:
     """Compare asking rent against model prediction for a property.

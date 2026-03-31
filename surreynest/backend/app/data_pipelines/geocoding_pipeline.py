@@ -45,9 +45,7 @@ def run_geocoding_pipeline(db: Optional[Session] = None) -> int:
 
     try:
         # ── Step 1: count current state ──────────────────────────────────
-        total_props = db.execute(
-            text("SELECT COUNT(*) FROM properties")
-        ).scalar()
+        total_props = db.execute(text("SELECT COUNT(*) FROM properties")).scalar()
         null_count_before = db.execute(
             text("SELECT COUNT(*) FROM properties WHERE lat IS NULL OR lng IS NULL")
         ).scalar()
@@ -82,7 +80,9 @@ def run_geocoding_pipeline(db: Optional[Session] = None) -> int:
         geocode_map = geocode_batch(postcodes_to_geocode, db)
 
         # Count results
-        successful = {pc: coords for pc, coords in geocode_map.items() if coords[0] is not None}
+        successful = {
+            pc: coords for pc, coords in geocode_map.items() if coords[0] is not None
+        }
         failed = {pc: coords for pc, coords in geocode_map.items() if coords[0] is None}
 
         logger.info(

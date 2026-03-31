@@ -2,7 +2,7 @@
  * Constants and helpers for safety-related pages.
  */
 import {
-    AlertTriangle, Volume2, Users, Lock, Pill, Car, ShoppingBag, AlertOctagon,
+    AlertTriangle, Volume2, Users, Lock, Pill, Car, ShoppingBag, AlertOctagon, Bike,
 } from 'lucide-react'
 
 export const CAT_META = {
@@ -14,6 +14,7 @@ export const CAT_META = {
     'vehicle-crime': { name: 'Vehicle Crime', color: '#14b8a6', Icon: Car },
     'theft-from-the-person': { name: 'Personal Theft', color: '#ec4899', Icon: ShoppingBag },
     'robbery': { name: 'Robbery', color: '#f97316', Icon: AlertOctagon },
+    'bicycle-theft': { name: 'Bicycle Theft', color: '#0ea5e9', Icon: Bike },
 }
 
 export const TRAIN_STATIONS = [

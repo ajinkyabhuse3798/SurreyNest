@@ -5,7 +5,6 @@ Always check this table before hitting the external API.
 If is_valid=False, do not retry, postcode is terminated or invalid.
 """
 
-
 from typing import Optional
 
 from datetime import datetime, timezone

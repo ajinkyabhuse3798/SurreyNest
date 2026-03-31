@@ -63,26 +63,33 @@ def _html(title: str, body: str) -> str:
 
 
 def _verification_html(token: str) -> str:
-    return _html("Verify your SurreyNest email", f"""
+    return _html(
+        "Verify your SurreyNest email",
+        f"""
       <p>Thanks for signing up to SurreyNest!</p>
       <p>Please enter the verification code below to confirm your email address. This code expires in <strong>24 hours</strong>.</p>
       <div style="font-size: 32px; font-weight: bold; letter-spacing: 4px; color: #ea871d; margin: 24px 0; text-align: center;">{token}</div>
       <p class="note">Didn't create a SurreyNest account? You can safely ignore this email.</p>
-    """)
+    """,
+    )
 
 
 def _reset_html(reset_url: str) -> str:
-    return _html("Reset your SurreyNest password", f"""
+    return _html(
+        "Reset your SurreyNest password",
+        f"""
       <p>We received a request to reset the password for your SurreyNest account.</p>
       <p>Click the button below to choose a new password. This link expires in <strong>15 minutes</strong>.</p>
       <a href="{reset_url}" class="btn">Reset my password</a>
       <p class="note">Or copy this link into your browser:</p>
       <div class="token-box">{reset_url}</div>
       <p class="note">Didn't request a password reset? You can safely ignore this email &mdash; your password has not been changed.</p>
-    """)
+    """,
+    )
 
 
 # ── SMTP sender ───────────────────────────────────────────────────────────────
+
 
 def _send_sync(to_email: str, subject: str, html_body: str) -> None:
     """Send an email synchronously (runs in a thread pool executor).

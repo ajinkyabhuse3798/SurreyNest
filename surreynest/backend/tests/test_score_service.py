@@ -79,9 +79,14 @@ class TestComputeFairnessScore:
         """Response dict must contain all 8 fields matching RentFairnessResponse."""
         result = compute_fairness_score(actual_rent=200, predicted_rent=200)
         required_keys = {
-            "score", "label", "colour", "ratio",
-            "predicted_rent", "actual_rent",
-            "difference_pounds", "difference_percent",
+            "score",
+            "label",
+            "colour",
+            "ratio",
+            "predicted_rent",
+            "actual_rent",
+            "difference_pounds",
+            "difference_percent",
         }
         assert set(result.keys()) == required_keys
 

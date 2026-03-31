@@ -15,12 +15,27 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
-from slowapi.util import get_remote_address
 
 from app.config import settings
 from app.rate_limit import limiter  # shared singleton, one instance for the whole app
+from app.routers import (
+    agents,
+    heatmap,
+    hmo,
+    leaderboard,
+    listings,
+    pipelines,
+    properties,
+    rent_challenge,
+    rent_explain,
+    rent_trends,
+    reviews,
+    safety,
+    scores,
+    stats,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -121,6 +136,7 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+
 # ── Request ID middleware ─────────────────────────────────────────────────────
 @app.middleware("http")
 async def add_request_id(request: Request, call_next):  # type: ignore[type-arg]
@@ -142,13 +158,15 @@ app.add_middleware(
     allow_origins=settings.allowed_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization", "Cookie", "X-Requested-With"],
+    allow_headers=[
+        "Content-Type",
+        "Authorization",
+        "Cookie",
+        "X-Internal-Admin-Key",
+        "X-Requested-With",
+    ],
 )
 
-# ── Import and mount routers ─────────────────────────────────────────────────
-from app.routers import admin, agents, auth, heatmap, hmo, leaderboard, listings, pipelines, properties, rent_challenge, rent_explain, rent_trends, reviews, safety, scores, stats  # noqa: E402
-
-app.include_router(auth.router, prefix="/api", tags=["Auth"])
 app.include_router(stats.router, prefix="/api", tags=["Stats"])
 app.include_router(properties.router, prefix="/api", tags=["Properties"])
 app.include_router(hmo.router, prefix="/api", tags=["HMO"])
@@ -156,14 +174,13 @@ app.include_router(scores.router, prefix="/api", tags=["Scores"])
 app.include_router(safety.router, prefix="/api", tags=["Safety Intelligence"])
 app.include_router(rent_explain.router, prefix="/api", tags=["Rent XAI"])
 app.include_router(reviews.router, prefix="/api", tags=["Reviews"])
-app.include_router(pipelines.router, prefix="/api", tags=["Pipelines (Admin)"])
+app.include_router(pipelines.router, prefix="/api", tags=["Pipelines (Internal)"])
 app.include_router(listings.router, prefix="/api", tags=["Listings"])
 app.include_router(heatmap.router, prefix="/api", tags=["Heatmap"])
 app.include_router(rent_trends.router, prefix="/api", tags=["Rent Trends"])
 app.include_router(leaderboard.router, prefix="/api", tags=["Leaderboard"])
 app.include_router(agents.router, prefix="/api", tags=["Agents"])
 app.include_router(rent_challenge.router, prefix="/api", tags=["Rent Challenge"])
-app.include_router(admin.router, prefix="/api", tags=["Admin Dashboard"])
 
 
 # ── Global exception handler ─────────────────────────────────────────────────

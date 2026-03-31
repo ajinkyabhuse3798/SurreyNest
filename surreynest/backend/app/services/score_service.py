@@ -8,12 +8,11 @@ and the formula from docs/ml-model.md.
 import logging
 from statistics import median
 from datetime import datetime, timezone
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.config import settings
 from app.models.crime_data import CrimeData
 from app.models.hmo_record import HmoRecord
 from app.models.pipeline_config import PipelineConfig
@@ -44,9 +43,11 @@ def _get_latest_iphrp_growth(db: Session) -> float:
         Falls back to 6.0 if the row doesn't exist yet.
     """
     try:
-        row = db.query(PipelineConfig).filter(
-            PipelineConfig.key == "iphrp_growth_pct"
-        ).first()
+        row = (
+            db.query(PipelineConfig)
+            .filter(PipelineConfig.key == "iphrp_growth_pct")
+            .first()
+        )
         if row is not None:
             return float(row.value)
     except Exception as e:
@@ -54,6 +55,7 @@ def _get_latest_iphrp_growth(db: Session) -> float:
 
     logger.warning("Using fallback IPHRP growth: %.1f%%", _IPHRP_FALLBACK)
     return _IPHRP_FALLBACK
+
 
 def _safety_label(score: float) -> str:
     """Convert a numeric safety score to a human-readable label.
@@ -107,9 +109,11 @@ def _get_safety_normaliser(db: Session) -> float:
 
     # 2. pipeline_config table
     try:
-        row = db.query(PipelineConfig).filter(
-            PipelineConfig.key == "safety_normaliser_p95"
-        ).first()
+        row = (
+            db.query(PipelineConfig)
+            .filter(PipelineConfig.key == "safety_normaliser_p95")
+            .first()
+        )
         if row is not None:
             val = float(row.value)
             if val > 0:
@@ -148,9 +152,7 @@ def _get_safety_normaliser(db: Session) -> float:
     return normaliser
 
 
-def get_safety_score(
-    postcode_sector: str, db: Session
-) -> Optional[Dict]:
+def get_safety_score(postcode_sector: str, db: Session) -> Optional[Dict]:
     """Compute safety score for a postcode sector from crime data.
 
     Performance: O(1) per call. Queries only the target sector's crimes,
@@ -190,10 +192,12 @@ def get_safety_score(
     for row in rows:
         weight = CATEGORY_WEIGHTS.get(row.category, DEFAULT_WEIGHT)
         weighted_sum += row.total_count * weight
-        breakdown.append({
-            "category": row.category,
-            "total_count": row.total_count,
-        })
+        breakdown.append(
+            {
+                "category": row.category,
+                "total_count": row.total_count,
+            }
+        )
 
     # Read cached normaliser (O(1), no full-table scan)
     normaliser = _get_safety_normaliser(db)
@@ -312,7 +316,10 @@ def _blend_with_local_rent_comps(
 
     strong_exact = []
     for row in exact_rows:
-        if prop.actual_bedrooms is not None and row.actual_bedrooms not in (None, prop.actual_bedrooms):
+        if prop.actual_bedrooms is not None and row.actual_bedrooms not in (
+            None,
+            prop.actual_bedrooms,
+        ):
             continue
         if not _is_similar_size(prop.floor_area_m2, row.floor_area_m2):
             continue
@@ -326,18 +333,28 @@ def _blend_with_local_rent_comps(
     delta = blended_rent - float(predicted_rent)
 
     adjusted_low = round(
-        max((float(rent_low) if rent_low is not None else float(predicted_rent)) + delta, 0.0),
+        max(
+            (float(rent_low) if rent_low is not None else float(predicted_rent))
+            + delta,
+            0.0,
+        ),
         2,
     )
     adjusted_high = round(
-        max((float(rent_high) if rent_high is not None else float(predicted_rent)) + delta, 0.0),
+        max(
+            (float(rent_high) if rent_high is not None else float(predicted_rent))
+            + delta,
+            0.0,
+        ),
         2,
     )
 
     return blended_rent, adjusted_low, adjusted_high
 
 
-def get_rent_prediction(uprn: str, db: Session, bedrooms_override: Optional[int] = None) -> Optional[Dict]:
+def get_rent_prediction(
+    uprn: str, db: Session, bedrooms_override: Optional[int] = None
+) -> Optional[Dict]:
     """Get rent prediction for a property, using cache first.
 
     If not cached or stale, runs the ML model and caches the result.
@@ -354,11 +371,13 @@ def get_rent_prediction(uprn: str, db: Session, bedrooms_override: Optional[int]
     active_model_version = f"{get_loaded_model_version()}+{_RENT_POSTPROCESS_VERSION}"
 
     # Check cache first
-    cached = db.query(RentPrediction).filter(
-        RentPrediction.uprn == uprn
-    ).first()
+    cached = db.query(RentPrediction).filter(RentPrediction.uprn == uprn).first()
 
-    if cached is not None and cached.model_version == active_model_version and bedrooms_override is None:
+    if (
+        cached is not None
+        and cached.model_version == active_model_version
+        and bedrooms_override is None
+    ):
         return {
             "predicted_weekly_rent": cached.predicted_weekly_rent,
             "rent_low": cached.confidence_low,
@@ -387,9 +406,9 @@ def get_rent_prediction(uprn: str, db: Session, bedrooms_override: Optional[int]
         from app.ml.predict import predict_rent
 
         # ── Look up Area Value index ────────────────────────────────────
-        area_val = db.query(AreaValue).filter(
-            AreaValue.postcode == prop.postcode
-        ).first()
+        area_val = (
+            db.query(AreaValue).filter(AreaValue.postcode == prop.postcode).first()
+        )
 
         area_value_index = float(area_val.area_value_index) if area_val else 0.5
         sale_count = int(area_val.sale_count) if area_val and area_val.sale_count else 1
@@ -404,36 +423,40 @@ def get_rent_prediction(uprn: str, db: Session, bedrooms_override: Optional[int]
                 safety_score = safety_info["safety_score"]
 
         # ── HMO flag ────────────────────────────────────────────────────
-        is_hmo = int(db.query(HmoRecord).filter(
-            HmoRecord.postcode == prop.postcode
-        ).count() > 0)
+        is_hmo = int(
+            db.query(HmoRecord).filter(HmoRecord.postcode == prop.postcode).count() > 0
+        )
 
         # ── IPHRP growth (read from latest pipeline data, not hardcoded) ────
         iphrp_growth_pct = _get_latest_iphrp_growth(db)
 
         features = {
-            "floor_area_m2":       prop.floor_area_m2,
-            "num_rooms":           prop.num_rooms,
-            "energy_rating":       prop.energy_rating,
-            "potential_rating":    prop.potential_rating,
-            "property_type":       prop.property_type,
-            "lat":                 prop.lat,
-            "lng":                 prop.lng,
-            "postcode":            prop.postcode,
-            "is_hmo":              is_hmo,
-            "safety_score":        safety_score,
-            "area_value_index":    area_value_index,
-            "sale_count":          sale_count,
-            "iphrp_growth_pct":    iphrp_growth_pct,
+            "floor_area_m2": prop.floor_area_m2,
+            "num_rooms": prop.num_rooms,
+            "energy_rating": prop.energy_rating,
+            "potential_rating": prop.potential_rating,
+            "property_type": prop.property_type,
+            "lat": prop.lat,
+            "lng": prop.lng,
+            "postcode": prop.postcode,
+            "is_hmo": is_hmo,
+            "safety_score": safety_score,
+            "area_value_index": area_value_index,
+            "sale_count": sale_count,
+            "iphrp_growth_pct": iphrp_growth_pct,
             # v3.3.0: new EPC-derived features
-            "construction_age_band":  prop.construction_age_band,
-            "mains_gas_flag":        prop.mains_gas_flag,
-            "floor_level":           prop.floor_level,
-            "annual_energy_cost":    prop.annual_energy_cost,
+            "construction_age_band": prop.construction_age_band,
+            "mains_gas_flag": prop.mains_gas_flag,
+            "floor_level": prop.floor_level,
+            "annual_energy_cost": prop.annual_energy_cost,
             # v4.0.0: scraped features
-            "price_drop_pct":        prop.price_drop_pct,
+            "price_drop_pct": prop.price_drop_pct,
             # v4.1.0: Real/overridden bedrooms
-            "actual_bedrooms":       bedrooms_override if bedrooms_override is not None else prop.actual_bedrooms,
+            "actual_bedrooms": (
+                bedrooms_override
+                if bedrooms_override is not None
+                else prop.actual_bedrooms
+            ),
         }
 
         result = predict_rent(features)

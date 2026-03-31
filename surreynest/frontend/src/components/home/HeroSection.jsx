@@ -2,11 +2,80 @@
  * HeroSection, Stitch-aligned hero with search bar, student avatars, and hero image card.
  * Receives search state + handler from Home page.
  */
+import { useState, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { MapPin } from 'lucide-react'
+import api from '../../services/api'
 
 const fadeUp = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }
 
 export default function HeroSection({ postcode, setPostcode, error, loading, handleSearch }) {
+    const navigate = useNavigate()
+    const [suggestions, setSuggestions] = useState([])
+    const [showDropdown, setShowDropdown] = useState(false)
+    const [activeIndex, setActiveIndex] = useState(-1)
+    const wrapperRef = useRef(null)
+    const debounceRef = useRef(null)
+
+    // Fetch suggestions debounced
+    useEffect(() => {
+        if (debounceRef.current) clearTimeout(debounceRef.current)
+        debounceRef.current = setTimeout(async () => {
+            if (!postcode || postcode.length < 2) {
+                setSuggestions([])
+                setShowDropdown(false)
+                return
+            }
+            try {
+                const res = await api.get('/api/properties/suggest', { params: { q: postcode, limit: 8 } })
+                setSuggestions(res.data || [])
+                setShowDropdown((res.data || []).length > 0)
+            } catch {
+                setSuggestions([])
+                setShowDropdown(false)
+            }
+        }, 300)
+        return () => clearTimeout(debounceRef.current)
+    }, [postcode])
+
+    // Close on outside click
+    useEffect(() => {
+        function handleClickOutside(e) {
+            if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+                setShowDropdown(false)
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [])
+
+    function handleKeyDown(e) {
+        if (showDropdown) {
+            if (e.key === 'ArrowDown') {
+                e.preventDefault()
+                setActiveIndex((prev) => Math.min(prev + 1, suggestions.length - 1))
+                return
+            }
+            if (e.key === 'ArrowUp') {
+                e.preventDefault()
+                setActiveIndex((prev) => Math.max(prev - 1, -1))
+                return
+            }
+            if (e.key === 'Enter' && activeIndex >= 0 && suggestions[activeIndex]) {
+                e.preventDefault()
+                navigate(`/property/${suggestions[activeIndex].uprn}`)
+                setShowDropdown(false)
+                return
+            }
+            if (e.key === 'Escape') {
+                setShowDropdown(false)
+                return
+            }
+        }
+        if (e.key === 'Enter') handleSearch()
+    }
+
     return (
         <section className="flex-1 max-w-7xl mx-auto px-4 md:px-6 pt-8 md:pt-12 pb-16 md:pb-24 grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
             {/* Left, Copy + Search */}
@@ -37,7 +106,7 @@ export default function HeroSection({ postcode, setPostcode, error, loading, han
                 </motion.p>
 
                 {/* Search Bar */}
-                <motion.div variants={fadeUp} className="relative max-w-xl group">
+                <motion.div variants={fadeUp} className="relative max-w-xl group" ref={wrapperRef}>
                     <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-primary/5 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200" />
                     <div className="relative glass rounded-xl p-2 flex flex-col sm:flex-row items-stretch sm:items-center shadow-xl border-white/50">
                         <div className="flex-1 flex items-center px-3 md:px-4 gap-3">
@@ -47,8 +116,10 @@ export default function HeroSection({ postcode, setPostcode, error, loading, han
                                 placeholder="Enter Postcode (e.g. GU2 7XH)"
                                 type="text"
                                 value={postcode}
-                                onChange={(e) => setPostcode(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                                onChange={(e) => { setPostcode(e.target.value); setActiveIndex(-1) }}
+                                onKeyDown={handleKeyDown}
+                                onFocus={() => suggestions.length > 0 && setShowDropdown(true)}
+                                autoComplete="off"
                             />
                         </div>
                         <button
@@ -67,6 +138,30 @@ export default function HeroSection({ postcode, setPostcode, error, loading, han
                         </button>
                     </div>
                     {error && <p className="text-sm text-red-500 font-medium mt-2 px-2">{error}</p>}
+
+                    {/* Autocomplete dropdown */}
+                    {showDropdown && (
+                        <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden max-h-72 overflow-y-auto">
+                            {suggestions.map((s, i) => (
+                                <button
+                                    key={s.uprn}
+                                    onMouseDown={(e) => {
+                                        e.preventDefault()
+                                        navigate(`/property/${s.uprn}`)
+                                        setShowDropdown(false)
+                                    }}
+                                    onMouseEnter={() => setActiveIndex(i)}
+                                    className={`w-full text-left px-4 py-3 flex items-start gap-3 text-sm transition-colors ${i === activeIndex ? 'bg-primary/10' : 'hover:bg-gray-50'}`}
+                                >
+                                    <MapPin size={14} className={`mt-0.5 flex-shrink-0 ${i === activeIndex ? 'text-primary' : 'text-gray-400'}`} />
+                                    <div className="min-w-0">
+                                        <p className="font-medium text-gray-900 truncate">{s.address}</p>
+                                        <p className="text-xs text-gray-400">{s.postcode}</p>
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                    )}
                 </motion.div>
 
                 {/* Data source trust badges */}

@@ -11,8 +11,6 @@ a specific rent for a property.
 """
 
 import logging
-import math
-from typing import Dict, List, Optional
 
 import numpy as np
 import pandas as pd
@@ -24,7 +22,6 @@ from app.config import settings
 from app.database import get_db
 from app.rate_limit import limiter
 from app.models import Property
-from app.models.hmo_record import HmoRecord
 from app.models.area_value import AreaValue
 from app.services.score_service import get_safety_score
 
@@ -164,7 +161,9 @@ def _get_explanation(feature_name: str, contribution: float) -> str:
     """Get a plain-English explanation for a feature contribution direction."""
     meta = FEATURE_META.get(feature_name, {})
     if abs(contribution) < 0.005:
-        return meta.get("explain_neutral", "This feature has a minimal effect on the prediction.")
+        return meta.get(
+            "explain_neutral", "This feature has a minimal effect on the prediction."
+        )
     elif contribution > 0:
         return meta.get("explain_up", "This pushes the rent higher.")
     else:
@@ -210,7 +209,9 @@ async def explain_rent_prediction(
     # ── 1. Load property ────────────────────────────────────────────────
     prop = db.query(Property).filter(Property.uprn == uprn).first()
     if not prop:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Property not found"
+        )
 
     # ── 3. Build features (shared with predict_rent) ──────────────────
     from app.ml.predict import (
@@ -232,7 +233,9 @@ async def explain_rent_prediction(
     log_target = internals["log_target"]
     feature_defaults = internals["feature_defaults"]
     calibration_artifact = internals.get("calibration_artifact")
-    loaded_model_version = internals.get("loaded_model_version", settings.ml_model_version)
+    loaded_model_version = internals.get(
+        "loaded_model_version", settings.ml_model_version
+    )
     model_metadata = internals.get("model_metadata", {})
 
     floor_area = prop.floor_area_m2
@@ -289,9 +292,7 @@ async def explain_rent_prediction(
     # ── 5. Get prediction ──────────────────────────────────────────────
     pred_log = model_pipeline.predict(features_frame)[0]
     raw_predicted_rent = (
-        round(float(np.expm1(pred_log)), 2)
-        if log_target
-        else round(float(pred_log), 2)
+        round(float(np.expm1(pred_log)), 2) if log_target else round(float(pred_log), 2)
     )
     from app.ml.calibration import apply_prediction_calibration
 
@@ -314,8 +315,7 @@ async def explain_rent_prediction(
     dmat = xgb_lib.DMatrix(model_input, feature_names=feature_columns)
     contribs = xgb_model.get_booster().predict(dmat, pred_contribs=True)[0]
 
-    # contribs has len(features) + 1 entries (last = bias)
-    bias = float(contribs[-1])
+    # contribs has len(features) + 1 entries (last = bias/intercept term)
     feature_contribs = contribs[:-1]
 
     # Convert SHAP values from log-space to approximate % of final rent
@@ -328,20 +328,24 @@ async def explain_rent_prediction(
     for i, col in enumerate(feature_columns):
         raw_contrib = float(feature_contribs[i])
         pct = round((abs(raw_contrib) / total_abs) * 100, 1)
-        direction = "up" if raw_contrib > 0 else "down" if raw_contrib < 0 else "neutral"
+        direction = (
+            "up" if raw_contrib > 0 else "down" if raw_contrib < 0 else "neutral"
+        )
         meta = FEATURE_META.get(col, {})
 
-        contributions.append({
-            "feature": col,
-            "label": meta.get("label", col),
-            "icon": meta.get("icon", "📋"),
-            "value": computed.get(col, 0.0),
-            "value_display": _format_feature_value(col, computed.get(col, 0.0)),
-            "contribution_pct": pct,
-            "raw_shap": round(raw_contrib, 4),
-            "direction": direction,
-            "explanation": _get_explanation(col, raw_contrib),
-        })
+        contributions.append(
+            {
+                "feature": col,
+                "label": meta.get("label", col),
+                "icon": meta.get("icon", "📋"),
+                "value": computed.get(col, 0.0),
+                "value_display": _format_feature_value(col, computed.get(col, 0.0)),
+                "contribution_pct": pct,
+                "raw_shap": round(raw_contrib, 4),
+                "direction": direction,
+                "explanation": _get_explanation(col, raw_contrib),
+            }
+        )
 
     # Sort by absolute contribution (biggest first)
     contributions.sort(key=lambda x: x["contribution_pct"], reverse=True)
@@ -351,16 +355,17 @@ async def explain_rent_prediction(
     importances = xgb_model.feature_importances_
     for col, imp in sorted(zip(feature_columns, importances), key=lambda x: -x[1]):
         meta = FEATURE_META.get(col, {})
-        global_importance.append({
-            "feature": col,
-            "label": meta.get("label", col),
-            "importance_pct": round(float(imp) * 100, 1),
-        })
+        global_importance.append(
+            {
+                "feature": col,
+                "label": meta.get("label", col),
+                "importance_pct": round(float(imp) * 100, 1),
+            }
+        )
 
     # ── 8. Rent comparison (sector median) ─────────────────────────────
     # Use rent_predictions table to get sector median
     from app.models.rent_prediction import RentPrediction
-    from sqlalchemy import func
 
     sector_str = ""
     if len(postcode_parts) >= 2:
@@ -397,7 +402,9 @@ async def explain_rent_prediction(
         diff_pct = round((predicted_rent - sector_median) / sector_median * 100, 1)
         rent_comparison["vs_sector_pct"] = diff_pct
     if guildford_median and predicted_rent:
-        diff_pct = round((predicted_rent - guildford_median) / guildford_median * 100, 1)
+        diff_pct = round(
+            (predicted_rent - guildford_median) / guildford_median * 100, 1
+        )
         rent_comparison["vs_guildford_pct"] = diff_pct
 
     return {

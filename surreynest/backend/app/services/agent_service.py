@@ -9,7 +9,13 @@ from sqlalchemy.orm import Session
 from app import cache
 from app.models.letting_agent import LettingAgent
 from app.models.review import Review
-from app.schemas.agent import AgentDetail, AgentReviewItem, AgentReviewSummary, AgentSearchResult, AgentSummary
+from app.schemas.agent import (
+    AgentDetail,
+    AgentReviewItem,
+    AgentReviewSummary,
+    AgentSearchResult,
+    AgentSummary,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -102,17 +108,17 @@ def get_agent_list(
         avg_value = float(row.avg_value)
 
         # Try to get verified profile
-        profile = (
-            db.query(LettingAgent)
-            .filter(LettingAgent.name == agent_name)
-            .first()
-        )
+        profile = db.query(LettingAgent).filter(LettingAgent.name == agent_name).first()
 
-        display_name = profile.display_name if profile else _slug_to_display_name(agent_name)
+        display_name = (
+            profile.display_name if profile else _slug_to_display_name(agent_name)
+        )
         is_verified = profile.is_verified if profile else False
         postcode_sectors = profile.postcode_sectors if profile else None
 
-        score = _compute_agent_score(avg_overall, avg_landlord, avg_condition, avg_value)
+        score = _compute_agent_score(
+            avg_overall, avg_landlord, avg_condition, avg_value
+        )
 
         summary = AgentSummary(
             name=agent_name,
@@ -171,12 +177,12 @@ def get_agent_detail(agent_name: str, db: Session) -> Optional[AgentDetail]:
     score = _compute_agent_score(avg_overall, avg_landlord, avg_condition, avg_value)
 
     profile = (
-        db.query(LettingAgent)
-        .filter(LettingAgent.name == agent_name_lower)
-        .first()
+        db.query(LettingAgent).filter(LettingAgent.name == agent_name_lower).first()
     )
 
-    display_name = profile.display_name if profile else _slug_to_display_name(agent_name_lower)
+    display_name = (
+        profile.display_name if profile else _slug_to_display_name(agent_name_lower)
+    )
     is_verified = profile.is_verified if profile else False
     postcode_sectors = profile.postcode_sectors if profile else None
     website = profile.website if profile else None
@@ -261,5 +267,7 @@ def get_agent_suggestions(q: str, db: Session) -> List[AgentSearchResult]:
                 review_count=0,
             )
 
-    sorted_results = sorted(results.values(), key=lambda r: r.review_count, reverse=True)
+    sorted_results = sorted(
+        results.values(), key=lambda r: r.review_count, reverse=True
+    )
     return sorted_results[:10]

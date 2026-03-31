@@ -118,10 +118,10 @@ def _get_sector_comparables(
     """
     # Match ONLY this exact sector (e.g. "GU2 7%"), not the full outward code.
     # "GU2 %" would still show GU2 4, GU2 8, GU2 9 which are different markets.
-    query = db.query(AreaValue).filter(
-        AreaValue.postcode.like(f"{postcode_sector}%")
-    ).filter(
-        AreaValue.implied_weekly_rent > 50
+    query = (
+        db.query(AreaValue)
+        .filter(AreaValue.postcode.like(f"{postcode_sector}%"))
+        .filter(AreaValue.implied_weekly_rent > 50)
     )
 
     rows = query.order_by(AreaValue.implied_weekly_rent.asc()).limit(30).all()
@@ -181,7 +181,11 @@ def _generate_tribunal_brief(
         Formatted plain text brief.
     """
     increase_pct = round((proposed_rent - current_rent) / current_rent * 100, 1)
-    excess_pct = round((proposed_rent - ml_predicted) / ml_predicted * 100, 1) if ml_predicted > 0 else 0
+    excess_pct = (
+        round((proposed_rent - ml_predicted) / ml_predicted * 100, 1)
+        if ml_predicted > 0
+        else 0
+    )
 
     top_3 = comparables[:3]
     comp_lines = "\n".join(
@@ -269,6 +273,7 @@ def analyse_rent_increase(
     if request.uprn:
         try:
             from app.services.score_service import get_rent_prediction
+
             result = get_rent_prediction(
                 uprn=request.uprn,
                 db=db,
@@ -409,7 +414,10 @@ def analyse_rent_increase(
             else "Annual limit check: this looks sooner than the once-per-year limit."
         )
 
-    if request.proposed_effective_date and request.proposed_effective_date < _RRA_PHASE_1_START:
+    if (
+        request.proposed_effective_date
+        and request.proposed_effective_date < _RRA_PHASE_1_START
+    ):
         legal_summary = (
             "This notice appears to take effect before 1 May 2026. SurreyNest can still compare "
             "the proposed rent with local market evidence, but the Phase 1 Renters' Rights Act "
@@ -441,7 +449,9 @@ def analyse_rent_increase(
         annual_limit_detail=annual_limit_detail,
     )
 
-    increase_amount = round(request.proposed_weekly_rent - request.current_weekly_rent, 2)
+    increase_amount = round(
+        request.proposed_weekly_rent - request.current_weekly_rent, 2
+    )
     increase_pct = round(
         (request.proposed_weekly_rent - request.current_weekly_rent)
         / request.current_weekly_rent

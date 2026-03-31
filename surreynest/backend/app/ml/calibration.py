@@ -69,7 +69,9 @@ def build_calibration_design(
     }
     for label in KNOWN_PROPERTY_TYPES[:-1]:
         column = f"is_{label.lower().replace('-', '_')}"
-        mask = np.asarray([1.0 if value == label else 0.0 for value in type_arr], dtype=float)
+        mask = np.asarray(
+            [1.0 if value == label else 0.0 for value in type_arr], dtype=float
+        )
         data[column] = mask
         data[f"raw_x_{column}"] = pred_arr * mask
 
@@ -101,9 +103,9 @@ def fit_sector_type_adjustment_artifact(
 
     global_mean = float(frame["residual"].mean()) if not frame.empty else 0.0
     type_stats = frame.groupby("property_type")["residual"].agg(["mean", "count"])
-    sector_type_stats = frame.groupby(["postcode_sector", "property_type"])["residual"].agg(
-        ["mean", "count"]
-    )
+    sector_type_stats = frame.groupby(["postcode_sector", "property_type"])[
+        "residual"
+    ].agg(["mean", "count"])
 
     by_type = {
         label: {
@@ -143,7 +145,9 @@ def fit_observed_rent_prior_artifact(
     """Fit a hierarchical observed-rent prior from the real training labels."""
     frame = pd.DataFrame(
         {
-            "postcode": pd.Series(list(postcodes), dtype="object").fillna("").astype(str),
+            "postcode": pd.Series(list(postcodes), dtype="object")
+            .fillna("")
+            .astype(str),
             "postcode_sector": pd.Series(list(postcode_sectors), dtype="object")
             .fillna("")
             .astype(str),
@@ -213,31 +217,37 @@ def observed_rent_prior_for_prediction(
 
     global_median = float(artifact.get("global_median", 350.0))
     type_entry = artifact.get("by_type", {}).get(label)
-    type_median = float(type_entry.get("median", global_median)) if type_entry else global_median
+    type_median = (
+        float(type_entry.get("median", global_median)) if type_entry else global_median
+    )
 
     sector_entry = artifact.get("by_sector_type", {}).get(sector_value, {}).get(label)
     if sector_entry is not None:
         sector_n = int(sector_entry.get("count", 0))
         sector_median = float(sector_entry.get("median", type_median))
-        sector_shrinkage = float(artifact.get("sector_shrinkage", PRIOR_SECTOR_SHRINKAGE))
-        sector_prior = (
-            (sector_n / (sector_n + sector_shrinkage)) * sector_median
-            + (sector_shrinkage / (sector_n + sector_shrinkage)) * type_median
+        sector_shrinkage = float(
+            artifact.get("sector_shrinkage", PRIOR_SECTOR_SHRINKAGE)
         )
+        sector_prior = (sector_n / (sector_n + sector_shrinkage)) * sector_median + (
+            sector_shrinkage / (sector_n + sector_shrinkage)
+        ) * type_median
     else:
         sector_prior = type_median
 
-    postcode_entry = artifact.get("by_postcode_type", {}).get(postcode_value, {}).get(label)
+    postcode_entry = (
+        artifact.get("by_postcode_type", {}).get(postcode_value, {}).get(label)
+    )
     if postcode_entry is None:
         return sector_prior
 
     postcode_n = int(postcode_entry.get("count", 0))
     postcode_median = float(postcode_entry.get("median", sector_prior))
-    postcode_shrinkage = float(artifact.get("postcode_shrinkage", PRIOR_POSTCODE_SHRINKAGE))
-    return (
-        (postcode_n / (postcode_n + postcode_shrinkage)) * postcode_median
-        + (postcode_shrinkage / (postcode_n + postcode_shrinkage)) * sector_prior
+    postcode_shrinkage = float(
+        artifact.get("postcode_shrinkage", PRIOR_POSTCODE_SHRINKAGE)
     )
+    return (postcode_n / (postcode_n + postcode_shrinkage)) * postcode_median + (
+        postcode_shrinkage / (postcode_n + postcode_shrinkage)
+    ) * sector_prior
 
 
 def sector_type_adjustment_for_prediction(
@@ -254,7 +264,9 @@ def sector_type_adjustment_for_prediction(
     global_mean = float(artifact.get("global_mean", 0.0))
 
     type_entry = artifact.get("by_type", {}).get(label)
-    parent_mean = float(type_entry.get("mean", global_mean)) if type_entry else global_mean
+    parent_mean = (
+        float(type_entry.get("mean", global_mean)) if type_entry else global_mean
+    )
 
     sector_entry = artifact.get("by_sector_type", {}).get(sector, {}).get(label)
     if sector_entry is None:
@@ -291,8 +303,7 @@ def fit_calibration_artifact(
         "method": "ridge_linear_type_calibration",
         "intercept": float(model.intercept_),
         "coefficients": {
-            column: float(coef)
-            for column, coef in zip(X.columns, model.coef_)
+            column: float(coef) for column, coef in zip(X.columns, model.coef_)
         },
     }
 
@@ -328,7 +339,9 @@ def apply_prediction_calibration(
     features = build_calibration_design([raw_prediction], [property_type]).iloc[0]
     calibrated = float(artifact.get("intercept", 0.0))
     for column, value in features.items():
-        calibrated += float(artifact.get("coefficients", {}).get(column, 0.0)) * float(value)
+        calibrated += float(artifact.get("coefficients", {}).get(column, 0.0)) * float(
+            value
+        )
 
     calibrated += sector_type_adjustment_for_prediction(
         postcode_sector,
@@ -347,7 +360,9 @@ def apply_prediction_calibration(
         blend_weight_model = float(
             prior_artifact.get("blend_weight_model", PRIOR_BLEND_MODEL_WEIGHT)
         )
-        calibrated = (blend_weight_model * calibrated) + ((1.0 - blend_weight_model) * prior)
+        calibrated = (blend_weight_model * calibrated) + (
+            (1.0 - blend_weight_model) * prior
+        )
 
     return round(max(calibrated, 0.0), 2)
 
@@ -363,7 +378,9 @@ def fit_interval_artifact(
     y_arr = np.asarray(list(y_true), dtype=float)
     pred_arr = np.asarray(list(calibrated_predictions), dtype=float)
     residuals = np.abs(y_arr - pred_arr)
-    type_arr = np.asarray([normalise_property_type(value) for value in property_types], dtype=object)
+    type_arr = np.asarray(
+        [normalise_property_type(value) for value in property_types], dtype=object
+    )
 
     quantile = min(max(1.0 - alpha, 0.5), 0.99)
     global_half_width = float(np.quantile(residuals, quantile))
@@ -387,7 +404,9 @@ def fit_interval_artifact(
     }
 
 
-def interval_half_width_for_type(property_type: Optional[str], artifact: Optional[Dict]) -> float:
+def interval_half_width_for_type(
+    property_type: Optional[str], artifact: Optional[Dict]
+) -> float:
     """Return the saved half-width for the given property type."""
     if artifact is None:
         return 0.0

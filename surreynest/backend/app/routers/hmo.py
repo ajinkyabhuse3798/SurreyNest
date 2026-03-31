@@ -63,18 +63,12 @@ async def check_hmo_status(
         # Fallback: check by property's postcode
         if not hmo and prop.postcode:
             hmo = (
-                db.query(HmoRecord)
-                .filter(HmoRecord.postcode == prop.postcode)
-                .first()
+                db.query(HmoRecord).filter(HmoRecord.postcode == prop.postcode).first()
             )
     else:
         # ── Postcode-based lookup ─────────────────────────────────────────
         normalised = postcode.strip().upper()
-        hmo = (
-            db.query(HmoRecord)
-            .filter(HmoRecord.postcode == normalised)
-            .first()
-        )
+        hmo = db.query(HmoRecord).filter(HmoRecord.postcode == normalised).first()
 
     # ── Build response ────────────────────────────────────────────────────
     if not hmo:

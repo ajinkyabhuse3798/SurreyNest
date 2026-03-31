@@ -25,13 +25,15 @@ logger = logging.getLogger(__name__)
 
 # ── Paths ────────────────────────────────────────────────────────────────────
 RAW_PATH = Path(__file__).resolve().parents[2] / "data" / "raw" / "certificates.csv"
-PROCESSED_PATH = Path(__file__).resolve().parents[2] / "data" / "processed" / "epc_clean.csv"
+PROCESSED_PATH = (
+    Path(__file__).resolve().parents[2] / "data" / "processed" / "epc_clean.csv"
+)
 
 # ── Property type normalisation mapping ──────────────────────────────────────
 PROPERTY_TYPE_MAP = {
     "flat": "Flat",
     "maisonette": "Flat",
-    "house": "Other", # further classified by built_form below
+    "house": "Other",  # further classified by built_form below
     "bungalow": "Other",
     "park home": "Other",
 }
@@ -103,11 +105,24 @@ AGE_BAND_ORDINAL = {
 
 # ── Floor level text → ordinal ───────────────────────────────────────────────
 FLOOR_LEVEL_MAP = {
-    "ground": 0, "basement": -1, "0": 0,
-    "1": 1, "1st": 1, "2": 2, "2nd": 2,
-    "3": 3, "3rd": 3, "4": 4, "4th": 4,
-    "5": 5, "5th": 5, "6": 6, "7": 7,
-    "8": 8, "9": 9, "10": 10,
+    "ground": 0,
+    "basement": -1,
+    "0": 0,
+    "1": 1,
+    "1st": 1,
+    "2": 2,
+    "2nd": 2,
+    "3": 3,
+    "3rd": 3,
+    "4": 4,
+    "4th": 4,
+    "5": 5,
+    "5th": 5,
+    "6": 6,
+    "7": 7,
+    "8": 8,
+    "9": 9,
+    "10": 10,
 }
 
 
@@ -203,7 +218,7 @@ def clean_epc_data(raw_path: Optional[Path] = None) -> pd.DataFrame:
         .str.upper()
         .str.strip()
         .str.split(r"\s+", n=1)  # split on first whitespace
-        .str[0]                   # outward code: "GU1", "GU12", "GU24", etc.
+        .str[0]  # outward code: "GU1", "GU12", "GU24", etc.
     )
     pre_filter = len(df)
     df = df[df["_pc_district"].isin(ALLOWED_DISTRICTS)]
@@ -251,8 +266,15 @@ def clean_epc_data(raw_path: Optional[Path] = None) -> pd.DataFrame:
     # ── Remove room count outliers (> 15 = likely commercial) ────────────
     ROOMS_MAX = 15
     big_rooms_count = (df["NUMBER_HABITABLE_ROOMS"] > ROOMS_MAX).sum()
-    df = df[df["NUMBER_HABITABLE_ROOMS"].isna() | (df["NUMBER_HABITABLE_ROOMS"] <= ROOMS_MAX)]
-    logger.info("Removed %d rows with rooms > %d (likely commercial)", big_rooms_count, ROOMS_MAX)
+    df = df[
+        df["NUMBER_HABITABLE_ROOMS"].isna()
+        | (df["NUMBER_HABITABLE_ROOMS"] <= ROOMS_MAX)
+    ]
+    logger.info(
+        "Removed %d rows with rooms > %d (likely commercial)",
+        big_rooms_count,
+        ROOMS_MAX,
+    )
 
     # ── Deduplicate on UPRN (keep most recent by lodgement date) ─────────
     df = df.sort_values("LODGEMENT_DATE", ascending=False)
@@ -278,7 +300,11 @@ def clean_epc_data(raw_path: Optional[Path] = None) -> pd.DataFrame:
     df["_floor_level_int"] = df["_floor_level_raw"].map(FLOOR_LEVEL_MAP)
 
     # Annual energy cost = heating + hot water + lighting (£/year from EPC)
-    for cost_col in ["HEATING_COST_CURRENT", "HOT_WATER_COST_CURRENT", "LIGHTING_COST_CURRENT"]:
+    for cost_col in [
+        "HEATING_COST_CURRENT",
+        "HOT_WATER_COST_CURRENT",
+        "LIGHTING_COST_CURRENT",
+    ]:
         df[cost_col] = pd.to_numeric(df[cost_col], errors="coerce")
     df["_annual_energy_cost"] = (
         df["HEATING_COST_CURRENT"].fillna(0)
@@ -307,8 +333,14 @@ def clean_epc_data(raw_path: Optional[Path] = None) -> pd.DataFrame:
             "built_form": df["BUILT_FORM"].fillna("").str.strip(),
             "floor_area_m2": df["TOTAL_FLOOR_AREA"],
             "num_rooms": df["NUMBER_HABITABLE_ROOMS"],
-            "energy_rating": df["CURRENT_ENERGY_RATING"].fillna("").str.strip().str.upper(),
-            "potential_rating": df["POTENTIAL_ENERGY_RATING"].fillna("").str.strip().str.upper(),
+            "energy_rating": df["CURRENT_ENERGY_RATING"]
+            .fillna("")
+            .str.strip()
+            .str.upper(),
+            "potential_rating": df["POTENTIAL_ENERGY_RATING"]
+            .fillna("")
+            .str.strip()
+            .str.upper(),
             "epc_date": df["LODGEMENT_DATE"].dt.date,
             "tenure": df["TENURE"].str[:100],
             # ── v3.3.0 new columns ───────────────────────────────────────
@@ -460,6 +492,7 @@ def run_epc_pipeline(db: Optional[Session] = None) -> int:
         # if geocoding fails (e.g. Postcodes.io down)
         try:
             from app.data_pipelines.geocoding_pipeline import run_geocoding_pipeline
+
             updated = run_geocoding_pipeline(db)
             logger.info("Geocoding backfill: %d properties updated", updated)
         except Exception:

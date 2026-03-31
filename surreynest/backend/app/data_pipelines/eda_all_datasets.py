@@ -8,7 +8,6 @@ console report with stats, anomalies, and cross-dataset consistency.
 """
 
 import logging
-import sys
 from glob import glob
 from pathlib import Path
 
@@ -27,13 +26,31 @@ ALLOWED_DISTRICTS = {"GU1", "GU2", "GU3", "GU4", "GU5", "GU7"}
 
 # Land Registry columns (no header in bulk downloads)
 PP_COLUMNS = [
-    "transaction_id", "price", "date_of_transfer", "postcode",
-    "property_type", "old_new", "duration", "paon", "saon",
-    "street", "locality", "town", "district", "county",
-    "ppd_category", "record_status",
+    "transaction_id",
+    "price",
+    "date_of_transfer",
+    "postcode",
+    "property_type",
+    "old_new",
+    "duration",
+    "paon",
+    "saon",
+    "street",
+    "locality",
+    "town",
+    "district",
+    "county",
+    "ppd_category",
+    "record_status",
 ]
 
-PP_TYPE_MAP = {"D": "Detached", "S": "Semi-Detached", "T": "Terraced", "F": "Flat", "O": "Other"}
+PP_TYPE_MAP = {
+    "D": "Detached",
+    "S": "Semi-Detached",
+    "T": "Terraced",
+    "F": "Flat",
+    "O": "Other",
+}
 
 
 def _hr(title: str) -> None:
@@ -92,7 +109,9 @@ def eda_price_paid() -> pd.DataFrame:
 
     # ── Parse price and date ─────────────────────────────────────────────
     df_gu["price"] = pd.to_numeric(df_gu["price"], errors="coerce")
-    df_gu["date_of_transfer"] = pd.to_datetime(df_gu["date_of_transfer"], errors="coerce")
+    df_gu["date_of_transfer"] = pd.to_datetime(
+        df_gu["date_of_transfer"], errors="coerce"
+    )
     df_gu["year"] = df_gu["date_of_transfer"].dt.year
 
     # ── Anomaly detection ────────────────────────────────────────────────
@@ -122,16 +141,26 @@ def eda_price_paid() -> pd.DataFrame:
     print(f"  Std Dev:  £{clean['price'].std():,.0f}")
 
     _subhr("By Year")
-    year_stats = clean.groupby("year")["price"].agg(["count", "median", "mean"]).round(0)
+    year_stats = (
+        clean.groupby("year")["price"].agg(["count", "median", "mean"]).round(0)
+    )
     for yr, row in year_stats.iterrows():
-        print(f"  {int(yr)}: {int(row['count']):,} sales, median £{row['median']:,.0f}, mean £{row['mean']:,.0f}")
+        print(
+            f"  {int(yr)}: {int(row['count']):,} sales, median £{row['median']:,.0f}, mean £{row['mean']:,.0f}"
+        )
 
     _subhr("By Property Type")
-    df_gu["property_type_label"] = df_gu["property_type"].map(PP_TYPE_MAP).fillna("Unknown")
+    df_gu["property_type_label"] = (
+        df_gu["property_type"].map(PP_TYPE_MAP).fillna("Unknown")
+    )
     type_stats = clean.copy()
-    type_stats["property_type_label"] = type_stats["property_type"].map(PP_TYPE_MAP).fillna("Unknown")
+    type_stats["property_type_label"] = (
+        type_stats["property_type"].map(PP_TYPE_MAP).fillna("Unknown")
+    )
     for ptype, grp in type_stats.groupby("property_type_label"):
-        print(f"  {ptype:15s}: {len(grp):,} sales, median £{grp['price'].median():,.0f}")
+        print(
+            f"  {ptype:15s}: {len(grp):,} sales, median £{grp['price'].median():,.0f}"
+        )
 
     _subhr("By Postcode District")
     for dist, grp in clean.groupby("_district"):
@@ -167,12 +196,16 @@ def eda_hpi() -> pd.DataFrame:
     # Extract Guildford
     hpi_gu = hpi[hpi["RegionName"].str.strip().str.lower() == "guildford"].copy()
     hpi_gu["Date"] = pd.to_datetime(hpi_gu["Date"], format="%d/%m/%Y", errors="coerce")
-    hpi_gu = hpi_gu.drop_duplicates(subset=["Date"], keep="last")  # 2025 file takes precedence
+    hpi_gu = hpi_gu.drop_duplicates(
+        subset=["Date"], keep="last"
+    )  # 2025 file takes precedence
     hpi_gu = hpi_gu.sort_values("Date")
 
     print(f"\n  Total UK rows: {len(hpi):,}")
     print(f"  Guildford rows: {len(hpi_gu):,}")
-    print(f"  Date range: {hpi_gu['Date'].min().strftime('%b %Y')} → {hpi_gu['Date'].max().strftime('%b %Y')}")
+    print(
+        f"  Date range: {hpi_gu['Date'].min().strftime('%b %Y')} → {hpi_gu['Date'].max().strftime('%b %Y')}"
+    )
 
     if hpi_gu.empty:
         return hpi_gu
@@ -181,7 +214,9 @@ def eda_hpi() -> pd.DataFrame:
     recent = hpi_gu[hpi_gu["Date"] >= "2021-01-01"].copy()
     for _, row in recent.iterrows():
         if pd.notna(row.get("AveragePrice")):
-            print(f"  {row['Date'].strftime('%b %Y')}: £{row['AveragePrice']:,.0f}  ({row.get('12m%Change', 'N/A')}% YoY)")
+            print(
+                f"  {row['Date'].strftime('%b %Y')}: £{row['AveragePrice']:,.0f}  ({row.get('12m%Change', 'N/A')}% YoY)"
+            )
 
     _subhr("Anomalies")
     null_price = hpi_gu["AveragePrice"].isna().sum()
@@ -242,13 +277,19 @@ def eda_iphrp() -> pd.DataFrame:
         result = df[["period", se_col[0]]].copy()
         result.columns = ["period", "south_east_index"]
         result = result.dropna(subset=["south_east_index"])
-        result["south_east_index"] = pd.to_numeric(result["south_east_index"], errors="coerce")
+        result["south_east_index"] = pd.to_numeric(
+            result["south_east_index"], errors="coerce"
+        )
         result = result.dropna(subset=["south_east_index"])
 
         print(f"  South East rental index rows: {len(result)}")
         if not result.empty:
-            print(f"  Period range: {result['period'].iloc[0]} → {result['period'].iloc[-1]}")
-            print(f"  Latest index value: {result['south_east_index'].iloc[-1]:.1f} (base=100 in Jan 2015)")
+            print(
+                f"  Period range: {result['period'].iloc[0]} → {result['period'].iloc[-1]}"
+            )
+            print(
+                f"  Latest index value: {result['south_east_index'].iloc[-1]:.1f} (base=100 in Jan 2015)"
+            )
 
             _subhr("Recent Values")
             for _, row in result.tail(12).iterrows():
@@ -285,10 +326,24 @@ def eda_database() -> None:
         total = db.query(func.count(Property.uprn)).scalar()
         print(f"  Total: {total:,}")
 
-        null_lat = db.query(func.count(Property.uprn)).filter(Property.lat == None).scalar()
-        null_area = db.query(func.count(Property.uprn)).filter(Property.floor_area_m2 == None).scalar()
-        null_rooms = db.query(func.count(Property.uprn)).filter(Property.num_rooms == None).scalar()
-        null_epc = db.query(func.count(Property.uprn)).filter(Property.energy_rating == None).scalar()
+        null_lat = (
+            db.query(func.count(Property.uprn)).filter(Property.lat.is_(None)).scalar()
+        )
+        null_area = (
+            db.query(func.count(Property.uprn))
+            .filter(Property.floor_area_m2.is_(None))
+            .scalar()
+        )
+        null_rooms = (
+            db.query(func.count(Property.uprn))
+            .filter(Property.num_rooms.is_(None))
+            .scalar()
+        )
+        null_epc = (
+            db.query(func.count(Property.uprn))
+            .filter(Property.energy_rating.is_(None))
+            .scalar()
+        )
 
         print(f"  Null lat/lng:       {null_lat} ({null_lat/total*100:.1f}%)")
         print(f"  Null floor_area:    {null_area} ({null_area/total*100:.1f}%)")
@@ -296,35 +351,60 @@ def eda_database() -> None:
         print(f"  Null energy_rating: {null_epc} ({null_epc/total*100:.1f}%)")
 
         # Outliers
-        tiny = db.query(func.count(Property.uprn)).filter(Property.floor_area_m2 < 10).scalar()
-        huge_rooms = db.query(func.count(Property.uprn)).filter(Property.num_rooms > 15).scalar()
+        tiny = (
+            db.query(func.count(Property.uprn))
+            .filter(Property.floor_area_m2 < 10)
+            .scalar()
+        )
+        huge_rooms = (
+            db.query(func.count(Property.uprn)).filter(Property.num_rooms > 15).scalar()
+        )
         print(f"\n  ⚠️  Floor area < 10m²: {tiny} (data errors)")
         print(f"  ⚠️  Rooms > 15:        {huge_rooms} (likely commercial)")
 
         # Tenure breakdown
         _subhr("Tenure Labels (Inconsistency Check)")
-        tenure_counts = db.query(Property.tenure, func.count(Property.uprn)).group_by(Property.tenure).all()
+        tenure_counts = (
+            db.query(Property.tenure, func.count(Property.uprn))
+            .group_by(Property.tenure)
+            .all()
+        )
         for t, c in sorted(tenure_counts, key=lambda x: -x[1]):
             label = t or "NULL"
-            flag = " ⚠️  DUPLICATE?" if label in ["rented (private)", "rented (social)"] else ""
+            flag = (
+                " ⚠️  DUPLICATE?"
+                if label in ["rented (private)", "rented (social)"]
+                else ""
+            )
             print(f"  {label:50s}: {c:6,}{flag}")
 
         # EPC distribution
         _subhr("EPC Rating Distribution")
-        epc_counts = db.query(Property.energy_rating, func.count(Property.uprn)).group_by(Property.energy_rating).order_by(Property.energy_rating).all()
+        epc_counts = (
+            db.query(Property.energy_rating, func.count(Property.uprn))
+            .group_by(Property.energy_rating)
+            .order_by(Property.energy_rating)
+            .all()
+        )
         for r, c in epc_counts:
             print(f"  {r or 'NULL':5s}: {c:6,} ({c/total*100:.1f}%)")
 
         # ── HMO ──────────────────────────────────────────────────────────
         _subhr("HMO Records")
         hmo_total = db.query(func.count(HmoRecord.id)).scalar()
-        hmo_active = db.query(func.count(HmoRecord.id)).filter(HmoRecord.is_active == True).scalar()
+        hmo_active = (
+            db.query(func.count(HmoRecord.id))
+            .filter(HmoRecord.is_active.is_(True))
+            .scalar()
+        )
         print(f"  Total: {hmo_total}, Active: {hmo_active}")
 
         # ── Crime ────────────────────────────────────────────────────────
         _subhr("Crime Data")
         crime_total = db.query(func.count(CrimeData.id)).scalar()
-        crime_sectors = db.query(func.count(func.distinct(CrimeData.postcode_sector))).scalar()
+        crime_sectors = db.query(
+            func.count(func.distinct(CrimeData.postcode_sector))
+        ).scalar()
         print(f"  Total records: {crime_total:,}")
         print(f"  Postcode sectors covered: {crime_sectors}")
 
@@ -366,7 +446,9 @@ def eda_consistency(pp_df: pd.DataFrame) -> None:
 
         print(f"  EPC postcodes:            {len(epc_postcodes):,}")
         print(f"  Price Paid postcodes:      {len(pp_postcodes):,}")
-        print(f"  Overlap (both datasets):   {len(overlap):,} ({len(overlap)/max(len(epc_postcodes),1)*100:.1f}% of EPC)")
+        print(
+            f"  Overlap (both datasets):   {len(overlap):,} ({len(overlap)/max(len(epc_postcodes),1)*100:.1f}% of EPC)"
+        )
         print(f"  EPC-only (no sale data):   {len(epc_only):,}")
         print(f"  PP-only (no EPC data):     {len(pp_only):,}")
 

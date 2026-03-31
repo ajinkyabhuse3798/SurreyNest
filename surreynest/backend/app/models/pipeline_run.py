@@ -4,7 +4,6 @@ Records every execution of a data pipeline job, start time, finish time,
 row count, and error messages. Used for monitoring and debugging.
 """
 
-
 from typing import Optional
 
 from datetime import datetime, timezone

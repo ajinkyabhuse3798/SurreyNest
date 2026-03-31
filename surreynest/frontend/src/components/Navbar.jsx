@@ -1,16 +1,13 @@
 /**
- * Navbar, Stitch-aligned sticky navigation with glass morphism.
- * Keeps the public site open while preserving admin session controls.
+ * Navbar, Stitch-aligned sticky navigation for the public experience.
  * Uses framer-motion for smooth mobile menu animation.
  */
 import { useState, useRef, useEffect } from 'react'
-import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useAuth } from '../hooks/useAuth'
 
 const NAV_LINKS = [
     { to: '/search', label: 'Search' },
-    { to: '/best-streets', label: 'Best Streets' },
     { to: '/compare', label: 'Compare' },
     { to: '/rights', label: 'Rights Guide' },
     { to: '/about', label: 'About' },
@@ -23,13 +20,9 @@ const TOOLS_LINKS = [
 ]
 
 export default function Navbar() {
-    const { user, logout } = useAuth()
-    const navigate = useNavigate()
     const location = useLocation()
     const [mobileOpen, setMobileOpen] = useState(false)
     const [toolsOpen, setToolsOpen] = useState(false)
-    const [logoutLoading, setLogoutLoading] = useState(false)
-    const [authError, setAuthError] = useState('')
     const dropdownRef = useRef(null)
 
     useEffect(() => {
@@ -41,24 +34,6 @@ export default function Navbar() {
         document.addEventListener('mousedown', handleClickOutside)
         return () => document.removeEventListener('mousedown', handleClickOutside)
     }, [])
-
-    useEffect(() => {
-        setAuthError('')
-    }, [location.pathname, location.search, location.hash])
-
-    async function handleLogout() {
-        setAuthError('')
-        setLogoutLoading(true)
-        try {
-            await logout()
-            navigate('/', { replace: true })
-            setMobileOpen(false)
-        } catch (err) {
-            setAuthError(err?.detail || err?.message || 'Could not sign you out just now.')
-        } finally {
-            setLogoutLoading(false)
-        }
-    }
 
     function isActive(path) {
         return location.pathname === path
@@ -135,53 +110,14 @@ export default function Navbar() {
 
                 {/* Desktop auth + mobile hamburger */}
                 <div className="flex items-center gap-3">
-                    {/* Primary actions (desktop) */}
+                    {/* Primary action (desktop) */}
                     <div className="hidden lg:flex items-center gap-3">
-                        {user?.role === 'admin' ? (
-                            <>
-                                <Link
-                                    to="/admin"
-                                    className="text-sm font-medium text-slate-700 hover:text-primary px-3 py-2 transition-colors"
-                                >
-                                    Admin
-                                </Link>
-                                <button
-                                    onClick={handleLogout}
-                                    disabled={logoutLoading}
-                                    className="px-5 py-2 text-sm font-semibold text-slate-700 hover:text-primary transition-colors"
-                                >
-                                    {logoutLoading ? 'Signing out...' : 'Sign out'}
-                                </button>
-                            </>
-                        ) : user ? (
-                            <>
-                                <span className="text-sm font-medium text-slate-500 max-w-[180px] truncate">
-                                    {user.email}
-                                </span>
-                                <button
-                                    onClick={handleLogout}
-                                    disabled={logoutLoading}
-                                    className="px-5 py-2 text-sm font-semibold text-slate-700 hover:text-primary transition-colors"
-                                >
-                                    {logoutLoading ? 'Signing out...' : 'Sign out'}
-                                </button>
-                            </>
-                        ) : (
-                            <>
-                                <Link
-                                    to="/login"
-                                    className="text-sm font-medium text-slate-700 hover:text-primary px-3 py-2 transition-colors"
-                                >
-                                    Sign in
-                                </Link>
-                                <Link
-                                    to="/register"
-                                    className="bg-primary text-white px-6 py-2 rounded-lg text-sm font-semibold shadow-lg shadow-primary/25 hover:opacity-90 transition-all active:scale-95"
-                                >
-                                    Create Account
-                                </Link>
-                            </>
-                        )}
+                        <Link
+                            to="/search"
+                            className="bg-primary text-white px-6 py-2 rounded-lg text-sm font-semibold shadow-lg shadow-primary/25 hover:opacity-90 transition-all active:scale-95"
+                        >
+                            Explore Rentals
+                        </Link>
                     </div>
 
                     {/* Hamburger (mobile) */}
@@ -241,65 +177,21 @@ export default function Navbar() {
                             </div>
 
                             <div className="border-t border-slate-200/60 pt-2 mt-2">
-                                {user?.role === 'admin' ? (
-                                    <>
-                                        <Link
-                                            to="/admin"
-                                            onClick={() => setMobileOpen(false)}
-                                            className="block text-sm font-medium text-slate-700 px-3 py-2.5 hover:bg-slate-50 hover:text-primary rounded-lg"
-                                        >
-                                            Admin Dashboard
-                                        </Link>
-                                        <button
-                                            onClick={handleLogout}
-                                            disabled={logoutLoading}
-                                            className="w-full text-left text-sm font-medium text-slate-700 px-3 py-2.5 hover:bg-slate-50 hover:text-primary rounded-lg"
-                                        >
-                                            {logoutLoading ? 'Signing out...' : 'Sign out'}
-                                        </button>
-                                    </>
-                                ) : user ? (
-                                    <>
-                                        <div className="px-3 py-2 text-sm text-slate-500 truncate">
-                                            {user.email}
-                                        </div>
-                                        <button
-                                            onClick={handleLogout}
-                                            disabled={logoutLoading}
-                                            className="w-full text-left text-sm font-medium text-slate-700 px-3 py-2.5 hover:bg-slate-50 hover:text-primary rounded-lg"
-                                        >
-                                            {logoutLoading ? 'Signing out...' : 'Sign out'}
-                                        </button>
-                                    </>
-                                ) : (
-                                    <>
-                                        <Link
-                                            to="/login"
-                                            onClick={() => setMobileOpen(false)}
-                                            className="block text-sm font-medium text-slate-700 px-3 py-2.5 hover:bg-slate-50 hover:text-primary rounded-lg"
-                                        >
-                                            Sign in
-                                        </Link>
-                                        <Link
-                                            to="/register"
-                                            onClick={() => setMobileOpen(false)}
-                                            className="block text-sm text-center bg-primary text-white px-3 py-2.5 rounded-lg font-semibold shadow-lg shadow-primary/25 hover:opacity-90 transition-all mt-1"
-                                        >
-                                            Create Account
-                                        </Link>
-                                    </>
-                                )}
+                                <p className="px-3 py-1.5 text-xs font-bold text-slate-400 uppercase tracking-widest">
+                                    Ready to explore?
+                                </p>
+                                <Link
+                                    to="/search"
+                                    onClick={() => setMobileOpen(false)}
+                                    className="block text-sm text-center bg-primary text-white px-3 py-2.5 rounded-lg font-semibold shadow-lg shadow-primary/25 hover:opacity-90 transition-all mt-1"
+                                >
+                                    Explore Rentals
+                                </Link>
                             </div>
                         </div>
                     </motion.div>
                 )}
             </AnimatePresence>
-
-            {authError && (
-                <div className="max-w-7xl mx-auto mt-2 border border-red-200 bg-red-50 rounded-xl px-4 py-3 text-sm text-red-700 shadow-sm">
-                    {authError}
-                </div>
-            )}
         </nav>
         </>
     )

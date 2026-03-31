@@ -55,8 +55,7 @@ Internet
 In the Railway backend service → Variables tab, add:
 ```
 SECRET_KEY=<your 64-char hex — generate fresh, never reuse dev key>
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_DAYS=30
+INTERNAL_ADMIN_KEY=<separate strong secret for internal moderation/pipeline routes>
 ENVIRONMENT=production
 ALLOWED_ORIGINS=https://your-app.vercel.app
 FRONTEND_URL=https://your-app.vercel.app
@@ -158,10 +157,13 @@ python -m app.ml.train
 2. Search for postcode `GU2 7XH`
 3. Verify properties appear on map
 4. Click a property — verify scores show
-5. Register a new account
-6. Log in
-7. Submit a test review (check it enters moderation queue)
-8. Log in with admin account — verify moderation queue shows the review
+5. Open the safety overview and a safety detail page
+6. Open the rights guide
+7. Open the agent tracker
+8. Open the rent challenge page
+
+If you plan to use internal moderation or pipeline routes in production, verify
+one request with the configured `X-Internal-Admin-Key` after deploy.
 
 ---
 

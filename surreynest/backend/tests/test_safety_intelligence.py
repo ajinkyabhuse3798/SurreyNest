@@ -39,7 +39,7 @@ def test_get_crime_trend_uses_latest_12_months_and_fills_gaps(db) -> None:
         date(2025, 5, 1): 90,
         date(2025, 6, 1): 90,
         date(2025, 7, 1): 90,
-        date(2025, 9, 1): 30,   # August intentionally missing
+        date(2025, 9, 1): 30,  # August intentionally missing
         date(2025, 10, 1): 30,
         date(2025, 11, 1): 30,
         date(2025, 12, 1): 30,
@@ -77,7 +77,9 @@ def test_get_crime_trend_returns_not_enough_data_for_single_month(db) -> None:
     }
 
 
-def test_student_vulnerability_uses_same_general_score_as_primary_safety_score(db) -> None:
+def test_student_vulnerability_uses_same_general_score_as_primary_safety_score(
+    db,
+) -> None:
     """The student panel should not invent a second general safety baseline."""
     rows = [
         ("GU2 7", date(2026, 1, 1), "burglary", 10),
@@ -96,7 +98,9 @@ def test_student_vulnerability_uses_same_general_score_as_primary_safety_score(d
     assert student_view["general_score"] == primary_score["safety_score"]
 
 
-def test_guildford_overview_aggregates_covered_sectors_and_explains_methodology(db) -> None:
+def test_guildford_overview_aggregates_covered_sectors_and_explains_methodology(
+    db,
+) -> None:
     """Guildford overview should aggregate SurreyNest coverage and explain its limits."""
     rows = [
         ("GU2 7", date(2025, 12, 1), "burglary", 10),
@@ -118,6 +122,17 @@ def test_guildford_overview_aggregates_covered_sectors_and_explains_methodology(
     assert overview["coverage_sectors"] == ["GU1 4", "GU2 7", "GU7 2"]
     assert overview["latest_month"] == "2026-01-01"
     assert overview["methodology"]["sector_radius_m"] == 500
-    assert overview["methodology"]["tracked_category_count"] == 8
-    assert "usually lower than raw police.uk totals" in overview["methodology"]["why_counts_look_lower"]
+    assert overview["methodology"]["tracked_category_count"] == 9
+    assert (
+        "keeps 9 safety-relevant crime categories"
+        in overview["methodology"]["summary"]
+    )
+    assert (
+        "filters to 9 tracked categories"
+        in overview["methodology"]["why_counts_look_lower"]
+    )
+    assert (
+        "usually lower than raw police.uk totals"
+        in overview["methodology"]["why_counts_look_lower"]
+    )
     assert "not an official borough-wide police total" in overview["scope_note"]

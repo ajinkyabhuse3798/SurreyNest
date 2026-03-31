@@ -139,7 +139,7 @@ export default function PropertyCard({
                         {num_rooms && (
                             <span className="flex items-center gap-1">
                                 <Bed size={12} className="text-slate-400" />
-                                {num_rooms} bed
+                                {num_rooms} habitable room{num_rooms === 1 ? '' : 's'}
                             </span>
                         )}
                         {floor_area_m2 && (

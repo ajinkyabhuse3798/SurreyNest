@@ -38,7 +38,9 @@ class RentChallengeRequest(BaseModel):
             and self.proposed_effective_date
             and self.proposed_effective_date <= self.last_increase_effective_date
         ):
-            raise ValueError("The new rent start date must be after the last increase date.")
+            raise ValueError(
+                "The new rent start date must be after the last increase date."
+            )
         return self
 
 

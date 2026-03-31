@@ -1,8 +1,5 @@
 """Tests for the letting agents API endpoints."""
 
-import pytest
-from fastapi.testclient import TestClient
-
 
 def test_list_agents_empty(client):
     """GET /api/agents returns empty list when no reviews with agent_name exist."""

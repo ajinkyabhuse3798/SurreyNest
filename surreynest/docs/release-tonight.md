@@ -15,6 +15,7 @@ Required values:
 - `POSTGRES_PASSWORD`
 - `REDIS_PASSWORD`
 - `SECRET_KEY`
+- `INTERNAL_ADMIN_KEY`
 - `ALLOWED_ORIGINS`
 - `FRONTEND_URL`
 
@@ -22,23 +23,24 @@ Recommended:
 
 - keep `VITE_API_URL=` blank so the frontend uses same-origin `/api`
 - use your public server IP or a free hosting subdomain if you do not have a custom domain yet
-- add SMTP settings only if you want email verification and password reset to work on day one
+- set `INTERNAL_ADMIN_KEY` to a separate strong secret used for internal moderation and pipeline routes
+- add SMTP settings only if you plan to enable outbound email in your deployment
 - if you do, set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, and `SMTP_FROM`
 - add EPC credentials only if you are using the EPC pipeline in production
 
-Generate a strong app secret with:
+Generate strong secrets with:
 
 ```bash
 openssl rand -hex 32
 ```
 
-## 2. Free-launch auth behavior
+## 2. Public app behavior
 
-If `SMTP_HOST` is blank, the app now behaves cleanly instead of pretending email works:
+The current SurreyNest web app is public and account-free:
 
-- new registrations are auto-verified and signed in
-- legacy unverified users are auto-verified the next time they log in
-- password reset shows an honest "not configured yet" message
+- legacy `/login`, `/register`, `/forgot-password`, `/reset-password`, `/verify-email`, and `/admin/*` URLs redirect back to `/`
+- internal moderation and pipeline endpoints stay protected behind `X-Internal-Admin-Key`
+- `INTERNAL_ADMIN_KEY` must be set before the production backend will boot
 
 ## 3. Run release preflight
 
@@ -87,8 +89,9 @@ In the UI, check:
 - search works
 - property detail loads
 - safety page loads
-- register, sign-in, and guest login work
-- admin login works with a real admin account
+- rights guide loads
+- agent tracker loads
+- rent challenge page loads
 
 ## 6. If something fails
 

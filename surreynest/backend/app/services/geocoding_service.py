@@ -41,9 +41,7 @@ def _normalise_postcode(postcode: str) -> str:
     return pc
 
 
-def get_lat_lng(
-    postcode: str, db: Session
-) -> Optional[Tuple[float, float]]:
+def get_lat_lng(postcode: str, db: Session) -> Optional[Tuple[float, float]]:
     """Look up latitude/longitude for a postcode, using cache first.
 
     Args:
@@ -56,9 +54,9 @@ def get_lat_lng(
     normalised = _normalise_postcode(postcode)
 
     # Check cache first
-    cached = db.query(PostcodeCache).filter(
-        PostcodeCache.postcode == normalised
-    ).first()
+    cached = (
+        db.query(PostcodeCache).filter(PostcodeCache.postcode == normalised).first()
+    )
 
     if cached is not None:
         if cached.is_valid:
@@ -145,11 +143,7 @@ def geocode_batch(
 
     # ── Check cache first (per conventions.md: always check cache) ────────
     for pc in unique:
-        cached = (
-            db.query(PostcodeCache)
-            .filter(PostcodeCache.postcode == pc)
-            .first()
-        )
+        cached = db.query(PostcodeCache).filter(PostcodeCache.postcode == pc).first()
         if cached:
             if cached.is_valid:
                 results[pc] = (cached.lat, cached.lng)
@@ -181,9 +175,7 @@ def geocode_batch(
                 json_body={"postcodes": batch},
             )
         except Exception:
-            logger.error(
-                "Batch geocode failed for batch starting at index %d", i
-            )
+            logger.error("Batch geocode failed for batch starting at index %d", i)
             for pc in batch:
                 results[pc] = (None, None)
             continue
@@ -236,13 +228,10 @@ def geocode_batch(
 
         db.commit()
 
-    geocoded_count = sum(
-        1 for v in results.values() if v[0] is not None
-    )
+    geocoded_count = sum(1 for v in results.values() if v[0] is not None)
     logger.info(
         "Geocoding complete: %d/%d postcodes resolved",
         geocoded_count,
         len(unique),
     )
     return results
-

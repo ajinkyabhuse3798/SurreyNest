@@ -12,7 +12,11 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.rate_limit import limiter
 from app.schemas.agent import AgentDetail, AgentSearchResult, AgentSummary
-from app.services.agent_service import get_agent_detail, get_agent_list, get_agent_suggestions
+from app.services.agent_service import (
+    get_agent_detail,
+    get_agent_list,
+    get_agent_suggestions,
+)
 
 logger = logging.getLogger(__name__)
 

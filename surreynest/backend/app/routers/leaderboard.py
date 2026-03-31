@@ -41,8 +41,14 @@ MIN_PROPERTIES = 5
 
 # Exclude these from street extraction (town/county names, not streets)
 NOISE_WORDS = {
-    "GUILDFORD", "SURREY", "GODALMING", "WOKING", "CRANLEIGH",
-    "FARNHAM", "ALDERSHOT", "HASLEMERE",
+    "GUILDFORD",
+    "SURREY",
+    "GODALMING",
+    "WOKING",
+    "CRANLEIGH",
+    "FARNHAM",
+    "ALDERSHOT",
+    "HASLEMERE",
 }
 
 # Note: Crime category weights have been removed, safety scoring is now
@@ -56,6 +62,7 @@ CACHE_TTL = 600  # 10 minutes
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
+
 
 def _haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
     """Approximate distance in km using Haversine formula."""
@@ -84,15 +91,16 @@ def _min_max_normalise(values: List[float], invert: bool = False) -> List[float]
     return normalised
 
 
-
 # ── Main aggregation ─────────────────────────────────────────────────────────
+
 
 def _build_leaderboard(db: Session, district: str, limit: int) -> LeaderboardResponse:
     """Build the street leaderboard from scratch."""
     dist_pattern = f"{district} %"
 
     # Step 1: Extract streets with aggregated property data
-    street_query = text("""
+    street_query = text(
+        """
         SELECT
             INITCAP(TRIM(SPLIT_PART(p.address, ',', -1))) AS street_name,
             COUNT(*) AS property_count,
@@ -110,7 +118,8 @@ def _build_leaderboard(db: Session, district: str, limit: int) -> LeaderboardRes
         GROUP BY street_name
         HAVING COUNT(*) >= :min_props
         ORDER BY COUNT(*) DESC
-    """)
+    """
+    )
 
     rows = db.execute(
         street_query,
@@ -133,27 +142,33 @@ def _build_leaderboard(db: Session, district: str, limit: int) -> LeaderboardRes
     # (same 95th-percentile algorithm used on property detail pages, consistent app-wide)
     all_sectors = set()
     for r in rows:
-        for s in (r[5] or []):
+        for s in r[5] or []:
             all_sectors.add(s.strip())
 
     safety_by_sector: dict = {}
     for sector in all_sectors:
         result = get_safety_score(sector, db)
-        safety_by_sector[sector] = result["safety_score"] if result and result.get("safety_score") is not None else None
+        safety_by_sector[sector] = (
+            result["safety_score"]
+            if result and result.get("safety_score") is not None
+            else None
+        )
 
     # Step 3: Get avg implied rent per postcode
     rent_by_postcode = {}
     all_postcodes = set()
     for r in rows:
-        for pc in (r[6] or []):
+        for pc in r[6] or []:
             all_postcodes.add(pc)
 
     if all_postcodes:
-        rent_query = text("""
+        rent_query = text(
+            """
             SELECT postcode, implied_weekly_rent
             FROM area_values
             WHERE postcode = ANY(:postcodes)
-        """)
+        """
+        )
         rent_rows = db.execute(
             rent_query, {"postcodes": list(all_postcodes)}
         ).fetchall()
@@ -163,15 +178,15 @@ def _build_leaderboard(db: Session, district: str, limit: int) -> LeaderboardRes
     # Step 4: Count active HMOs per postcode
     hmo_by_postcode = {}
     if all_postcodes:
-        hmo_query = text("""
+        hmo_query = text(
+            """
             SELECT postcode, COUNT(*) AS hmo_count
             FROM hmo_records
             WHERE is_active = true AND postcode = ANY(:postcodes)
             GROUP BY postcode
-        """)
-        hmo_rows = db.execute(
-            hmo_query, {"postcodes": list(all_postcodes)}
-        ).fetchall()
+        """
+        )
+        hmo_rows = db.execute(hmo_query, {"postcodes": list(all_postcodes)}).fetchall()
         for hr in hmo_rows:
             hmo_by_postcode[hr[0]] = hr[1]
 
@@ -196,7 +211,11 @@ def _build_leaderboard(db: Session, district: str, limit: int) -> LeaderboardRes
             for s in sectors
             if s in safety_by_sector and safety_by_sector[s] is not None
         ]
-        street_safety = round(sum(sector_safety_scores) / len(sector_safety_scores), 1) if sector_safety_scores else None
+        street_safety = (
+            round(sum(sector_safety_scores) / len(sector_safety_scores), 1)
+            if sector_safety_scores
+            else None
+        )
 
         # Avg rent
         rents = [rent_by_postcode[pc] for pc in postcodes if pc in rent_by_postcode]
@@ -205,18 +224,20 @@ def _build_leaderboard(db: Session, district: str, limit: int) -> LeaderboardRes
         # HMO count
         hmo_count = sum(hmo_by_postcode.get(pc, 0) for pc in postcodes)
 
-        streets_data.append({
-            "street_name": street_name,
-            "property_count": prop_count,
-            "avg_lat": avg_lat,
-            "avg_lng": avg_lng,
-            "avg_rooms": round(avg_rooms, 1) if avg_rooms else None,
-            "sectors": sectors,
-            "dist_uni": round(dist_uni, 2),
-            "safety_score": street_safety,
-            "avg_rent": round(avg_rent, 1) if avg_rent else None,
-            "hmo_count": hmo_count,
-        })
+        streets_data.append(
+            {
+                "street_name": street_name,
+                "property_count": prop_count,
+                "avg_lat": avg_lat,
+                "avg_lng": avg_lng,
+                "avg_rooms": round(avg_rooms, 1) if avg_rooms else None,
+                "sectors": sectors,
+                "dist_uni": round(dist_uni, 2),
+                "safety_score": street_safety,
+                "avg_rent": round(avg_rent, 1) if avg_rent else None,
+                "hmo_count": hmo_count,
+            }
+        )
 
     # Step 6: Normalise Value, Proximity, HMO via min-max within the district.
     # Safety is already normalised globally by score_service, no re-normalisation needed.
@@ -242,14 +263,16 @@ def _build_leaderboard(db: Session, district: str, limit: int) -> LeaderboardRes
         hmo = round(norm_hmo[i], 1)
         composite = round((safety + value + prox + hmo) / 4, 1)
 
-        ranked.append({
-            **s,
-            "safety_score": safety,
-            "value_score": value,
-            "proximity_score": prox,
-            "hmo_score": hmo,
-            "composite": composite,
-        })
+        ranked.append(
+            {
+                **s,
+                "safety_score": safety,
+                "value_score": value,
+                "proximity_score": prox,
+                "hmo_score": hmo,
+                "composite": composite,
+            }
+        )
 
     # Sort by composite descending
     ranked.sort(key=lambda x: x["composite"], reverse=True)
@@ -257,39 +280,49 @@ def _build_leaderboard(db: Session, district: str, limit: int) -> LeaderboardRes
     # Build response
     streets = []
     for rank_idx, s in enumerate(ranked[:limit], 1):
-        streets.append(StreetRank(
-            rank=rank_idx,
-            street_name=s["street_name"],
-            district=district,
-            composite_score=s["composite"],
-            pillars=[
-                ScorePillar(
-                    label="Safety",
-                    score=s["safety_score"],
-                    detail=f"Sector: {', '.join(s['sectors'])}" if s["sectors"] else "No crime data",
-                ),
-                ScorePillar(
-                    label="Value",
-                    score=s["value_score"],
-                    detail=f"Avg £{s['avg_rent']:.0f}/wk" if s["avg_rent"] else "No data",
-                ),
-                ScorePillar(
-                    label="Proximity",
-                    score=s["proximity_score"],
-                    detail=f"{s['dist_uni']:.1f}km to uni",
-                ),
-                ScorePillar(
-                    label="HMO",
-                    score=s["hmo_score"],
-                    detail=f"{s['hmo_count']} licensed",
-                ),
-            ],
-            property_count=s["property_count"],
-            avg_weekly_rent=s["avg_rent"],
-            avg_rooms=s["avg_rooms"],
-            distance_to_uni_km=s["dist_uni"],
-            postcode_sectors=s["sectors"],
-        ))
+        streets.append(
+            StreetRank(
+                rank=rank_idx,
+                street_name=s["street_name"],
+                district=district,
+                composite_score=s["composite"],
+                pillars=[
+                    ScorePillar(
+                        label="Safety",
+                        score=s["safety_score"],
+                        detail=(
+                            f"Sector: {', '.join(s['sectors'])}"
+                            if s["sectors"]
+                            else "No crime data"
+                        ),
+                    ),
+                    ScorePillar(
+                        label="Value",
+                        score=s["value_score"],
+                        detail=(
+                            f"Avg £{s['avg_rent']:.0f}/wk"
+                            if s["avg_rent"]
+                            else "No data"
+                        ),
+                    ),
+                    ScorePillar(
+                        label="Proximity",
+                        score=s["proximity_score"],
+                        detail=f"{s['dist_uni']:.1f}km to uni",
+                    ),
+                    ScorePillar(
+                        label="HMO",
+                        score=s["hmo_score"],
+                        detail=f"{s['hmo_count']} licensed",
+                    ),
+                ],
+                property_count=s["property_count"],
+                avg_weekly_rent=s["avg_rent"],
+                avg_rooms=s["avg_rooms"],
+                distance_to_uni_km=s["dist_uni"],
+                postcode_sectors=s["sectors"],
+            )
+        )
 
     return LeaderboardResponse(
         district=district,
@@ -300,6 +333,7 @@ def _build_leaderboard(db: Session, district: str, limit: int) -> LeaderboardRes
 
 
 # ── Endpoint ─────────────────────────────────────────────────────────────────
+
 
 @router.get(
     "/leaderboard/streets",

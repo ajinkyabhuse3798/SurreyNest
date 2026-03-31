@@ -156,9 +156,7 @@ def _get_sheet_names(xls_path: Path) -> List[str]:
     return xlrd.open_workbook(str(xls_path)).sheet_names()
 
 
-def _find_sheet_for_bedroom(
-    sheet_names: List[str], bed_count: int
-) -> Optional[str]:
+def _find_sheet_for_bedroom(sheet_names: List[str], bed_count: int) -> Optional[str]:
     """Match a sheet name for the given bedroom count using pattern list.
 
     Args:
@@ -226,7 +224,10 @@ def _extract_median_from_sheet(
     # Locate the "Median" column header: scan the first 20 rows (covers fixed
     # header at row 6) then fall back to the 15 rows just above the data row.
     median_col_idx: Optional[int] = None
-    search_ranges = [range(min(20, guildford_row_idx)), range(max(0, guildford_row_idx - 15), guildford_row_idx)]
+    search_ranges = [
+        range(min(20, guildford_row_idx)),
+        range(max(0, guildford_row_idx - 15), guildford_row_idx),
+    ]
     for search_range in search_ranges:
         for row_idx in search_range:
             for col_idx, cell_val in enumerate(df_raw.iloc[row_idx]):
@@ -520,9 +521,7 @@ def run_voa_pipeline(db: Optional[Session] = None) -> int:
         rows = upsert_to_db(df, db)
         logger.info("VOA pipeline complete: %d bedroom bands upserted to DB", rows)
     except Exception:
-        logger.error(
-            "DB upsert failed, CSVs were saved successfully", exc_info=True
-        )
+        logger.error("DB upsert failed, CSVs were saved successfully", exc_info=True)
         rows = len(df)
     finally:
         if own_session:

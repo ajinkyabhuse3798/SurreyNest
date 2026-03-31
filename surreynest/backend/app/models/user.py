@@ -4,7 +4,6 @@ Stores registered user accounts. We never store name, phone, address,
 student ID, or any PII beyond email + hashed password.
 """
 
-
 import uuid
 from typing import Optional
 
@@ -13,7 +12,6 @@ from datetime import datetime, timezone
 from sqlalchemy import Boolean, String, DateTime
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
-from typing import Optional
 
 from app.database import Base
 

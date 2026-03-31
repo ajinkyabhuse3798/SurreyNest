@@ -3,7 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
-from app.schemas.user import UserCreate, UserResponse
+from app.schemas.user import UserCreate
 from app.schemas.property import PropertySearchParams
 from app.schemas.review import ReviewCreate
 from app.schemas.score import SafetyScoreResponse, RentFairnessResponse

@@ -20,7 +20,6 @@ from app.ml.train import (
     FEATURES_PATH,
     MODEL_PATH,
     MODEL_VERSION,
-    compute_metrics,
     cross_validate_model,
     prepare_training_frame,
 )
@@ -90,7 +89,9 @@ def plot_residuals(y_true: np.ndarray, y_pred: np.ndarray, save_path: Path) -> N
         logger.warning("matplotlib not installed, skipping residual plot")
 
 
-def plot_prediction_distribution(y_pred: np.ndarray, save_path: Path) -> Dict[str, float]:
+def plot_prediction_distribution(
+    y_pred: np.ndarray, save_path: Path
+) -> Dict[str, float]:
     """Save calibrated prediction distribution plot and summary stats."""
     stats = {
         "mean": round(float(np.mean(y_pred)), 2),
@@ -108,8 +109,18 @@ def plot_prediction_distribution(y_pred: np.ndarray, save_path: Path) -> Dict[st
 
         fig, ax = plt.subplots(figsize=(10, 6))
         ax.hist(y_pred, bins=30, color="#16a34a", edgecolor="white", alpha=0.8)
-        ax.axvline(stats["mean"], color="red", linestyle="--", label=f"Mean £{stats['mean']:.0f}")
-        ax.axvline(stats["median"], color="blue", linestyle="--", label=f"Median £{stats['median']:.0f}")
+        ax.axvline(
+            stats["mean"],
+            color="red",
+            linestyle="--",
+            label=f"Mean £{stats['mean']:.0f}",
+        )
+        ax.axvline(
+            stats["median"],
+            color="blue",
+            linestyle="--",
+            label=f"Median £{stats['median']:.0f}",
+        )
         ax.set_xlabel("Predicted weekly rent (£)")
         ax.set_ylabel("Count")
         ax.set_title("Calibrated Prediction Distribution")
@@ -119,9 +130,36 @@ def plot_prediction_distribution(y_pred: np.ndarray, save_path: Path) -> Dict[st
         fig.savefig(str(save_path), dpi=150)
         plt.close(fig)
     except ImportError:
-        logger.warning("matplotlib not installed, skipping prediction distribution plot")
+        logger.warning(
+            "matplotlib not installed, skipping prediction distribution plot"
+        )
 
     return stats
+
+
+def per_sector_metrics(
+    y_true: np.ndarray,
+    y_pred: np.ndarray,
+    sectors: pd.Series,
+) -> list:
+    """Compute MAE, RMSE, and count broken down by postcode sector.
+
+    Sectors with fewer than 3 samples are omitted (too few to be meaningful).
+    Results are sorted by MAE ascending (best → worst) so weak sectors stand out.
+    """
+    sector_arr = np.array(sectors)
+    results = []
+    for sector in sorted(set(sector_arr)):
+        mask = sector_arr == sector
+        n = int(mask.sum())
+        if n < 3:
+            continue
+        yt = y_true[mask].astype(float)
+        yp = y_pred[mask].astype(float)
+        mae = float(np.mean(np.abs(yt - yp)))
+        rmse = float(np.sqrt(np.mean((yt - yp) ** 2)))
+        results.append({"sector": str(sector), "n": n, "mae": round(mae, 2), "rmse": round(rmse, 2)})
+    return sorted(results, key=lambda r: r["mae"])
 
 
 def generate_report(
@@ -130,6 +168,7 @@ def generate_report(
     importance_df: pd.DataFrame,
     dist_stats: Dict[str, float],
     avg_interval_half_width: float,
+    sector_metrics: list,
     report_path: Path,
 ) -> str:
     """Generate a concise markdown report for the current model."""
@@ -158,7 +197,7 @@ def generate_report(
         "",
         "## 3. Interval Quality",
         "",
-        f"- Nominal interval: `80%`",
+        "- Nominal interval: `80%`",
         f"- Observed coverage: `{metrics['interval_coverage'] * 100:.1f}%`",
         f"- Average half-width: `£{avg_interval_half_width:.2f}/week`",
         "",
@@ -195,8 +234,22 @@ def generate_report(
             "",
             "![Residuals](plots/residuals.png)",
             "",
+            "## 8. Per-Sector Performance",
+            "",
+            "Sectors sorted by MAE (best → worst). Any sector with MAE > £80/wk warrants investigation.",
+            "",
+            "| Sector | N | MAE £/wk | RMSE £/wk | Flag |",
+            "|--------|---|----------|-----------|------|",
         ]
     )
+
+    for row in sector_metrics:
+        flag = "⚠️ Review" if row["mae"] > 80 else ("✅" if row["mae"] < 40 else "")
+        lines.append(
+            f"| {row['sector']} | {row['n']} | {row['mae']:.2f} | {row['rmse']:.2f} | {flag} |"
+        )
+
+    lines.append("")
 
     report = "\n".join(lines)
     report_path.parent.mkdir(parents=True, exist_ok=True)
@@ -269,11 +322,16 @@ def run_evaluation() -> None:
         PLOTS_DIR / "prediction_distribution.png",
     )
 
+    sector_met = per_sector_metrics(
+        y.to_numpy(dtype=float), calibrated_oof, postcode_sectors
+    )
+
     generate_report(
         metrics=metrics,
         importance_df=importance_df,
         dist_stats=dist_stats,
         avg_interval_half_width=avg_interval_half_width,
+        sector_metrics=sector_met,
         report_path=REPORT_PATH,
     )
 
