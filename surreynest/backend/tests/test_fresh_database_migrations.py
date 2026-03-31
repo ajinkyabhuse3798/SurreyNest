@@ -98,6 +98,21 @@ def test_alembic_upgrade_head_succeeds_on_fresh_postgres() -> None:
         )
 
         assert upgrade.returncode == 0, upgrade.stderr
+
+        conn = psycopg2.connect(database_url)
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT column_name
+                    FROM information_schema.columns
+                    WHERE table_name = 'properties'
+                      AND column_name = 'is_university_managed'
+                    """
+                )
+                assert cur.fetchone() is not None
+        finally:
+            conn.close()
     finally:
         subprocess.run(
             ["docker", "rm", "-f", container_name],
