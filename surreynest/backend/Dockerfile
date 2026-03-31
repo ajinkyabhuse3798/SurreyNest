@@ -31,15 +31,17 @@ COPY --from=builder /install /usr/local
 COPY app/ ./app/
 COPY alembic/ ./alembic/
 COPY alembic.ini .
+COPY start-render.sh ./start-render.sh
 
 # Create data directories (for pipeline outputs and ML models)
-RUN mkdir -p data/raw data/processed app/ml/models app/ml/plots
+RUN mkdir -p data/raw data/processed app/ml/models app/ml/plots \
+    && chmod +x /app/start-render.sh
 
 # Non-root user for security
 RUN useradd --create-home appuser && chown -R appuser:appuser /app
 USER appuser
 
-EXPOSE 8000
+EXPOSE 10000
 
-# Production command — no --reload, multi-worker
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+# Run migrations before starting the app on Render.
+CMD ["./start-render.sh"]
