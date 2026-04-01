@@ -6,8 +6,8 @@ WORKDIR /app
 # Accept build-time API URL
 ARG VITE_API_URL=
 ENV VITE_API_URL=${VITE_API_URL}
-ARG VITE_CLARITY_PROJECT_ID=
-ENV VITE_CLARITY_PROJECT_ID=${VITE_CLARITY_PROJECT_ID}
+ARG VITE_CLOUDFLARE_ANALYTICS_TOKEN=
+ENV VITE_CLOUDFLARE_ANALYTICS_TOKEN=${VITE_CLOUDFLARE_ANALYTICS_TOKEN}
 
 # Install dependencies first (layer caching).
 # The current lockfile was generated with a peer-conflict override, so

@@ -2,7 +2,6 @@
  * About page, platform overview, data sources, FAQ, and policy sections.
  */
 import Navbar from '../components/Navbar'
-import AnalyticsConsentControls from '../components/AnalyticsConsentControls'
 
 const OFFERINGS = [
     {
@@ -155,12 +154,11 @@ export default function About() {
                                     respond to service questions or follow-up communications.
                                 </p>
                                 <p className="mt-3 text-sm leading-6 text-slate-600">
-                                    We may use Microsoft Clarity to understand site usage such as
-                                    visits, clicks, scrolling, and session behaviour so we can
-                                    improve the product. Clarity masks form and input content by
-                                    default, and we do not use this setup for advertising profiles.
+                                    SurreyNest uses lightweight pageview analytics to understand
+                                    overall visits, popular pages, and basic traffic patterns so we
+                                    can improve the product. This setup is intentionally limited and
+                                    does not use session replay tooling.
                                 </p>
-                                <AnalyticsConsentControls />
                             </SectionCard>
 
                             <SectionCard id="terms" eyebrow="Policy" title="Terms of Service">

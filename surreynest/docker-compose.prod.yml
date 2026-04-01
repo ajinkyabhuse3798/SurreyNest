@@ -85,7 +85,7 @@ services:
       dockerfile: Dockerfile
       args:
         VITE_API_URL: ${VITE_API_URL:-}
-        VITE_CLARITY_PROJECT_ID: ${VITE_CLARITY_PROJECT_ID:-}
+        VITE_CLOUDFLARE_ANALYTICS_TOKEN: ${VITE_CLOUDFLARE_ANALYTICS_TOKEN:-}
     container_name: surreynest-frontend
     restart: always
     ports:
