@@ -14,12 +14,12 @@ export default function ExploreSection() {
                 {/* Map image */}
                 <motion.div
                     className="w-full lg:w-1/2"
-                    initial={{ opacity: 0, x: -30 }}
-                    whileInView={{ opacity: 1, x: 0 }}
+                    initial={{ opacity: 0, y: 24 }}
+                    whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true, margin: '-60px' }}
                     transition={{ duration: 0.6 }}
                 >
-                    <div className="relative glass p-2 rounded-[2rem] shadow-2xl rotate-1 lg:rotate-2">
+                    <div className="relative glass p-2 rounded-[2rem] shadow-2xl rotate-0 sm:rotate-1 lg:rotate-2">
                         <div className="rounded-[1.5rem] overflow-hidden h-[300px] md:h-[400px] w-full relative">
                             <div className="absolute inset-0 bg-slate-200 animate-pulse" />
                             <img

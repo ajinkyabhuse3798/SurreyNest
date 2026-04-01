@@ -11,14 +11,14 @@ const PLATFORM = [
 
 const RESOURCES = [
     { to: '/rights', label: 'Student Rights Guide' },
-    { to: '/about', label: 'FAQ' },
+    { to: '/about#faq', label: 'FAQ' },
 ]
 
 const COMPANY = [
-    { to: '/about', label: 'About Us' },
-    { to: '/about', label: 'Contact Support' },
-    { to: '/about', label: 'Privacy Policy' },
-    { to: '/about', label: 'Terms of Service' },
+    { to: '/about#overview', label: 'About Us' },
+    { to: '/about#contact', label: 'Contact Support' },
+    { to: '/about#privacy', label: 'Privacy Policy' },
+    { to: '/about#terms', label: 'Terms of Service' },
 ]
 
 export default function Footer() {
@@ -36,13 +36,21 @@ export default function Footer() {
                         </h1>
                     </Link>
                     <p className="text-sm text-slate-500 leading-relaxed">
-                        The leading platform for student housing transparency in Guildford. Built for students, by students.
+                        A housing transparency platform for renters and residents across Guildford.
                     </p>
                     <div className="flex gap-4">
-                        <a className="text-slate-400 hover:text-primary transition-colors" href="#">
+                        <a
+                            className="text-slate-400 hover:text-primary transition-colors"
+                            href="mailto:support@surreynest.uk"
+                            aria-label="Email SurreyNest support"
+                        >
                             <span className="material-symbols-outlined">alternate_email</span>
                         </a>
-                        <a className="text-slate-400 hover:text-primary transition-colors" href="#">
+                        <a
+                            className="text-slate-400 hover:text-primary transition-colors"
+                            href="https://surreynest.uk"
+                            aria-label="Visit SurreyNest website"
+                        >
                             <span className="material-symbols-outlined">public</span>
                         </a>
                     </div>

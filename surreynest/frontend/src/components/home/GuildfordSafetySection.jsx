@@ -73,7 +73,7 @@ export default function GuildfordSafetySection() {
 
     return (
         <motion.section
-            className="px-4 py-10 lg:py-16"
+            className="px-4 py-10 lg:py-16 overflow-hidden"
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: '-60px' }}
@@ -84,8 +84,8 @@ export default function GuildfordSafetySection() {
                 className="max-w-lg lg:max-w-5xl mx-auto bg-primary rounded-[2rem] md:rounded-[3rem] p-6 md:p-8 lg:p-12 text-white overflow-hidden relative shadow-2xl shadow-primary/40"
             >
                 {/* Decorative circles */}
-                <div className="absolute -top-12 -right-12 w-36 h-36 lg:w-52 lg:h-52 rounded-full bg-white/5" />
-                <div className="absolute -bottom-10 -left-10 w-28 h-28 lg:w-44 lg:h-44 rounded-full bg-white/5" />
+                <div className="pointer-events-none absolute -top-6 -right-6 h-24 w-24 rounded-full bg-white/5 md:-top-12 md:-right-12 md:h-36 md:w-36 lg:h-52 lg:w-52" />
+                <div className="pointer-events-none absolute -bottom-6 -left-6 h-20 w-20 rounded-full bg-white/5 md:-bottom-10 md:-left-10 md:h-28 md:w-28 lg:h-44 lg:w-44" />
                 <div className="absolute top-1/2 right-1/3 w-20 h-20 rounded-full bg-white/[0.03]" />
 
                 <div className="relative z-10 lg:grid lg:grid-cols-2 lg:gap-10 lg:items-start">

@@ -12,6 +12,24 @@ body {
     -moz-osx-font-smoothing: grayscale;
 }
 
+html,
+body,
+#root {
+    max-width: 100%;
+}
+
+html,
+body {
+    overflow-x: clip;
+}
+
+@supports not (overflow: clip) {
+    html,
+    body {
+        overflow-x: hidden;
+    }
+}
+
 /* Leaflet map container */
 .leaflet-container {
     width: 100%;
