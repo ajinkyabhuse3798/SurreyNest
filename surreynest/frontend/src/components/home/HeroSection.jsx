@@ -108,11 +108,11 @@ export default function HeroSection({ postcode, setPostcode, error, loading, han
                 {/* Search Bar */}
                 <motion.div variants={fadeUp} className="relative max-w-xl group" ref={wrapperRef}>
                     <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-primary/5 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200" />
-                    <div className="relative glass rounded-xl p-2 flex flex-col sm:flex-row items-stretch sm:items-center shadow-xl border-white/50">
-                        <div className="flex-1 flex items-center px-3 md:px-4 gap-3">
-                            <span className="material-symbols-outlined text-primary/60">location_on</span>
+                    <div className="relative glass rounded-xl p-2 flex flex-col sm:flex-row items-stretch sm:items-center shadow-xl border-white/50 overflow-hidden">
+                        <div className="flex-1 min-w-0 flex items-center px-3 md:px-4 gap-3">
+                            <span className="material-symbols-outlined text-primary/60 flex-shrink-0">location_on</span>
                             <input
-                                className="w-full bg-transparent border-none focus:ring-0 focus:outline-none text-slate-900 placeholder:text-slate-400 font-medium py-3 text-sm md:text-base"
+                                className="w-full min-w-0 bg-transparent border-none focus:ring-0 focus:outline-none text-slate-900 placeholder:text-slate-400 font-medium py-3 text-base"
                                 placeholder="Enter Postcode (e.g. GU2 7XH)"
                                 type="text"
                                 value={postcode}
