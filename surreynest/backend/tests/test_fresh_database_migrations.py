@@ -111,6 +111,16 @@ def test_alembic_upgrade_head_succeeds_on_fresh_postgres() -> None:
                     """
                 )
                 assert cur.fetchone() is not None
+
+                cur.execute(
+                    """
+                    SELECT column_name
+                    FROM information_schema.columns
+                    WHERE table_name = 'rent_predictions'
+                      AND column_name = 'confidence'
+                    """
+                )
+                assert cur.fetchone() is not None
         finally:
             conn.close()
     finally:
