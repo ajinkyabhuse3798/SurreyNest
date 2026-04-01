@@ -150,8 +150,14 @@ export default function About() {
                             <SectionCard id="privacy" eyebrow="Policy" title="Privacy Policy">
                                 <p className="text-sm leading-6 text-slate-600">
                                     SurreyNest is designed to minimise personal data handling. Where
-                                    contact details are provided, they are only used to respond to
-                                    support requests or service communications.
+                                    support contact details are provided, they are only used to
+                                    respond to service questions or follow-up communications.
+                                </p>
+                                <p className="mt-3 text-sm leading-6 text-slate-600">
+                                    We may use Microsoft Clarity to understand site usage such as
+                                    visits, clicks, scrolling, and session behaviour so we can
+                                    improve the product. Clarity masks form and input content by
+                                    default, and we do not use this setup for advertising profiles.
                                 </p>
                             </SectionCard>
 

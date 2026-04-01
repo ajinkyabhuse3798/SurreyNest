@@ -26,5 +26,6 @@ describe('About', () => {
         expect(container.querySelector('#contact')).toBeInTheDocument()
         expect(container.querySelector('#privacy')).toBeInTheDocument()
         expect(container.querySelector('#terms')).toBeInTheDocument()
+        expect(screen.getByText(/Microsoft Clarity/i)).toBeInTheDocument()
     })
 })

@@ -13,6 +13,7 @@ import { CompareProvider } from './hooks/useCompare'
 import Home from './pages/Home'
 import NotFound from './pages/NotFound'
 import Footer from './components/Footer'
+import ClarityAnalytics from './components/ClarityAnalytics'
 
 // ── Lazy-loaded routes (code splitting) ──────────────────────────────────────
 const SearchResults = React.lazy(() => import('./pages/SearchResults'))
@@ -111,6 +112,7 @@ export default function App() {
         <CompareProvider>
             <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
                 <ScrollToTop />
+                <ClarityAnalytics />
                 <div className="flex flex-col min-h-screen">
                     <ErrorBoundary>
                         <Suspense fallback={<RouteLoader />}>
