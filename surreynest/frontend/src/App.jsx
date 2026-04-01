@@ -14,6 +14,7 @@ import Home from './pages/Home'
 import NotFound from './pages/NotFound'
 import Footer from './components/Footer'
 import ClarityAnalytics from './components/ClarityAnalytics'
+import CookieConsentBanner from './components/CookieConsentBanner'
 
 // ── Lazy-loaded routes (code splitting) ──────────────────────────────────────
 const SearchResults = React.lazy(() => import('./pages/SearchResults'))
@@ -143,6 +144,7 @@ export default function App() {
                     </ErrorBoundary>
                     <Footer />
                 </div>
+                <CookieConsentBanner />
             </BrowserRouter>
         </CompareProvider>
     )

@@ -2,6 +2,7 @@
  * About page, platform overview, data sources, FAQ, and policy sections.
  */
 import Navbar from '../components/Navbar'
+import AnalyticsConsentControls from '../components/AnalyticsConsentControls'
 
 const OFFERINGS = [
     {
@@ -159,6 +160,7 @@ export default function About() {
                                     improve the product. Clarity masks form and input content by
                                     default, and we do not use this setup for advertising profiles.
                                 </p>
+                                <AnalyticsConsentControls />
                             </SectionCard>
 
                             <SectionCard id="terms" eyebrow="Policy" title="Terms of Service">

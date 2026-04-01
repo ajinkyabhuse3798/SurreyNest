@@ -1,5 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { CLARITY_SCRIPT_ID, ensureClarityLoaded, setClarityRouteTag } from '../clarity'
+import {
+    ANALYTICS_CONSENT_ACCEPTED,
+    ANALYTICS_CONSENT_DECLINED,
+    ANALYTICS_CONSENT_EVENT,
+    ANALYTICS_CONSENT_KEY,
+    CLARITY_SCRIPT_ID,
+    applyClarityConsent,
+    ensureClarityLoaded,
+    readAnalyticsConsent,
+    setClarityRouteTag,
+    updateAnalyticsConsent,
+} from '../clarity'
 
 describe('ensureClarityLoaded', () => {
     let mockWindow
@@ -70,5 +81,57 @@ describe('setClarityRouteTag', () => {
         setClarityRouteTag('/search?postcode=GU1+1AA', { clarity })
 
         expect(clarity).toHaveBeenCalledWith('set', 'route', '/search?postcode=GU1+1AA')
+    })
+})
+
+describe('analytics consent helpers', () => {
+    beforeEach(() => {
+        localStorage.clear()
+    })
+
+    it('returns no stored consent choice when analytics consent is unset', () => {
+        expect(readAnalyticsConsent(localStorage)).toBeNull()
+    })
+
+    it('sends denied consent to Clarity when there is no stored choice yet', () => {
+        const clarity = vi.fn()
+
+        expect(applyClarityConsent(null, { clarity })).toBe(true)
+        expect(clarity).toHaveBeenCalledWith('consentv2', {
+            ad_Storage: 'denied',
+            analytics_Storage: 'denied',
+        })
+    })
+
+    it('grants analytics storage while keeping ad storage denied when accepted', () => {
+        const clarity = vi.fn()
+
+        expect(applyClarityConsent(ANALYTICS_CONSENT_ACCEPTED, { clarity })).toBe(true)
+        expect(clarity).toHaveBeenCalledWith('consentv2', {
+            ad_Storage: 'denied',
+            analytics_Storage: 'granted',
+        })
+    })
+
+    it('stores the consent choice, applies it, and notifies listeners', () => {
+        const clarity = vi.fn()
+        const dispatchEvent = vi.fn()
+        const win = { clarity, dispatchEvent, CustomEvent }
+
+        expect(
+            updateAnalyticsConsent(ANALYTICS_CONSENT_DECLINED, {
+                storage: localStorage,
+                win,
+            })
+        ).toBe(ANALYTICS_CONSENT_DECLINED)
+
+        expect(localStorage.getItem(ANALYTICS_CONSENT_KEY)).toBe(ANALYTICS_CONSENT_DECLINED)
+        expect(clarity).toHaveBeenCalledWith('consentv2', {
+            ad_Storage: 'denied',
+            analytics_Storage: 'denied',
+        })
+        expect(dispatchEvent).toHaveBeenCalledTimes(1)
+        expect(dispatchEvent.mock.calls[0][0].type).toBe(ANALYTICS_CONSENT_EVENT)
+        expect(dispatchEvent.mock.calls[0][0].detail.status).toBe(ANALYTICS_CONSENT_DECLINED)
     })
 })

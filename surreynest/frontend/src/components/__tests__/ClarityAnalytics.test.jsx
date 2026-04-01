@@ -4,12 +4,19 @@ import userEvent from '@testing-library/user-event'
 import { Link, MemoryRouter, Route, Routes } from 'react-router-dom'
 
 vi.mock('../../services/clarity', () => ({
+    applyClarityConsent: vi.fn(),
     ensureClarityLoaded: vi.fn(),
+    readAnalyticsConsent: vi.fn(),
     setClarityRouteTag: vi.fn(),
 }))
 
 import ClarityAnalytics from '../ClarityAnalytics'
-import { ensureClarityLoaded, setClarityRouteTag } from '../../services/clarity'
+import {
+    applyClarityConsent,
+    ensureClarityLoaded,
+    readAnalyticsConsent,
+    setClarityRouteTag,
+} from '../../services/clarity'
 
 function TestShell() {
     return (
@@ -29,13 +36,16 @@ function TestShell() {
 describe('ClarityAnalytics', () => {
     beforeEach(() => {
         vi.clearAllMocks()
+        readAnalyticsConsent.mockReturnValue(null)
     })
 
-    it('loads Clarity and tags the initial route', async () => {
+    it('loads Clarity, applies the saved consent state, and tags the initial route', async () => {
         render(<TestShell />)
 
         expect(await screen.findByText('Home')).toBeInTheDocument()
         expect(ensureClarityLoaded).toHaveBeenCalledTimes(1)
+        expect(readAnalyticsConsent).toHaveBeenCalledTimes(1)
+        expect(applyClarityConsent).toHaveBeenCalledWith(null)
         expect(setClarityRouteTag).toHaveBeenCalledWith('/')
     })
 
