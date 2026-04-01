@@ -2,7 +2,7 @@
 
 Date: 2026-04-01
 Product: SurreyNest
-Scope: Fix mobile horizontal scrolling and tighten responsive presentation without changing functionality, routes, or data behavior.
+Scope: Fix mobile horizontal scrolling, repair dead footer navigation, and tighten professional presentation without changing product functionality, routes, or data behavior.
 
 ## Summary
 
@@ -15,7 +15,7 @@ The work will stay UI-only:
 - no state or behavior changes
 - no copy rewrites beyond what layout requires
 
-The main outcome is a cleaner responsive shell where the app feels intentional on phones and remains polished on desktop.
+The main outcome is a cleaner responsive shell where the app feels intentional on phones, remains polished on desktop, and presents SurreyNest as a professional Guildford-focused product rather than an academic project.
 
 ## Root Cause
 
@@ -36,6 +36,8 @@ This means the issue is not search functionality. It is layout containment.
 - Keep the desktop composition visually rich
 - Make decorative layers feel contained instead of spilling outside their sections
 - Improve general layout resilience so future UI polish is less likely to reintroduce overflow
+- Make footer navigation point to real, useful destinations
+- Remove academic or student-built framing from visible product copy where it undermines professional positioning
 
 ## Non-Goals
 
@@ -43,6 +45,7 @@ This means the issue is not search functionality. It is layout containment.
 - No changes to search, safety, or property logic
 - No removal of branded decorative elements entirely
 - No broad visual rewrite of every page in the app
+- No introduction of new backend features just to support footer navigation
 
 ## Recommended Approach
 
@@ -87,11 +90,39 @@ Desktop should still feel layered and expressive:
 - keep existing two-column and card-based composition
 - avoid flattening the visual language just to solve mobile issues
 
+### 5. Make footer navigation genuinely usable
+
+The footer should only expose links that work and that make sense in the current product.
+
+Design changes:
+
+- remove or replace placeholder `#` links
+- stop routing multiple unrelated labels to the same generic `/about` destination unless the target page has matching anchored sections
+- make footer navigation feel intentional and trustworthy
+
+Recommended direction:
+
+- keep core platform links pointed at existing live routes
+- expand the About page into clearly labeled sections that can support footer anchors for FAQ, contact, privacy, and terms
+- use anchor-based internal navigation where possible instead of dead placeholders
+
+### 6. Reposition copy away from academic framing
+
+Visible product copy should present SurreyNest as a professional web app for people living in Guildford.
+
+Design changes:
+
+- remove wording such as `final year MSc project`
+- replace phrases like `Built for students, by students` with professional Guildford-focused positioning
+- keep the product credible and practical rather than academic
+
 ## Files In Scope
 
 - `frontend/src/index.css`
 - `frontend/src/components/home/ExploreSection.jsx`
 - `frontend/src/components/home/GuildfordSafetySection.jsx`
+- `frontend/src/components/Footer.jsx`
+- `frontend/src/pages/About.jsx`
 
 Possible touch-ups only if verification shows they are still needed:
 
@@ -103,6 +134,7 @@ Possible touch-ups only if verification shows they are still needed:
 ### Automated
 
 - add a small regression test around the responsive containment classes for the affected home components
+- add regression coverage for footer links and updated professional copy
 - run the targeted frontend test file
 - run the frontend test suite
 - run the production build
@@ -114,10 +146,14 @@ Verify on a mobile-sized viewport that:
 - `/` has no horizontal page scroll
 - `/search` still renders normally
 - desktop layout still looks visually consistent
+- footer links land on the correct page or section
+- academic wording is gone from the visible UI
 
 ## Success Criteria
 
 - Mobile users can no longer drag the home page sideways
 - Search and other flows behave exactly as before
 - Desktop retains the current premium feel
+- Footer navigation feels real and professional
+- SurreyNest no longer presents itself as a final-year project in the visible UI
 - The fix is localized and maintainable
