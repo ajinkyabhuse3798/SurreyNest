@@ -1,12 +1,10 @@
 /**
- * CheckListing, paste a SpareRoom/Rightmove/OpenRent URL to see SurreyNest analysis.
+ * CheckListing, analyse a listing reference with manual Guildford inputs.
  *
- * Flow: paste URL + optional listing wording → POST /api/listings/check →
- * display compliance scan and area analysis. Postcode is auto-extracted from
- * the page. If extraction fails, a small recovery input appears asking for the
- * GU postcode from the listing.
+ * Flow: paste URL + required postcode + optional listing wording →
+ * POST /api/listings/check → display compliance scan and area analysis.
  */
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -24,10 +22,6 @@ const PLATFORMS = [
     { name: 'Rightmove', domains: ['rightmove.co.uk'] },
     { name: 'OpenRent', domains: ['openrent.co.uk', 'openrent.com'] },
     { name: 'Zoopla', domains: ['zoopla.co.uk'] },
-]
-
-const POSTCODE_NEEDED_PHRASES = [
-    'manually', 'enter the postcode', 'could not extract', 'could not fetch',
 ]
 
 function scoreColor(score) {
@@ -81,10 +75,8 @@ export default function CheckListing() {
     const [loading, setLoading] = useState(false)
     const [result, setResult] = useState(null)
     const [error, setError] = useState('')
-    const [needsPostcode, setNeedsPostcode] = useState(false)
-    const pcRef = useRef(null)
 
-    async function submit(e, overridePostcode) {
+    async function submit(e) {
         e?.preventDefault()
         setError('')
         setResult(null)
@@ -104,25 +96,21 @@ export default function CheckListing() {
             return
         }
 
+        const pc = postcode.trim().toUpperCase()
+        if (!pc) {
+            setError('Please enter the postcode manually.')
+            return
+        }
+
         setLoading(true)
-        setNeedsPostcode(false)
         try {
-            const body = { url: trimmed }
-            const pc = (overridePostcode || postcode).trim().toUpperCase()
-            if (pc) body.postcode = pc
+            const body = { url: trimmed, postcode: pc }
             if (listingText.trim()) body.listing_text = listingText.trim()
             const res = await api.post('/api/listings/check', body)
             setResult(res.data)
-            setPostcode('')
         } catch (err) {
             const detail = err?.response?.data?.detail || 'Something went wrong. Please try again.'
-            const isPostcodeError = POSTCODE_NEEDED_PHRASES.some(p => detail.toLowerCase().includes(p))
-            if (isPostcodeError) {
-                setNeedsPostcode(true)
-                setTimeout(() => pcRef.current?.focus(), 100)
-            } else {
-                setError(detail)
-            }
+            setError(detail)
         } finally {
             setLoading(false)
         }
@@ -147,7 +135,7 @@ export default function CheckListing() {
                                 Check any rental listing
                             </h1>
                             <p className="text-slate-500 mb-8 text-base max-w-lg mx-auto leading-relaxed">
-                                Paste the advert link and, if you want, some of the listing wording. SurreyNest will scan for likely Renters&apos; Rights issues and then layer on Guildford area data.
+                                Paste the advert link for reference, enter the Guildford postcode manually, and optionally add listing wording for a compliance scan. SurreyNest will then layer on Guildford area data.
                             </p>
                         </motion.div>
 
@@ -165,7 +153,7 @@ export default function CheckListing() {
                                         <input
                                             type="text"
                                             value={url}
-                                            onChange={(e) => { setUrl(e.target.value); setError(''); setNeedsPostcode(false) }}
+                                            onChange={(e) => { setUrl(e.target.value); setError('') }}
                                             placeholder="Paste listing URL here…"
                                             className="w-full pl-10 pr-4 py-3 rounded-xl text-sm text-slate-900 placeholder-slate-400 bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition"
                                         />
@@ -189,14 +177,14 @@ export default function CheckListing() {
                                             value={listingText}
                                             onChange={(e) => setListingText(e.target.value)}
                                             rows={4}
-                                            placeholder="Optional: paste the listing wording here. This helps if the site blocks scraping or if you want a more reliable compliance scan."
+                                            placeholder="Optional: paste the listing wording here. SurreyNest will scan this text for likely Renters' Rights issues."
                                             className="w-full pl-10 pr-4 py-3 rounded-xl text-sm text-slate-900 placeholder-slate-400 bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition resize-y min-h-[112px]"
                                         />
                                     </div>
 
                                     <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
                                         <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">
-                                            Optional postcode
+                                            Required postcode
                                         </label>
                                         <div className="relative">
                                             <MapPin size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
@@ -210,52 +198,11 @@ export default function CheckListing() {
                                             />
                                         </div>
                                         <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
-                                            Add this now if the advert hides its postcode. It also lets the area analysis still work when the site blocks automated fetches.
+                                            Enter the GU postcode shown on the listing. SurreyNest now uses manual postcode entry instead of reading the advert page for you.
                                         </p>
                                     </div>
                                 </div>
                             </form>
-
-                            {/* Postcode recovery, only shown when auto-extraction fails */}
-                            <AnimatePresence>
-                                {needsPostcode && (
-                                    <motion.div
-                                        initial={{ opacity: 0, height: 0 }}
-                                        animate={{ opacity: 1, height: 'auto' }}
-                                        exit={{ opacity: 0, height: 0 }}
-                                        transition={{ duration: 0.25 }}
-                                        className="overflow-hidden"
-                                    >
-                                        <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-xl">
-                                            <p className="text-xs text-amber-700 font-medium mb-2 flex items-center gap-1.5">
-                                                <AlertTriangle size={13} />
-                                                We couldn't read the postcode from that page. Enter the GU postcode shown on the listing:
-                                            </p>
-                                            <form onSubmit={(e) => { e.preventDefault(); submit(null, postcode) }} className="flex gap-2">
-                                                <div className="relative flex-1">
-                                                    <MapPin size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-400 pointer-events-none" />
-                                                    <input
-                                                        ref={pcRef}
-                                                        type="text"
-                                                        value={postcode}
-                                                        onChange={(e) => setPostcode(e.target.value.toUpperCase())}
-                                                        placeholder="e.g. GU1 3JT or GU2"
-                                                        maxLength={8}
-                                                        className="w-full pl-9 pr-3 py-2 text-sm border border-amber-200 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400/30 uppercase"
-                                                    />
-                                                </div>
-                                                <button
-                                                    type="submit"
-                                                    disabled={loading || !postcode.trim()}
-                                                    className="bg-amber-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-amber-600 disabled:opacity-50 transition"
-                                                >
-                                                    {loading ? <Loader2 size={14} className="animate-spin" /> : 'Retry'}
-                                                </button>
-                                            </form>
-                                        </div>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
 
                             {error && (
                                 <div className="mt-3 flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2.5">
@@ -266,7 +213,7 @@ export default function CheckListing() {
 
                             {/* Supported platforms */}
                             <div className="mt-3 flex items-center justify-center gap-1.5 flex-wrap">
-                                <span className="text-xs text-slate-400">Works with:</span>
+                                <span className="text-xs text-slate-400">Reference links from:</span>
                                 {PLATFORMS.map(p => (
                                     <span key={p.name} className="text-xs font-semibold text-slate-500 bg-slate-100 rounded-full px-2.5 py-0.5">
                                         {p.name}
@@ -433,8 +380,8 @@ export default function CheckListing() {
                             <p className="text-center text-xs font-bold uppercase tracking-widest text-slate-400 mb-6">How it works</p>
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
                                 {[
-                                    { step: '1', title: 'Paste the advert', desc: 'Use a listing URL and, if needed, paste the advert wording for a more reliable compliance scan.' },
-                                    { step: '2', title: 'We scan the wording', desc: 'SurreyNest looks for bidding, advance-rent, children or benefits discrimination, and blanket pet-ban wording.' },
+                                    { step: '1', title: 'Add the listing details', desc: 'Paste the advert URL for reference, enter the GU postcode manually, and optionally paste the listing wording.' },
+                                    { step: '2', title: 'We scan the wording', desc: 'If you paste listing text, SurreyNest checks it for bidding, advance-rent, children or benefits discrimination, and blanket pet-ban wording.' },
                                     { step: '3', title: 'Layer on area data', desc: 'Then we show local safety, rent, HMO, and nearby-property context for the Guildford area.' },
                                 ].map(s => (
                                     <div key={s.step} className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm text-center">
@@ -490,11 +437,9 @@ function ComplianceCard({ report }) {
                 </div>
                 <div className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold ${tone.badge}`}>
                     <Scale size={13} />
-                    {report?.status === 'NOT_AVAILABLE'
-                        ? 'No wording scanned'
-                        : report?.analysed_text_source === 'manual_text'
-                            ? 'Based on pasted wording'
-                            : 'Based on scraped page text'}
+                    {report?.analysed_text_source === 'manual_text'
+                        ? 'Based on pasted wording'
+                        : 'No wording scanned'}
                 </div>
             </div>
 

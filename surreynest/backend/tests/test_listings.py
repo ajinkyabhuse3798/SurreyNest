@@ -1,7 +1,5 @@
 """Tests for the listing checker and wording compliance scan."""
 
-from types import SimpleNamespace
-
 
 def test_listing_check_uses_manual_text_without_fetch(
     client, seeded_property, monkeypatch
@@ -13,7 +11,7 @@ def test_listing_check_uses_manual_text_without_fetch(
             "requests.get should not be called when postcode and listing text are provided"
         )
 
-    monkeypatch.setattr("app.routers.listings.http_requests.get", _boom)
+    monkeypatch.setattr("requests.get", _boom)
     monkeypatch.setattr(
         "app.routers.listings.get_safety_score",
         lambda sector, db: {"safety_score": 72.0, "label": "Safe"},
@@ -43,27 +41,43 @@ def test_listing_check_uses_manual_text_without_fetch(
     assert "pets" in issue_ids
 
 
-def test_listing_check_scrapes_page_text_for_compliance(
+def test_listing_check_requires_manual_postcode(
     client, seeded_property, monkeypatch
 ):
-    """If listing text is not supplied, the checker should analyse scraped page text."""
+    """The listing checker should reject requests that omit a manual postcode."""
 
-    html = """
-        <html>
-            <body>
-                <h1>Lovely flat in Guildford</h1>
-                <p>Postcode GU1 1AA</p>
-                <p>Pets welcome. Families welcome.</p>
-            </body>
-        </html>
-    """
+    def _boom(*args, **kwargs):  # pragma: no cover - only called on regression
+        raise AssertionError(
+            "requests.get should not be called when manual postcode is required"
+        )
 
-    monkeypatch.setattr(
-        "app.routers.listings.http_requests.get",
-        lambda *args, **kwargs: SimpleNamespace(
-            text=html, raise_for_status=lambda: None
-        ),
+    monkeypatch.setattr("requests.get", _boom)
+
+    response = client.post(
+        "/api/listings/check",
+        json={
+            "url": "https://www.openrent.co.uk/property-to-rent/guildford/abc",
+            "listing_text": "Pets welcome. Families welcome.",
+        },
     )
+
+    assert response.status_code == 400
+    assert response.json() == {
+        "detail": "Please enter the Guildford postcode manually to analyse this listing."
+    }
+
+
+def test_listing_check_returns_not_available_without_listing_text(
+    client, seeded_property, monkeypatch
+):
+    """Manual postcode without pasted wording should skip compliance scanning."""
+
+    def _boom(*args, **kwargs):  # pragma: no cover - only called on regression
+        raise AssertionError(
+            "requests.get should not be called for manual-only listing checks"
+        )
+
+    monkeypatch.setattr("requests.get", _boom)
     monkeypatch.setattr(
         "app.routers.listings.get_safety_score",
         lambda sector, db: {"safety_score": 81.0, "label": "Very Safe"},
@@ -77,14 +91,14 @@ def test_listing_check_scrapes_page_text_for_compliance(
         "/api/listings/check",
         json={
             "url": "https://www.openrent.co.uk/property-to-rent/guildford/abc",
+            "postcode": "GU1 1AA",
         },
     )
 
     assert response.status_code == 200
     data = response.json()
     assert data["postcode"] == "GU1 1AA"
-    assert data["compliance_report"]["status"] == "CLEAR"
-    assert data["compliance_report"]["analysed_text_source"] == "scraped_page"
-    positive_ids = {item["id"] for item in data["compliance_report"]["positives"]}
-    assert "pets_welcome" in positive_ids
-    assert "inclusive_renters" in positive_ids
+    assert data["compliance_report"]["status"] == "NOT_AVAILABLE"
+    assert data["compliance_report"]["analysed_text_source"] is None
+    assert data["compliance_report"]["issues"] == []
+    assert data["compliance_report"]["positives"] == []

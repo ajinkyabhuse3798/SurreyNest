@@ -1,8 +1,7 @@
 """Listing checker: POST /listings/check.
 
-Accepts a SpareRoom / Rightmove / OpenRent URL, fetches the page HTML,
-extracts UK postcodes via regex, and returns SurreyNest analysis for the
-best-matching GU postcode.
+Accepts a supported listing URL for reference plus a manually entered
+Guildford postcode and optional pasted listing wording.
 """
 
 import logging
@@ -11,7 +10,6 @@ from collections import Counter
 from typing import Optional
 from urllib.parse import urlparse
 
-import requests as http_requests
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from app.rate_limit import limiter  # shared singleton, one instance for the whole app
 from sqlalchemy import func
@@ -24,10 +22,7 @@ from app.schemas.listings import (
     CheckListingResponse,
     NearbyProperty,
 )
-from app.services.listing_compliance_service import (
-    analyse_listing_compliance,
-    html_to_listing_text,
-)
+from app.services.listing_compliance_service import analyse_listing_compliance
 from app.services.score_service import get_safety_score, get_rent_prediction
 
 logger = logging.getLogger(__name__)
@@ -49,20 +44,8 @@ ALLOWED_DOMAINS = {
     "www.zoopla.co.uk",
 }
 
-# UK postcode regex (full postcode)
-UK_POSTCODE_RE = re.compile(r"\b([A-Z]{1,2}\d[0-9A-Z]?\s*\d[A-Z]{2})\b", re.IGNORECASE)
-
 # GU postcodes only
 GU_PREFIX_RE = re.compile(r"^GU\d", re.IGNORECASE)
-
-HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    ),
-    "Accept": "text/html,application/xhtml+xml",
-    "Accept-Language": "en-GB,en;q=0.9",
-}
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -83,21 +66,6 @@ def _is_district_only(s: str) -> bool:
     return bool(GU_DISTRICT_RE.match(s.strip()))
 
 
-def _extract_postcodes_from_html(html: str) -> list[str]:
-    """Extract all UK postcodes from HTML content."""
-    raw = UK_POSTCODE_RE.findall(html)
-    return [_normalise_postcode(pc) for pc in raw]
-
-
-def _pick_best_gu_postcode(postcodes: list[str]) -> Optional[str]:
-    """Pick the most frequent GU postcode from the list."""
-    gu_postcodes = [pc for pc in postcodes if GU_PREFIX_RE.match(pc)]
-    if not gu_postcodes:
-        return None
-    counter = Counter(gu_postcodes)
-    return counter.most_common(1)[0][0]
-
-
 def _postcode_sector(postcode: str) -> str:
     """Extract postcode sector, e.g. 'GU2 7' from 'GU2 7XH'."""
     parts = postcode.strip().split()
@@ -110,7 +78,7 @@ def _postcode_sector(postcode: str) -> str:
 @router.post(
     "/listings/check",
     response_model=CheckListingResponse,
-    summary="Check a rental listing URL",
+    summary="Check a rental listing reference",
 )
 @limiter.limit("10/minute")
 async def check_listing(
@@ -118,10 +86,10 @@ async def check_listing(
     request: Request,
     db: Session = Depends(get_db),
 ) -> CheckListingResponse:
-    """Fetch a rental listing page and return SurreyNest area analysis.
+    """Analyse a listing reference using manual Guildford inputs only.
 
     Supports SpareRoom, Rightmove, OpenRent, and Zoopla URLs.
-    Extracts postcodes from page content and returns safety, rent, HMO data.
+    Requires a manual postcode and optionally scans pasted wording.
     """
     url = body.url.strip()
 
@@ -135,61 +103,29 @@ async def check_listing(
         )
 
     # ── Resolve postcode ─────────────────────────────────────────────────
-    # If the user supplied a postcode directly, use it (most reliable).
-    # Otherwise attempt to scrape the listing page, many sites block this.
     best_postcode: Optional[str] = None
     listing_text = body.listing_text.strip() if body.listing_text else None
     listing_text_source = "manual_text" if listing_text else None
-    fetched_html: Optional[str] = None
 
-    if body.postcode:
-        raw = body.postcode.strip().upper()
-        # Accept district-only (GU1) or full postcode (GU1 3JT)
-        if _is_district_only(raw):
-            candidate = raw  # keep as-is, e.g. "GU1"
-        else:
-            candidate = _normalise_postcode(raw)
-        if not GU_PREFIX_RE.match(candidate):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"{candidate} is outside the Guildford (GU) area. SurreyNest only covers GU postcodes.",
-            )
-        best_postcode = candidate
-        logger.info("Using user-supplied area/postcode: %s", best_postcode)
-    if not best_postcode or not listing_text:
-        # Try scraping, best effort; many listing sites block crawlers
-        try:
-            resp = http_requests.get(
-                url, headers=HEADERS, timeout=10, allow_redirects=True
-            )
-            resp.raise_for_status()
-            fetched_html = resp.text
-            if not listing_text:
-                listing_text = html_to_listing_text(fetched_html)
-                listing_text_source = "scraped_page"
-            if not best_postcode:
-                all_postcodes = _extract_postcodes_from_html(fetched_html)
-                best_postcode = _pick_best_gu_postcode(all_postcodes)
-                if not best_postcode:
-                    non_gu = [pc for pc in all_postcodes if not GU_PREFIX_RE.match(pc)]
-                    if non_gu:
-                        raise HTTPException(
-                            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                            detail=f"Found postcode(s) {', '.join(set(non_gu[:3]))} but SurreyNest only covers GU (Guildford) areas. Enter the postcode manually.",
-                        )
-                    raise HTTPException(
-                        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                        detail="Could not extract a Guildford postcode from this listing page. Please enter the postcode manually.",
-                    )
-        except HTTPException:
-            raise
-        except http_requests.RequestException as exc:
-            logger.warning("Failed to fetch listing URL %s: %s", url, exc)
-            if not best_postcode:
-                raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    detail="Could not fetch the listing page, the site may be blocking automated requests. Please enter the postcode manually.",
-                )
+    if not body.postcode or not body.postcode.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Please enter the Guildford postcode manually to analyse this listing.",
+        )
+
+    raw = body.postcode.strip().upper()
+    # Accept district-only (GU1) or full postcode (GU1 3JT)
+    if _is_district_only(raw):
+        candidate = raw  # keep as-is, e.g. "GU1"
+    else:
+        candidate = _normalise_postcode(raw)
+    if not GU_PREFIX_RE.match(candidate):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"{candidate} is outside the Guildford (GU) area. SurreyNest only covers GU postcodes.",
+        )
+    best_postcode = candidate
+    logger.info("Using manual area/postcode for listing analysis: %s", best_postcode)
 
     # ── District vs full postcode ─────────────────────────────────────────
     is_district = _is_district_only(best_postcode)

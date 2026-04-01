@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 
 
 class CheckListingRequest(BaseModel):
-    """Request body for analysing a listing link and optional pasted wording."""
+    """Request body for analysing a listing reference and optional pasted wording."""
 
     url: str = Field(..., min_length=10, max_length=500)
     postcode: Optional[str] = Field(None, max_length=10)
@@ -46,12 +46,12 @@ class ListingComplianceIssue(BaseModel):
 
 
 class ListingComplianceReport(BaseModel):
-    """Compliance scan result for pasted or scraped listing wording."""
+    """Compliance scan result for manually pasted listing wording."""
 
     status: Literal["HIGH_RISK", "REVIEW", "CLEAR", "NOT_AVAILABLE"]
     headline: str
     summary: str
-    analysed_text_source: Optional[Literal["manual_text", "scraped_page"]] = None
+    analysed_text_source: Optional[Literal["manual_text"]] = None
     issues: list[ListingComplianceIssue] = Field(default_factory=list)
     positives: list[ListingComplianceIssue] = Field(default_factory=list)
 

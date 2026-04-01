@@ -7,13 +7,34 @@ from app.main import app
 
 # ── Health check ──────────────────────────────────────────────────────────────
 def test_health_check_returns_ok(client: TestClient) -> None:
-    """GET /health returns 200 with status ok and environment."""
+    """GET /health returns the public minimal health payload."""
     response = client.get("/health")
 
     assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+
+
+def test_deep_health_requires_internal_admin_key(client: TestClient) -> None:
+    """GET /health?deep=true is not public."""
+    response = client.get("/health?deep=true")
+
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Invalid or missing internal admin key"}
+
+
+def test_deep_health_returns_diagnostics_with_internal_key(
+    client: TestClient, internal_admin_headers: dict[str, str]
+) -> None:
+    """GET /health?deep=true returns diagnostics for internal callers."""
+    response = client.get("/health?deep=true", headers=internal_admin_headers)
+
+    assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "ok"
+    assert data["status"] in {"ok", "degraded"}
     assert "environment" in data
+    assert "database" in data
+    assert "redis" in data
+    assert "ml_model" in data
 
 
 # ── CORS headers ──────────────────────────────────────────────────────────────
@@ -29,6 +50,28 @@ def test_cors_headers_present(client: TestClient) -> None:
 
     assert response.status_code == 200
     assert "access-control-allow-origin" in response.headers
+
+
+def test_security_headers_present_on_normal_response(client: TestClient) -> None:
+    """Normal API responses include the configured hardening headers."""
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    assert (
+        response.headers["strict-transport-security"]
+        == "max-age=31536000; includeSubDomains"
+    )
+    assert response.headers["x-frame-options"] == "DENY"
+    assert response.headers["referrer-policy"] == "strict-origin-when-cross-origin"
+    assert (
+        response.headers["permissions-policy"]
+        == "camera=(), microphone=(), geolocation=()"
+    )
+    assert (
+        response.headers["content-security-policy"]
+        == "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
+    )
+    assert response.headers["x-content-type-options"] == "nosniff"
 
 
 # ── Global exception handler ─────────────────────────────────────────────────

@@ -12,7 +12,7 @@ from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from fastapi import FastAPI, Request, status
+from fastapi import FastAPI, Header, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi import _rate_limit_exceeded_handler
@@ -36,8 +36,20 @@ from app.routers import (
     scores,
     stats,
 )
+from app.services.internal_admin import require_internal_admin_key
 
 logger = logging.getLogger(__name__)
+
+SECURITY_HEADERS = {
+    "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+    "Content-Security-Policy": (
+        "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
+    ),
+    "X-Content-Type-Options": "nosniff",
+}
 
 
 # ── Lifespan context manager ─────────────────────────────────────────────────
@@ -152,6 +164,15 @@ async def add_request_id(request: Request, call_next):  # type: ignore[type-arg]
     return response
 
 
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):  # type: ignore[type-arg]
+    """Apply baseline hardening headers to all backend responses."""
+    response = await call_next(request)
+    for header, value in SECURITY_HEADERS.items():
+        response.headers.setdefault(header, value)
+    return response
+
+
 # ── CORS middleware ───────────────────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
@@ -210,23 +231,29 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
 
 # ── Health check ──────────────────────────────────────────────────────────────
 @app.get("/health", tags=["Health"])
-async def health_check(deep: bool = False) -> dict:
+async def health_check(
+    deep: bool = False,
+    x_internal_admin_key: str | None = Header(
+        default=None, alias="X-Internal-Admin-Key"
+    ),
+) -> dict:
     """Health check endpoint.
 
     Args:
         deep: If True, verify DB and Redis connectivity (slower but thorough).
-              Use for deployment readiness checks.
+              Deep diagnostics are restricted to internal callers.
 
     Returns:
-        dict with status, environment, and optional component health.
+        Public callers receive a minimal status payload. Internal deep checks
+        also include environment and component health.
     """
-    result: dict = {
-        "status": "ok",
-        "environment": settings.environment,
-    }
+    result: dict = {"status": "ok"}
 
     if not deep:
         return result
+
+    require_internal_admin_key(x_internal_admin_key)
+    result["environment"] = settings.environment
 
     # ── Database check ────────────────────────────────────────────────
     from app.database import verify_connection
