@@ -2,7 +2,8 @@
 # Install: pip install -r requirements.txt
 
 # ─── Web Framework ────────────────────────────────────────────────────────────
-fastapi==0.111.0
+fastapi==0.120.4
+starlette==0.49.1
 uvicorn[standard]==0.29.0
 
 # ─── Database ────────────────────────────────────────────────────────────────
@@ -13,17 +14,17 @@ geoalchemy2==0.15.1           # PostGIS spatial types for SQLAlchemy
 
 # ─── Validation ───────────────────────────────────────────────────────────────
 pydantic[email]==2.7.1        # Request/response validation + email validation
-python-multipart==0.0.9       # For form data (login form)
+python-multipart==0.0.22      # Security-patched multipart parser
 
 # ─── Authentication ───────────────────────────────────────────────────────────
 passlib[bcrypt]==1.7.4        # Password hashing
 bcrypt==4.0.1                 # Pinned for passlib compatibility
-python-jose[cryptography]==3.3.0  # JWT tokens
+python-jose[cryptography]==3.5.0  # Security-patched JWT tokens
 
 # ─── Data & ML ───────────────────────────────────────────────────────────────
 pandas==2.2.2
 numpy==1.26.4
-scikit-learn==1.4.2
+scikit-learn==1.5.2
 xgboost>=2.0.0
 joblib==1.4.2                 # Model serialisation
 geopy==2.4.1                  # Haversine distance calculations
@@ -33,7 +34,7 @@ openpyxl==3.1.2              # Read .xlsx files (ONS VOA newer editions)
 html5lib==1.1                 # Fallback HTML parser for pandas read_html
 
 # ─── HTTP Requests (for pipelines) ───────────────────────────────────────────
-requests==2.31.0
+requests==2.33.1
 httpx==0.27.0                 # Async HTTP (also used by pytest test client)
 
 # ─── Background Jobs ─────────────────────────────────────────────────────────
