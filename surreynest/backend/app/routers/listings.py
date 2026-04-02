@@ -1,14 +1,12 @@
 """Listing checker: POST /listings/check.
 
-Accepts a supported listing URL for reference plus a manually entered
-Guildford postcode and optional pasted listing wording.
+Accepts a manually entered Guildford postcode plus optional pasted listing wording.
 """
 
 import logging
 import re
 from collections import Counter
 from typing import Optional
-from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from app.rate_limit import limiter  # shared singleton, one instance for the whole app
@@ -29,20 +27,6 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-
-# ── Allowed domains ──────────────────────────────────────────────────────────
-ALLOWED_DOMAINS = {
-    "spareroom.co.uk",
-    "www.spareroom.co.uk",
-    "rightmove.co.uk",
-    "www.rightmove.co.uk",
-    "openrent.co.uk",
-    "www.openrent.co.uk",
-    "openrent.com",
-    "www.openrent.com",
-    "zoopla.co.uk",
-    "www.zoopla.co.uk",
-}
 
 # GU postcodes only
 GU_PREFIX_RE = re.compile(r"^GU\d", re.IGNORECASE)
@@ -86,21 +70,10 @@ async def check_listing(
     request: Request,
     db: Session = Depends(get_db),
 ) -> CheckListingResponse:
-    """Analyse a listing reference using manual Guildford inputs only.
+    """Analyse a listing using manual Guildford inputs only.
 
-    Supports SpareRoom, Rightmove, OpenRent, and Zoopla URLs.
     Requires a manual postcode and optionally scans pasted wording.
     """
-    url = body.url.strip()
-
-    # ── Validate domain ──────────────────────────────────────────────────
-    parsed = urlparse(url)
-    domain = parsed.netloc.lower()
-    if domain not in ALLOWED_DOMAINS:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Unsupported website. Supported: SpareRoom, Rightmove, OpenRent, Zoopla",
-        )
 
     # ── Resolve postcode ─────────────────────────────────────────────────
     best_postcode: Optional[str] = None
@@ -220,8 +193,6 @@ async def check_listing(
     return CheckListingResponse(
         postcode=display_area,
         postcode_sector=sector,
-        source_domain=domain,
-        original_url=url,
         safety_score=safety_score_val,
         safety_label=safety_label,
         avg_predicted_rent_weekly=avg_rent,

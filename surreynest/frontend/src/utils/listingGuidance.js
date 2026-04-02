@@ -5,7 +5,7 @@ const ISSUE_CONTENT = {
         title: 'If a listing hints at offers over the asking rent',
         summary: 'Keep the advertised price and wording together. From 1 May 2026 in England, landlords and agents cannot ask for, encourage, or accept bids above the advertised rent.',
         actions: [
-            'Take screenshots showing the asking rent, the wording, and the listing URL.',
+            'Take screenshots showing the asking rent, the wording, and the date you saw the advert.',
             'Ask the agent or landlord to confirm the fixed advertised rent in writing.',
             'Do not feel pressured to outbid other renters just to stay in the running.',
         ],
@@ -68,7 +68,7 @@ export function buildListingActionCards(report, postcode) {
             iconKey: 'camera',
             eyebrow: 'Do first',
             title: 'Save the advert before it changes',
-            description: 'Take screenshots of the price, wording, and URL now. Listings and messages can change once you start asking questions.',
+            description: 'Take screenshots of the price and wording now. Listings and messages can change once you start asking questions.',
             to: `/rights?topic=${LISTING_RULES_TOPIC}`,
             ctaLabel: 'See the listing rules',
         },

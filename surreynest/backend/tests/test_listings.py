@@ -24,7 +24,6 @@ def test_listing_check_uses_manual_text_without_fetch(
     response = client.post(
         "/api/listings/check",
         json={
-            "url": "https://www.rightmove.co.uk/properties/123456",
             "postcode": "GU1 1AA",
             "listing_text": "No DSS. 6 months rent upfront if no guarantor. Sorry, no pets.",
         },
@@ -56,7 +55,6 @@ def test_listing_check_requires_manual_postcode(
     response = client.post(
         "/api/listings/check",
         json={
-            "url": "https://www.openrent.co.uk/property-to-rent/guildford/abc",
             "listing_text": "Pets welcome. Families welcome.",
         },
     )
@@ -90,7 +88,6 @@ def test_listing_check_returns_not_available_without_listing_text(
     response = client.post(
         "/api/listings/check",
         json={
-            "url": "https://www.openrent.co.uk/property-to-rent/guildford/abc",
             "postcode": "GU1 1AA",
         },
     )

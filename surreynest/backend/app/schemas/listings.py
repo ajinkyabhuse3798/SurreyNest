@@ -7,9 +7,8 @@ from pydantic import BaseModel, Field
 
 
 class CheckListingRequest(BaseModel):
-    """Request body for analysing a listing reference and optional pasted wording."""
+    """Request body for analysing a manual postcode and optional pasted wording."""
 
-    url: str = Field(..., min_length=10, max_length=500)
     postcode: Optional[str] = Field(None, max_length=10)
     listing_text: Optional[str] = Field(None, max_length=15000)
 
@@ -61,8 +60,6 @@ class CheckListingResponse(BaseModel):
 
     postcode: str
     postcode_sector: str
-    source_domain: str
-    original_url: str
     safety_score: Optional[float] = None
     safety_label: Optional[str] = None
     avg_predicted_rent_weekly: Optional[float] = None

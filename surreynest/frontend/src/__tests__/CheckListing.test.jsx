@@ -46,10 +46,6 @@ describe('CheckListing', () => {
         const user = userEvent.setup()
         renderPage()
 
-        await user.type(
-            screen.getByPlaceholderText(/paste listing url here/i),
-            'https://www.rightmove.co.uk/properties/123456'
-        )
         await user.click(screen.getByRole('button', { name: /check/i }))
 
         expect(api.post).not.toHaveBeenCalled()
@@ -62,8 +58,11 @@ describe('CheckListing', () => {
         renderPage()
 
         expect(
-            screen.getByPlaceholderText(/optional: paste the listing wording here/i)
+            screen.getByPlaceholderText(/optional: paste the listing description here/i)
         ).toBeInTheDocument()
+        expect(
+            screen.queryByPlaceholderText(/paste listing url here/i)
+        ).not.toBeInTheDocument()
         expect(
             screen.queryByPlaceholderText(/site blocks scraping/i)
         ).not.toBeInTheDocument()
@@ -78,7 +77,6 @@ describe('CheckListing', () => {
             data: {
                 postcode: 'GU1 1AA',
                 message: 'Analysis ready',
-                original_url: 'https://www.rightmove.co.uk/properties/123456',
                 safety_score: 72,
                 safety_label: 'Safe',
                 properties_in_area: 1,
@@ -99,13 +97,9 @@ describe('CheckListing', () => {
 
         renderPage()
 
-        await user.type(
-            screen.getByPlaceholderText(/paste listing url here/i),
-            'https://www.rightmove.co.uk/properties/123456'
-        )
         await user.type(screen.getByPlaceholderText(/gu1 3jt/i), 'GU1 1AA')
         await user.type(
-            screen.getByPlaceholderText(/optional: paste the listing wording here/i),
+            screen.getByPlaceholderText(/optional: paste the listing description here/i),
             'No DSS. Sorry, no pets.'
         )
         await user.click(screen.getByRole('button', { name: /check/i }))
@@ -121,7 +115,6 @@ describe('CheckListing', () => {
             data: {
                 postcode: 'GU1 1AA',
                 message: 'Analysis ready',
-                original_url: 'https://www.rightmove.co.uk/properties/123456',
                 safety_score: 72,
                 safety_label: 'Safe',
                 properties_in_area: 1,
@@ -142,15 +135,52 @@ describe('CheckListing', () => {
 
         renderPage()
 
-        await user.type(
-            screen.getByPlaceholderText(/paste listing url here/i),
-            'https://www.rightmove.co.uk/properties/123456'
-        )
         await user.type(screen.getByPlaceholderText(/gu1 3jt/i), 'GU1 1AA')
         await user.click(screen.getByRole('button', { name: /check/i }))
 
         await waitFor(() => {
             expect(screen.getByText(/no wording scanned/i)).toBeInTheDocument()
+        })
+    })
+
+    it('submits postcode and pasted wording without a listing link field', async () => {
+        const user = userEvent.setup()
+        api.post.mockResolvedValueOnce({
+            data: {
+                postcode: 'GU1 1AA',
+                message: 'Analysis ready',
+                safety_score: 72,
+                safety_label: 'Safe',
+                properties_in_area: 1,
+                nearby_properties: [],
+                hmo_total_count: 0,
+                hmo_licensed_count: 0,
+                flood_risk_severity: null,
+                compliance_report: {
+                    status: 'REVIEW',
+                    headline: 'Review the wording',
+                    summary: 'Summary',
+                    analysed_text_source: 'manual_text',
+                    issues: [],
+                    positives: [],
+                },
+            },
+        })
+
+        renderPage()
+
+        await user.type(screen.getByPlaceholderText(/gu1 3jt/i), 'GU1 1AA')
+        await user.type(
+            screen.getByPlaceholderText(/optional: paste the listing description here/i),
+            'No pets allowed.'
+        )
+        await user.click(screen.getByRole('button', { name: /check/i }))
+
+        await waitFor(() => {
+            expect(api.post).toHaveBeenCalledWith('/api/listings/check', {
+                postcode: 'GU1 1AA',
+                listing_text: 'No pets allowed.',
+            })
         })
     })
 })

@@ -1,28 +1,22 @@
 /**
  * CheckListing, analyse a listing reference with manual Guildford inputs.
  *
- * Flow: paste URL + required postcode + optional listing wording →
+ * Flow: required postcode + optional listing wording →
  * POST /api/listings/check → display compliance scan and area analysis.
  */
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-    Search, Loader2, Shield, PoundSterling, Home,
-    Droplets, MapPin, ExternalLink, ArrowRight, AlertTriangle,
+    Search,
+    Loader2, Shield, PoundSterling, Home,
+    Droplets, MapPin, ArrowRight, AlertTriangle,
     CheckCircle2, Info, Scale, FileSearch, ShieldAlert, ShieldCheck,
     Camera, BookOpen, MessageSquare, Sparkles,
 } from 'lucide-react'
 import Navbar from '../components/Navbar'
 import api from '../services/api'
 import { buildListingActionCards } from '../utils/listingGuidance'
-
-const PLATFORMS = [
-    { name: 'SpareRoom', domains: ['spareroom.co.uk'] },
-    { name: 'Rightmove', domains: ['rightmove.co.uk'] },
-    { name: 'OpenRent', domains: ['openrent.co.uk', 'openrent.com'] },
-    { name: 'Zoopla', domains: ['zoopla.co.uk'] },
-]
 
 function scoreColor(score) {
     if (score >= 70) return { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-100' }
@@ -69,7 +63,6 @@ function formatDate(dateString) {
 }
 
 export default function CheckListing() {
-    const [url, setUrl] = useState('')
     const [postcode, setPostcode] = useState('')
     const [listingText, setListingText] = useState('')
     const [loading, setLoading] = useState(false)
@@ -81,21 +74,6 @@ export default function CheckListing() {
         setError('')
         setResult(null)
 
-        const trimmed = url.trim()
-        if (!trimmed) { setError('Please paste a listing URL.'); return }
-
-        try {
-            const parsed = new URL(trimmed)
-            const supported = PLATFORMS.some(platform => platform.domains.some(domain => parsed.hostname.includes(domain)))
-            if (!supported) {
-                setError('Unsupported site. We support SpareRoom, Rightmove, OpenRent, and Zoopla.')
-                return
-            }
-        } catch {
-            setError('Please enter a valid URL.')
-            return
-        }
-
         const pc = postcode.trim().toUpperCase()
         if (!pc) {
             setError('Please enter the postcode manually.')
@@ -104,7 +82,7 @@ export default function CheckListing() {
 
         setLoading(true)
         try {
-            const body = { url: trimmed, postcode: pc }
+            const body = { postcode: pc }
             if (listingText.trim()) body.listing_text = listingText.trim()
             const res = await api.post('/api/listings/check', body)
             setResult(res.data)
@@ -135,7 +113,7 @@ export default function CheckListing() {
                                 Check any rental listing
                             </h1>
                             <p className="text-slate-500 mb-8 text-base max-w-lg mx-auto leading-relaxed">
-                                Paste the advert link for reference, enter the Guildford postcode manually, and optionally add listing wording for a compliance scan. SurreyNest will then layer on Guildford area data.
+                                Enter the Guildford postcode manually and optionally paste the listing description. SurreyNest will scan the wording you provide and layer on Guildford area data.
                             </p>
                         </motion.div>
 
@@ -147,29 +125,6 @@ export default function CheckListing() {
                             className="bg-white rounded-2xl border border-slate-200 shadow-sm p-3"
                         >
                             <form onSubmit={submit} className="space-y-3">
-                                <div className="flex gap-2">
-                                    <div className="relative flex-1">
-                                        <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                                        <input
-                                            type="text"
-                                            value={url}
-                                            onChange={(e) => { setUrl(e.target.value); setError('') }}
-                                            placeholder="Paste listing URL here…"
-                                            className="w-full pl-10 pr-4 py-3 rounded-xl text-sm text-slate-900 placeholder-slate-400 bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition"
-                                        />
-                                    </div>
-                                    <button
-                                        type="submit"
-                                        disabled={loading}
-                                        className="bg-primary text-white px-5 py-3 rounded-xl text-sm font-semibold hover:bg-primary/90 active:scale-[0.98] transition-all disabled:opacity-60 flex items-center gap-2 flex-shrink-0"
-                                    >
-                                        {loading
-                                            ? <><Loader2 size={15} className="animate-spin" /> Checking…</>
-                                            : <><CheckCircle2 size={15} /> Check</>
-                                        }
-                                    </button>
-                                </div>
-
                                 <div className="grid gap-3 md:grid-cols-[1.5fr,0.75fr]">
                                     <div className="relative">
                                         <FileSearch size={16} className="absolute left-3.5 top-3.5 text-slate-400 pointer-events-none" />
@@ -177,7 +132,7 @@ export default function CheckListing() {
                                             value={listingText}
                                             onChange={(e) => setListingText(e.target.value)}
                                             rows={4}
-                                            placeholder="Optional: paste the listing wording here. SurreyNest will scan this text for likely Renters' Rights issues."
+                                            placeholder="Optional: paste the listing description here. SurreyNest will scan this text for likely Renters' Rights issues."
                                             className="w-full pl-10 pr-4 py-3 rounded-xl text-sm text-slate-900 placeholder-slate-400 bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition resize-y min-h-[112px]"
                                         />
                                     </div>
@@ -198,9 +153,22 @@ export default function CheckListing() {
                                             />
                                         </div>
                                         <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
-                                            Enter the GU postcode shown on the listing. SurreyNest now uses manual postcode entry instead of reading the advert page for you.
+                                            Enter the GU postcode shown on the listing. You can check an area with just the postcode, or add pasted wording for a description scan.
                                         </p>
                                     </div>
+                                </div>
+
+                                <div className="flex justify-end">
+                                    <button
+                                        type="submit"
+                                        disabled={loading}
+                                        className="bg-primary text-white px-5 py-3 rounded-xl text-sm font-semibold hover:bg-primary/90 active:scale-[0.98] transition-all disabled:opacity-60 flex items-center gap-2 flex-shrink-0"
+                                    >
+                                        {loading
+                                            ? <><Loader2 size={15} className="animate-spin" /> Checking…</>
+                                            : <><CheckCircle2 size={15} /> Check</>
+                                        }
+                                    </button>
                                 </div>
                             </form>
 
@@ -211,15 +179,6 @@ export default function CheckListing() {
                                 </div>
                             )}
 
-                            {/* Supported platforms */}
-                            <div className="mt-3 flex items-center justify-center gap-1.5 flex-wrap">
-                                <span className="text-xs text-slate-400">Reference links from:</span>
-                                {PLATFORMS.map(p => (
-                                    <span key={p.name} className="text-xs font-semibold text-slate-500 bg-slate-100 rounded-full px-2.5 py-0.5">
-                                        {p.name}
-                                    </span>
-                                ))}
-                            </div>
                         </motion.div>
                     </div>
                 </section>
@@ -242,15 +201,6 @@ export default function CheckListing() {
                                         <h2 className="text-lg font-bold text-slate-900">Listing Check, {r.postcode}</h2>
                                         <p className="text-xs text-slate-400 mt-0.5">{r.message}</p>
                                     </div>
-                                    <a
-                                        href={r.original_url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="flex items-center gap-1.5 text-xs text-primary font-semibold bg-primary/10 hover:bg-primary/20 rounded-lg px-3 py-2 transition"
-                                    >
-                                        <ExternalLink size={12} />
-                                        Original
-                                    </a>
                                 </div>
 
                                 <ComplianceCard report={r.compliance_report} />
@@ -380,7 +330,7 @@ export default function CheckListing() {
                             <p className="text-center text-xs font-bold uppercase tracking-widest text-slate-400 mb-6">How it works</p>
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
                                 {[
-                                    { step: '1', title: 'Add the listing details', desc: 'Paste the advert URL for reference, enter the GU postcode manually, and optionally paste the listing wording.' },
+                                    { step: '1', title: 'Add the listing details', desc: 'Enter the GU postcode manually and optionally paste the listing description.' },
                                     { step: '2', title: 'We scan the wording', desc: 'If you paste listing text, SurreyNest checks it for bidding, advance-rent, children or benefits discrimination, and blanket pet-ban wording.' },
                                     { step: '3', title: 'Layer on area data', desc: 'Then we show local safety, rent, HMO, and nearby-property context for the Guildford area.' },
                                 ].map(s => (
