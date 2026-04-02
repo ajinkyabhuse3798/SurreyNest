@@ -49,7 +49,7 @@ class Settings:
     internal_admin_key: str = os.getenv("INTERNAL_ADMIN_KEY", "")
 
     # ── ML Model ───────────────────────────────────────────────────────────
-    ml_model_version: str = os.getenv("ML_MODEL_VERSION", "v7.0.0")
+    ml_model_version: str = os.getenv("ML_MODEL_VERSION", "v8.0.0")
     ml_model_path: str = os.getenv("ML_MODEL_PATH", "app/ml/models")
 
     # ── Rate Limiting ──────────────────────────────────────────────────────

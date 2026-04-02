@@ -549,7 +549,7 @@ See `.env.example` in each directory for required keys.
 ```bash
 # Core backend vars
 INTERNAL_ADMIN_KEY=replace_me_with_a_strong_random_value
-ML_MODEL_VERSION=v7.0.0
+ML_MODEL_VERSION=v8.0.0
 REDIS_URL=redis://localhost:6379/0
 RATE_LIMIT_SEARCH=60
 RATE_LIMIT_REVIEWS=5

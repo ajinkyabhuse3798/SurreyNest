@@ -53,7 +53,7 @@ services:
       ENVIRONMENT: production
       ALLOWED_ORIGINS: "${ALLOWED_ORIGINS:-https://surreynest.com}"
       FRONTEND_URL: "${FRONTEND_URL:?FRONTEND_URL must be set}"
-      ML_MODEL_VERSION: ${ML_MODEL_VERSION:-v7.0.0}
+      ML_MODEL_VERSION: ${ML_MODEL_VERSION:-v8.0.0}
       ML_MODEL_PATH: app/ml/models
       EPC_API_USERNAME: ${EPC_API_USERNAME}
       EPC_API_KEY: ${EPC_API_KEY}
