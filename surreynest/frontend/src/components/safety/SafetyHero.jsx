@@ -85,19 +85,19 @@ export default function SafetyHero({
                         </p>
 
                         {/* Postcode search */}
-                        <form onSubmit={handleSearch} className="flex max-w-md min-w-0 flex-col gap-2 overflow-hidden sm:flex-row">
+                        <form onSubmit={handleSearch} className="flex w-full max-w-md min-w-0 flex-col gap-2 overflow-hidden sm:flex-row">
                             <div className="relative flex-1 min-w-0">
                                 <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/40" />
                                 <input
                                     value={search}
                                     onChange={(e) => { setSearch(e.target.value); setErr('') }}
                                     placeholder="Try another area, e.g. GU1 3, GU2 7…"
-                                    className="w-full pl-10 pr-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 text-base focus:outline-none focus:ring-2 focus:ring-white/30 focus:bg-white/15 transition-all"
+                                    className="w-full appearance-none pl-10 pr-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 text-[16px] sm:text-base focus:outline-none focus:ring-2 focus:ring-white/30 focus:bg-white/15 transition-[background-color,border-color,box-shadow]"
                                 />
                             </div>
                             <button
                                 type="submit"
-                                className="flex items-center justify-center gap-1.5 px-5 py-3 bg-white text-orange-700 rounded-xl font-bold text-sm hover:bg-orange-50 transition-colors shadow-lg shadow-black/20 whitespace-nowrap"
+                                className="flex w-full sm:w-auto items-center justify-center gap-1.5 px-5 py-3 bg-white text-orange-700 rounded-xl font-bold text-sm hover:bg-orange-50 transition-colors shadow-lg shadow-black/20 whitespace-nowrap"
                             >
                                 Search <ArrowRight size={14} />
                             </button>

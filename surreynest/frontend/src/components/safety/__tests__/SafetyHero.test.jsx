@@ -9,7 +9,7 @@ vi.mock('../../ScoreGauge', () => ({
 import SafetyHero from '../SafetyHero'
 
 describe('SafetyHero', () => {
-    it('keeps the safety postcode input at a non-zooming mobile size and clips the search shell', () => {
+    it('keeps the safety postcode input at a non-zooming mobile size and fully constrains the mobile search shell', () => {
         render(
             <MemoryRouter>
                 <SafetyHero
@@ -25,10 +25,12 @@ describe('SafetyHero', () => {
 
         const input = screen.getByPlaceholderText(/try another area, e\.g\. gu1 3, gu2 7/i)
         const form = input.closest('form')
+        const button = screen.getByRole('button', { name: /search/i })
 
-        expect(input).toHaveClass('text-base')
-        expect(input).not.toHaveClass('text-sm')
+        expect(input).toHaveClass('text-[16px]')
         expect(input.parentElement).toHaveClass('min-w-0')
+        expect(form).toHaveClass('w-full')
         expect(form).toHaveClass('overflow-hidden')
+        expect(button).toHaveClass('w-full')
     })
 })
