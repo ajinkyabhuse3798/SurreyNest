@@ -195,9 +195,8 @@ See `docs/data-dictionary.md` for complete column definitions.
 
 ## Project Structure
 
-```
+``` 
 surreynest/
-├── CLAUDE.md                  ← AI assistant context — read every session
 ├── docs/
 │   ├── api-reference.md       ← All external APIs and how to call them
 │   ├── conventions.md         ← Code style rules
@@ -332,7 +331,7 @@ See `docs/api-reference.md` for full formula and category weights.
 
 ## Contributing
 
-Solo project built with Claude Code. See `CLAUDE.md` for AI working instructions.
+Contributions should follow the project conventions in `docs/conventions.md` and keep documentation in sync with code changes.
 
 ---
 

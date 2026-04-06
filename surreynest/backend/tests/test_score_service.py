@@ -14,7 +14,7 @@ from app.services.score_service import (
 
 
 class TestComputeFairnessScore:
-    """Tests for the rent fairness score formula from CLAUDE.md."""
+    """Tests for the rent fairness score formula."""
 
     def test_fairness_underpaying_returns_green(self) -> None:
         """Ratio ≤ 0.85 → score 90-100, green, 'Excellent deal'."""
